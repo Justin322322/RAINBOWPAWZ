@@ -138,19 +138,19 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
     // Determine the desired status based on whether documents are being requested
     const desiredStatus = requestDocuments ? 'documents_required' : 'declined';
 
-    // Check which table exists: business_profiles or service_providers
+    // Check which table exists: service_providers or service_providers
     const tableCheckResult = await query(`
       SELECT table_name
       FROM information_schema.tables
       WHERE table_schema = DATABASE()
-      AND table_name IN ('business_profiles', 'service_providers')
+      AND table_name IN ('service_providers', 'service_providers')
     `) as any[];
 
     // Determine which table to use
     const tableNames = tableCheckResult.map(row => row.TABLE_NAME || row.table_name);
 
     const useServiceProvidersTable = tableNames.includes('service_providers');
-    const useBusinessProfilesTable = tableNames.includes('business_profiles');
+    const useBusinessProfilesTable = tableNames.includes('service_providers');
 
     if (!useServiceProvidersTable && !useBusinessProfilesTable) {
       return NextResponse.json({
@@ -250,7 +250,7 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
       if (requestDocuments && sanitizedRequiredDocuments && sanitizedRequiredDocuments.length > 0) {
         try {
           const rows = await query(
-            `SELECT business_permit_path, bir_certificate_path, government_id_path FROM business_profiles WHERE id = ? LIMIT 1`,
+            `SELECT business_permit_path, bir_certificate_path, government_id_path FROM service_providers WHERE id = ? LIMIT 1`,
             [businessId]
           ) as any[];
           if (rows && rows.length > 0) {
@@ -279,21 +279,21 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
             if (sanitizedRequiredDocuments.includes('bir_certificate')) fieldsToNull.push('bir_certificate_path = NULL');
             if (sanitizedRequiredDocuments.includes('government_id')) fieldsToNull.push('government_id_path = NULL');
             if (fieldsToNull.length > 0) {
-              await query(`UPDATE business_profiles SET ${fieldsToNull.join(', ')}, updated_at = NOW() WHERE id = ?`, [businessId]);
+              await query(`UPDATE service_providers SET ${fieldsToNull.join(', ')}, updated_at = NOW() WHERE id = ?`, [businessId]);
             }
           }
         } catch (cleanupErr) {
-          console.warn('Failed to cleanup previous documents (business_profiles):', cleanupErr);
+          console.warn('Failed to cleanup previous documents (service_providers):', cleanupErr);
         }
       }
-      // Check if business_profiles has the application_status column and fetch allowed enum values if present
+      // Check if service_providers has the application_status column and fetch allowed enum values if present
       const columnsResult = await query(
         `SELECT COLUMN_TYPE FROM INFORMATION_SCHEMA.COLUMNS
          WHERE TABLE_SCHEMA = DATABASE()
            AND TABLE_NAME = ?
            AND COLUMN_NAME = ?
          LIMIT 1`,
-        ['business_profiles', 'application_status']
+        ['service_providers', 'application_status']
       ) as any[];
 
       let statusToSet = desiredStatus;
@@ -313,7 +313,7 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
       }
 
       updateResult = await query(
-        `UPDATE business_profiles
+        `UPDATE service_providers
          SET application_status = ?,
              verification_notes = ?,
              verification_date = NOW(),
@@ -333,22 +333,22 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
     if (useServiceProvidersTable) {
       businessResult = await query(
         `SELECT
-          bp.*,
+          sp.*,
           u.email,
           u.first_name,
           u.last_name,
-          bp.name as business_name
+          sp.name as business_name
          FROM service_providers bp
-         JOIN users u ON bp.user_id = u.user_id
-         WHERE bp.provider_id = ?`,
+         JOIN users u ON sp.user_id = u.user_id
+         WHERE sp.provider_id = ?`,
         [businessId]
       ) as any[];
     } else {
       businessResult = await query(
-        `SELECT bp.*, u.email, u.first_name, u.last_name
-         FROM business_profiles bp
-         JOIN users u ON bp.user_id = u.user_id
-         WHERE bp.id = ?`,
+        `SELECT sp.*, u.email, u.first_name, u.last_name
+         FROM service_providers bp
+         JOIN users u ON sp.user_id = u.user_id
+         WHERE sp.id = ?`,
         [businessId]
       ) as any[];
     }
@@ -422,7 +422,7 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
     // Log the admin action using the utility function
     try {
       const ipAddress = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip');
-      const tableName = useServiceProvidersTable ? 'service_providers' : 'business_profiles';
+      const tableName = useServiceProvidersTable ? 'service_providers' : 'service_providers';
       await logAdminAction(
         adminId,
         requestDocuments ? 'request_specific_documents' : 'decline_business',

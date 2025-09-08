@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized - Admin access required' }, { status: 403 });
     }
 
-    // Ensure admin_profiles table exists
+    // Ensure users table exists
     await ensureAdminProfilesTableExists();
 
     // Get admin profile data with optimized single query
@@ -30,11 +30,11 @@ export async function GET(request: NextRequest) {
         u.profile_picture,
         u.created_at,
         u.updated_at,
-        COALESCE(ap.username, LOWER(u.first_name)) as username,
-        COALESCE(ap.full_name, CONCAT(u.first_name, ' ', u.last_name)) as full_name,
-        COALESCE(ap.admin_role, 'admin') as admin_role
+        COALESCE(u.username, LOWER(u.first_name)) as username,
+        COALESCE(u.full_name, CONCAT(u.first_name, ' ', u.last_name)) as full_name,
+        COALESCE(u.admin_role, 'admin') as admin_role
       FROM users u
-      LEFT JOIN admin_profiles ap ON u.user_id = ap.user_id
+      LEFT JOIN users ap ON u.user_id = u.user_id
       WHERE u.user_id = ? AND u.role = 'admin'
       LIMIT 1
     `, [user.userId]) as any[];
@@ -101,7 +101,7 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    // Ensure admin_profiles table exists
+    // Ensure users table exists
     await ensureAdminProfilesTableExists();
 
     // **🔥 FIX: Validate password change outside transaction to return proper status codes**
@@ -167,14 +167,14 @@ export async function PUT(request: NextRequest) {
 
       // Check if admin profile exists
       const existingProfileResult = await transaction.query(
-        'SELECT id FROM admin_profiles WHERE user_id = ?',
+        'SELECT id FROM users WHERE user_id = ?',
         [user.userId]
       ) as any[];
 
       if (existingProfileResult && existingProfileResult.length > 0) {
         // Update existing admin profile
         await transaction.query(
-          `UPDATE admin_profiles
+          `UPDATE users
            SET username = ?, full_name = ?, updated_at = NOW()
            WHERE user_id = ?`,
           [username, full_name, user.userId]
@@ -182,7 +182,7 @@ export async function PUT(request: NextRequest) {
       } else {
         // Create new admin profile
         await transaction.query(
-          `INSERT INTO admin_profiles (user_id, username, full_name, admin_role, created_at, updated_at)
+          `INSERT INTO users (user_id, username, full_name, admin_role, created_at, updated_at)
            VALUES (?, ?, ?, 'admin', NOW(), NOW())`,
           [user.userId, username, full_name]
         );
@@ -201,11 +201,11 @@ export async function PUT(request: NextRequest) {
         u.profile_picture,
         u.created_at,
         u.updated_at,
-        COALESCE(ap.username, LOWER(u.first_name)) as username,
-        COALESCE(ap.full_name, CONCAT(u.first_name, ' ', u.last_name)) as full_name,
-        COALESCE(ap.admin_role, 'admin') as admin_role
+        COALESCE(u.username, LOWER(u.first_name)) as username,
+        COALESCE(u.full_name, CONCAT(u.first_name, ' ', u.last_name)) as full_name,
+        COALESCE(u.admin_role, 'admin') as admin_role
       FROM users u
-      LEFT JOIN admin_profiles ap ON u.user_id = ap.user_id
+      LEFT JOIN users ap ON u.user_id = u.user_id
       WHERE u.user_id = ? AND u.role = 'admin'
       LIMIT 1
     `, [user.userId]) as any[];

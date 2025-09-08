@@ -37,14 +37,14 @@ export async function GET(request: NextRequest) {
       let pendingCount = 0;
 
       try {
-        // Check service_bookings table
-        const serviceBookingsResult = await query(`
+        // Check bookings table
+        const bookingsResult = await query(`
           SELECT COUNT(*) as pending_count
-          FROM service_bookings
+          FROM bookings
           WHERE provider_id = ? AND status = 'pending'
         `, [providerId]) as any[];
 
-        pendingCount = serviceBookingsResult[0]?.pending_count || 0;
+        pendingCount = bookingsResult[0]?.pending_count || 0;
 
       } catch (error) {
         console.error('Error fetching pending bookings:', error);
@@ -64,7 +64,7 @@ export async function GET(request: NextRequest) {
             sb.created_at,
             u.first_name,
             u.last_name
-          FROM service_bookings sb
+          FROM bookings sb
           LEFT JOIN users u ON sb.user_id = u.user_id
           WHERE sb.provider_id = ? AND sb.status = 'pending'
           ORDER BY sb.created_at DESC

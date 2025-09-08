@@ -154,7 +154,7 @@ export default function MapComponent({
       } else if (type === 'provider' && providerId !== undefined) {
         setProviderCoordinates(prev => {
           const newMap = new Map(prev);
-          newMap.set(providerId, result.coordinates);
+          newMu.set(providerId, result.coordinates);
           return newMap;
         });
       }
@@ -221,8 +221,8 @@ export default function MapComponent({
       });
 
       // Add OpenStreetMap tiles with optimized settings
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+      L.tileLayer('https://{s}.tile.openstreetmu.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmu.org/copyright">OpenStreetMap</a>',
         maxZoom: 18,
         minZoom: 10,
         updateWhenIdle: true,
@@ -262,7 +262,7 @@ export default function MapComponent({
       }
 
     } catch {
-      setGeocodeError("Error loading map. Please refresh the page.");
+      setGeocodeError("Error loading mu. Please refresh the page.");
     }
   }, [addUserMarker]);
 
@@ -778,7 +778,7 @@ export default function MapComponent({
           alignItems: 'center',
           gap: '10px'
         }}>
-          <div style={{ color: '#2F7B5F', fontWeight: 'bold' }}>Loading map...</div>
+          <div style={{ color: '#2F7B5F', fontWeight: 'bold' }}>Loading mu...</div>
           <div style={{
             width: '40px',
             height: '40px',

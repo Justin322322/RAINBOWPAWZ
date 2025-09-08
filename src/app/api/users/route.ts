@@ -176,7 +176,7 @@ export async function GET(request: NextRequest) {
         // Continue without appeals data
       }
 
-      // Check for pets and service_bookings tables existence
+      // Check for pets and bookings tables existence
       const [petsTableExists, bookingsTableExists] = await Promise.all([
         query(
           `SELECT COUNT(*) as count FROM information_schema.tables 
@@ -184,7 +184,7 @@ export async function GET(request: NextRequest) {
         ) as Promise<any[]>,
         query(
           `SELECT COUNT(*) as count FROM information_schema.tables 
-           WHERE table_schema = DATABASE() AND table_name = 'service_bookings'`
+           WHERE table_schema = DATABASE() AND table_name = 'bookings'`
         ) as Promise<any[]>
       ]);
 
@@ -249,11 +249,11 @@ export async function GET(request: NextRequest) {
               user.pets = 0;
             }
 
-            // Get completed bookings count if service_bookings table exists
+            // Get completed bookings count if bookings table exists
             if (hasBookingsTable) {
               try {
                 const bookingsResult = await query(
-                  `SELECT COUNT(*) as count FROM service_bookings 
+                  `SELECT COUNT(*) as count FROM bookings 
                    WHERE user_id = ? AND status = 'completed'`,
                   [user.user_id]
                 ) as any[];

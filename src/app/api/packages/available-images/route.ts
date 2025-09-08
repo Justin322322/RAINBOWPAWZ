@@ -104,10 +104,10 @@ export async function GET(request: NextRequest) {
 
     // If a specific package ID was requested, return only those images
     if (packageId) {
-      const packageImages = imageMap[packageId] || [];
+      const packageData = imageMap[packageId] || [];
 
       // If no images found, provide fallback
-      if (packageImages.length === 0) {
+      if (packageData.length === 0) {
 
         // Use an image that definitely exists in the public folder
         const fallbackImage = `/bg_4.png`;
@@ -122,7 +122,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({
         success: true,
         message: 'Images found for requested package',
-        imagesFound: packageImages
+        imagesFound: packageData
       });
     }
 

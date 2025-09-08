@@ -38,16 +38,15 @@ export async function GET(request: NextRequest) {
         al.*,
         CASE
           WHEN al.admin_id = 0 THEN 'system'
-          ELSE COALESCE(ap.username, 'Unknown')
+          ELSE COALESCE(u.username, 'Unknown')
         END as admin_username,
         CASE
           WHEN al.admin_id = 0 THEN 'System'
-          ELSE COALESCE(ap.full_name, 'Unknown Admin')
+          ELSE COALESCE(u.full_name, 'Unknown Admin')
         END as admin_name
       FROM
         admin_logs al
-      LEFT JOIN
-        admin_profiles ap ON al.admin_id = ap.user_id AND al.admin_id != 0
+      LEFT JOIN users ap ON al.admin_id = u.user_id AND al.admin_id != 0
       WHERE 1=1
     `;
     
@@ -75,7 +74,7 @@ export async function GET(request: NextRequest) {
     }
 
     if (search) {
-      sql += ' AND (al.action LIKE ? OR al.entity_type LIKE ? OR al.details LIKE ? OR ap.username LIKE ? OR ap.full_name LIKE ?)';
+      sql += ' AND (al.action LIKE ? OR al.entity_type LIKE ? OR al.details LIKE ? OR u.username LIKE ? OR u.full_name LIKE ?)';
       const searchTerm = `%${search}%`;
       params.push(searchTerm, searchTerm, searchTerm, searchTerm, searchTerm);
     }
@@ -100,7 +99,7 @@ export async function GET(request: NextRequest) {
     let countSql = `
       SELECT COUNT(*) as total
       FROM admin_logs al
-      LEFT JOIN admin_profiles ap ON al.admin_id = ap.user_id
+      LEFT JOIN users ap ON al.admin_id = u.user_id
       WHERE 1=1
     `;
 
@@ -128,7 +127,7 @@ export async function GET(request: NextRequest) {
     }
 
     if (search) {
-      countSql += ' AND (al.action LIKE ? OR al.entity_type LIKE ? OR al.details LIKE ? OR ap.username LIKE ? OR ap.full_name LIKE ?)';
+      countSql += ' AND (al.action LIKE ? OR al.entity_type LIKE ? OR al.details LIKE ? OR u.username LIKE ? OR u.full_name LIKE ?)';
       const searchTerm = `%${search}%`;
       countParams.push(searchTerm, searchTerm, searchTerm, searchTerm, searchTerm);
     }

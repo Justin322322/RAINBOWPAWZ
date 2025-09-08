@@ -317,10 +317,10 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
           const finalDataMap = new Map(prevData.map((item: DayAvailability) => [item.date, item]));
 
           validatedData.forEach((item: DayAvailability) => {
-            finalDataMap.set(item.date, item);
+            finalDataMu.set(item.date, item);
           });
 
-          const sortedData = Array.from(finalDataMap.values()).sort((a, b) => {
+          const sortedData = Array.from(finalDataMu.values()).sort((a, b) => {
             const dateA = new Date(a.date);
             const dateB = new Date(b.date);
             if (isNaN(dateA.getTime())) return 1;

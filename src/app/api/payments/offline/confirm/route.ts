@@ -53,7 +53,7 @@ export async function POST(request: NextRequest) {
       // Continue gracefully; we'll fallback to updating booking only
     }
 
-    // Check if table exists; if not, we will operate directly on service_bookings as a fallback
+    // Check if table exists; if not, we will operate directly on bookings as a fallback
     let tableExists = false;
     try {
       const t = await query("SELECT COUNT(*) as c FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = 'payment_receipts'") as any[];
@@ -83,12 +83,12 @@ export async function POST(request: NextRequest) {
         );
       }
       // Update booking payment_status regardless of receipts table existence
-      console.log('✅ [confirm] Updating service_bookings table');
+      console.log('✅ [confirm] Updating bookings table');
       try {
-        await query('UPDATE service_bookings SET payment_status = \"paid\" WHERE id = ?', [bookingId]);
+        await query('UPDATE bookings SET payment_status = \"paid\" WHERE id = ?', [bookingId]);
         console.log('✅ [confirm] Payment confirmed successfully');
       } catch (updateError) {
-        console.error('❌ [confirm] Failed to update service_bookings:', updateError);
+        console.error('❌ [confirm] Failed to UPDATE bookings:', updateError);
         throw updateError;
       }
       return NextResponse.json({ success: true });
@@ -102,10 +102,10 @@ export async function POST(request: NextRequest) {
       }
       console.log('🔄 [confirm] Resetting booking payment status');
       try {
-        await query('UPDATE service_bookings SET payment_status = \"awaiting_payment_confirmation\" WHERE id = ?', [bookingId]);
+        await query('UPDATE bookings SET payment_status = \"awaiting_payment_confirmation\" WHERE id = ?', [bookingId]);
         console.log('✅ [confirm] Receipt rejected successfully');
       } catch (updateError) {
-        console.error('❌ [confirm] Failed to update service_bookings:', updateError);
+        console.error('❌ [confirm] Failed to UPDATE bookings:', updateError);
         throw updateError;
       }
       return NextResponse.json({ success: true });

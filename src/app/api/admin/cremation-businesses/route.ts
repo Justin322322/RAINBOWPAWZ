@@ -37,8 +37,8 @@ async function checkDatabaseSetup() {
     // Check for required tables with more flexible matching
     // Only require the businesses table for basic functionality
     // Other tables are optional and will be handled gracefully if missing
-    // Allow either business_profiles or service_providers as the critical table
-    const criticalTables = [['business_profiles', 'service_providers']]; // Either one of these is required
+    // Allow either service_providers or service_providers as the critical table
+    const criticalTables = [['service_providers', 'service_providers']]; // Either one of these is required
     const warningTables = ['business_services', 'bookings'];
 
     const missingCriticalTables = [];
@@ -137,7 +137,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Forbidden: Admin access required' }, { status: 403 });
     }
 
-    // Since you've migrated from business_profiles to service_providers,
+    // Since you've migrated FROM service_providers to service_providers,
     // we'll use only the service_providers table
     const _tableName = 'service_providers';
 
@@ -199,8 +199,8 @@ export async function GET(request: NextRequest) {
 
       // Build a dynamic query based on available columns
       let selectFields = [
-        'bp.provider_id as id',
-        'bp.name as business_name',
+        'sp.provider_id as id',
+        'sp.name as business_name',
         'u.email'
       ];
 
@@ -214,28 +214,28 @@ export async function GET(request: NextRequest) {
       }
 
       // Add fields for service_providers table if they exist
-      if (columnNames.includes('contact_first_name')) selectFields.push('bp.contact_first_name');
-      if (columnNames.includes('contact_last_name')) selectFields.push('bp.contact_last_name');
-      if (columnNames.includes('phone')) selectFields.push('bp.phone as business_phone');
-      if (columnNames.includes('address')) selectFields.push('bp.address as business_address');
-      if (columnNames.includes('province')) selectFields.push('bp.province');
-      if (columnNames.includes('city')) selectFields.push('bp.city');
-      if (columnNames.includes('hours')) selectFields.push('bp.hours as business_hours');
-      if (columnNames.includes('service_description')) selectFields.push('bp.service_description');
-      if (columnNames.includes('verification_status')) selectFields.push('bp.verification_status');
-      if (columnNames.includes('application_status')) selectFields.push('bp.application_status');
-      if (columnNames.includes('created_at')) selectFields.push('bp.created_at');
-      if (columnNames.includes('updated_at')) selectFields.push('bp.updated_at');
+      if (columnNames.includes('contact_first_name')) selectFields.push('sp.contact_first_name');
+      if (columnNames.includes('contact_last_name')) selectFields.push('sp.contact_last_name');
+      if (columnNames.includes('phone')) selectFields.push('sp.phone as business_phone');
+      if (columnNames.includes('address')) selectFields.push('sp.address as business_address');
+      if (columnNames.includes('province')) selectFields.push('sp.province');
+      if (columnNames.includes('city')) selectFields.push('sp.city');
+      if (columnNames.includes('hours')) selectFields.push('sp.hours as business_hours');
+      if (columnNames.includes('service_description')) selectFields.push('sp.service_description');
+      if (columnNames.includes('verification_status')) selectFields.push('sp.verification_status');
+      if (columnNames.includes('application_status')) selectFields.push('sp.application_status');
+      if (columnNames.includes('created_at')) selectFields.push('sp.created_at');
+      if (columnNames.includes('updated_at')) selectFields.push('sp.updated_at');
 
       // Add profile picture from users table if it exists
       if (userColumnNames.includes('profile_picture')) selectFields.push('u.profile_picture');      // Check if business is verified based on application_status
       const verifiedCondition = columnNames.includes('application_status')
-        ? `CASE WHEN bp.application_status = 'approved' THEN 1 ELSE 0 END`
+        ? `CASE WHEN sp.application_status = 'approved' THEN 1 ELSE 0 END`
         : '0';
 
       selectFields.push(`${verifiedCondition} as is_verified`);
 
-      if (columnNames.includes('business_permit_path')) selectFields.push('bp.business_permit_path as document_path');
+      if (columnNames.includes('business_permit_path')) selectFields.push('sp.business_permit_path as document_path');
 
       // Check if provider_type column exists
       const hasProviderTypeColumn = columnNames.includes('provider_type');
@@ -243,7 +243,7 @@ export async function GET(request: NextRequest) {
       // Use the appropriate column name for business type
       let typeCondition = '1=1'; // Default to all records if provider_type doesn't exist
       if (hasProviderTypeColumn) {
-        typeCondition = "bp.provider_type = 'cremation'";
+        typeCondition = "sp.provider_type = 'cremation'";
       }
 
       // SECURITY FIX: Build safe query with validated table names
@@ -252,9 +252,9 @@ export async function GET(request: NextRequest) {
         SELECT
           ${selectFieldsStr}
         FROM service_providers bp
-        JOIN users u ON bp.user_id = u.user_id
+        JOIN users u ON sp.user_id = u.user_id
         WHERE ${typeCondition}
-        ORDER BY bp.provider_id DESC
+        ORDER BY sp.provider_id DESC
         LIMIT 100
       `;
 
@@ -278,14 +278,14 @@ export async function GET(request: NextRequest) {
         // SECURITY FIX: Use a minimal query with validated table name
         const safeFallbackQuery = `
           SELECT
-            bp.provider_id as id,
-            bp.name as business_name,
+            sp.provider_id as id,
+            sp.name as business_name,
             ${ownerField},
             u.email
           FROM service_providers bp
-          JOIN users u ON bp.user_id = u.user_id
-          WHERE bp.provider_type = 'cremation'
-          ORDER BY bp.provider_id DESC
+          JOIN users u ON sp.user_id = u.user_id
+          WHERE sp.provider_type = 'cremation'
+          ORDER BY sp.provider_id DESC
           LIMIT 100
         `;
 
@@ -499,12 +499,12 @@ export async function GET(request: NextRequest) {
 
         try {
           // Get booking count and revenue using the correct database structure
-          // Use service_bookings table directly with provider_id
+          // Use bookings table directly with provider_id
           const bookingResult = await query(`
             SELECT
               COUNT(sb.id) as count,
               COALESCE(SUM(sb.price), 0) as revenue
-            FROM service_bookings sb
+            FROM bookings sb
             WHERE sb.provider_id = ?
           `, [business.id]);
 
@@ -580,7 +580,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Business ID is required', success: false }, { status: 400 });
     }
 
-    // Since you've migrated from business_profiles to service_providers,
+    // Since you've migrated FROM service_providers to service_providers,
     // we'll use only the service_providers table
     const _tableName = 'service_providers';
 
@@ -601,34 +601,34 @@ export async function POST(request: NextRequest) {
     const _hoursColumn = 'hours';
 
     // Use the provider_type column for cremation type
-    const _typeCondition = "bp.provider_type = 'cremation'";
+    const _typeCondition = "sp.provider_type = 'cremation'";
 
     // SECURITY FIX: Get the business details with a safe query
     const businessResults = await query(`
       SELECT
-        bp.provider_id as id,
-        bp.name as business_name,
+        sp.provider_id as id,
+        sp.name as business_name,
         u.email,
-        bp.contact_first_name,
-        bp.contact_last_name,
-        bp.phone as business_phone,
-        bp.address as business_address,
-        bp.province,
-        bp.city,
-        bp.zip,
-        bp.hours as business_hours,
-        bp.description as service_description,
-        CASE WHEN bp.application_status = 'approved' THEN 1 ELSE 0 END as is_verified,
-        bp.business_permit_path,
-        bp.bir_certificate_path,
-        bp.government_id_path,
+        sp.contact_first_name,
+        sp.contact_last_name,
+        sp.phone as business_phone,
+        sp.address as business_address,
+        sp.province,
+        sp.city,
+        sp.zip,
+        sp.hours as business_hours,
+        sp.description as service_description,
+        CASE WHEN sp.application_status = 'approved' THEN 1 ELSE 0 END as is_verified,
+        sp.business_permit_path,
+        sp.bir_certificate_path,
+        sp.government_id_path,
         '' as bp_permit_number,
         '' as tax_id_number,
-        bp.created_at,
-        bp.updated_at
+        sp.created_at,
+        sp.updated_at
       FROM service_providers bp
-      JOIN users u ON bp.user_id = u.user_id
-      WHERE bp.provider_id = ? AND bp.provider_type = 'cremation'
+      JOIN users u ON sp.user_id = u.user_id
+      WHERE sp.provider_id = ? AND sp.provider_type = 'cremation'
     `, [businessId]);
 
     if (!businessResults || businessResults.length === 0) {
@@ -738,7 +738,7 @@ export async function POST(request: NextRequest) {
 
     try {
       // Get booking statistics using the correct database structure
-      // Use service_bookings table directly with provider_id
+      // Use bookings table directly with provider_id
       const bookingStats = await query(`
         SELECT
           COUNT(sb.id) as total_bookings,
@@ -746,7 +746,7 @@ export async function POST(request: NextRequest) {
           SUM(CASE WHEN sb.status = 'pending' THEN 1 ELSE 0 END) as pending_bookings,
           SUM(CASE WHEN sb.status = 'cancelled' THEN 1 ELSE 0 END) as cancelled_bookings,
           COALESCE(SUM(sb.price), 0) as total_revenue
-        FROM service_bookings sb
+        FROM bookings sb
         WHERE sb.provider_id = ?
       `, [businessId]);
 

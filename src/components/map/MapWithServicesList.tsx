@@ -23,7 +23,7 @@ const MapComponent = dynamic(
     ssr: false,
     loading: () => (
       <SectionLoader
-        message="Loading map..."
+        message="Loading mu..."
         minHeight="h-[500px]"
         withBackground={true}
         rounded={true}
@@ -252,7 +252,7 @@ const MapWithServicesList = React.memo(function MapWithServicesList({
   if (isLoading) {
     return (
       <SectionLoader
-        message="Loading services and map..."
+        message="Loading services and mu..."
         minHeight="min-h-[600px]"
         withBackground={true}
         withShadow={true}

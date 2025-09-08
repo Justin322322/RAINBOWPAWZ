@@ -56,11 +56,11 @@ export async function GET(request: NextRequest) {
         u.first_name,
         u.last_name,
         u.email,
-        COALESCE(sb.pet_name, b.pet_name) as pet_name,
-        COALESCE(sb.booking_date, b.booking_date) as booking_date
+        b.pet_name as pet_name,
+        b.booking_date as booking_date
       FROM refunds r
       JOIN users u ON r.user_id = u.user_id
-      LEFT JOIN service_bookings sb ON r.booking_id = sb.id AND sb.provider_id = ?
+      LEFT JOIN bookings sb ON r.booking_id = sb.id AND sb.provider_id = ?
       LEFT JOIN bookings b ON r.booking_id = b.id AND b.provider_id = ?
       WHERE (sb.id IS NOT NULL OR b.id IS NOT NULL)
     `;

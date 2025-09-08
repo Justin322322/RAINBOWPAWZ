@@ -32,10 +32,10 @@ export async function GET() {
     const requiredTables = [
       'users',
       'service_providers', 
-      'service_bookings',
+      'bookings',
       'service_packages',
       'pets',
-      'admin_profiles',
+      'users',
       'notifications',
       'payment_transactions'
     ];

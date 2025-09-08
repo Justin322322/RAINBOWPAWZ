@@ -1,0 +1,75 @@
+Codebase Updates for Phase 1 Database Consolidation
+Generated: 2025-09-07T23:47:56.679Z
+
+Summary:
+- Files processed: 324
+- Files changed: 59
+- Total changes: 117
+
+Changes made:
+1. service_bookings → bookings
+2. business_profiles → service_providers
+3. admin_profiles → users
+4. Simplified complex JOINs
+5. Updated variable names
+
+Modified files:
+- src\app\api\admin\create\route.ts (3 changes)
+- src\app\api\admin\cremation-businesses\route.ts (2 changes)
+- src\app\api\admin\dashboard\route.ts (1 changes)
+- src\app\api\admin\dashboard-stats\route.ts (3 changes)
+- src\app\api\admin\logs\route.ts (2 changes)
+- src\app\api\admin\logs\stats\route.ts (2 changes)
+- src\app\api\admin\notifications\route.ts (0 changes)
+- src\app\api\admin\payments\analytics\route.ts (1 changes)
+- src\app\api\admin\profile\ensure-table.ts (2 changes)
+- src\app\api\admin\profile\route.ts (6 changes)
+- src\app\api\admin\refunds\route.ts (2 changes)
+- src\app\api\admin\refunds\stats\route.ts (2 changes)
+- src\app\api\admin\services\listing\route.ts (1 changes)
+- src\app\api\admin\users\restrict\route.ts (0 changes)
+- src\app\api\admin\users\unrestrict\route.ts (0 changes)
+- src\app\api\admin\users\verify\route.ts (0 changes)
+- src\app\api\auth\login\route.ts (4 changes)
+- src\app\api\bookings\route.ts (4 changes)
+- src\app\api\businesses\applications\[id]\approve\route.ts (0 changes)
+- src\app\api\businesses\applications\[id]\decline\route.ts (0 changes)
+- src\app\api\businesses\applications\[id]\route.ts (0 changes)
+- src\app\api\cremation\bookings\route.ts (5 changes)
+- src\app\api\cremation\bookings\[id]\payment\route.ts (4 changes)
+- src\app\api\cremation\bookings\[id]\route.ts (3 changes)
+- src\app\api\cremation\dashboard\route.ts (2 changes)
+- src\app\api\cremation\history\route.ts (2 changes)
+- src\app\api\cremation\notifications\check-pending\route.ts (1 changes)
+- src\app\api\cremation\notifications\pending-bookings\route.ts (3 changes)
+- src\app\api\cremation\notifications\route.ts (1 changes)
+- src\app\api\cremation\refunds\route.ts (2 changes)
+- src\app\api\cremation\reports\route.ts (3 changes)
+- src\app\api\db-health\route.ts (2 changes)
+- src\app\api\geocoding\route.ts (1 changes)
+- src\app\api\payments\cleanup\route.ts (2 changes)
+- src\app\api\payments\offline\confirm\route.ts (2 changes)
+- src\app\api\payments\offline\receipt\route.ts (3 changes)
+- src\app\api\payments\status\route.ts (3 changes)
+- src\app\api\payments\webhook\route.ts (2 changes)
+- src\app\api\reviews\pending\route.ts (3 changes)
+- src\app\api\reviews\provider\[id]\route.ts (4 changes)
+- src\app\api\reviews\route.ts (2 changes)
+- src\app\api\users\route.ts (3 changes)
+- src\app\api\users\[id]\role\route.ts (3 changes)
+- src\app\api\users\[id]\route.ts (5 changes)
+- src\app\cremation\profile\page.tsx (1 changes)
+- src\app\user\furparent_dashboard\profile\page.tsx (1 changes)
+- src\components\booking\AvailabilityCalendar.tsx (1 changes)
+- src\components\map\MapComponent.tsx (1 changes)
+- src\components\map\MapWithServicesList.tsx (1 changes)
+- src\components\map\StaticMapComponent.tsx (1 changes)
+- src\components\navigation\AdminNavbar.tsx (1 changes)
+- src\components\profile\ProfilePictureUpload.tsx (0 changes)
+- src\components\ui\StatCard.tsx (1 changes)
+- src\contexts\LoadingContext.tsx (1 changes)
+- src\lib\revenueCalculator.ts (3 changes)
+- src\services\bookingCancellationService.ts (3 changes)
+- src\services\paymentService.ts (2 changes)
+- src\services\refundService.ts (2 changes)
+- src\utils\comprehensiveNotificationService.ts (2 changes)

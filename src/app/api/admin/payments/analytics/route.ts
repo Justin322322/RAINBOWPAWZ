@@ -83,7 +83,7 @@ export async function GET(request: NextRequest) {
         SUM(CASE WHEN pt.status = 'succeeded' THEN pt.amount ELSE 0 END) as total_revenue,
         AVG(CASE WHEN pt.status = 'succeeded' THEN pt.amount ELSE NULL END) as average_amount
       FROM payment_transactions pt
-      JOIN service_bookings sb ON pt.booking_id = sb.id
+      JOIN bookings sb ON pt.booking_id = sb.id
       JOIN service_providers sp ON sb.provider_id = sp.provider_id
       WHERE 1=1 ${dateFilter}
       GROUP BY sp.provider_id, sp.name
@@ -107,7 +107,7 @@ export async function GET(request: NextRequest) {
         u.last_name,
         u.email
       FROM payment_transactions pt
-      JOIN service_bookings sb ON pt.booking_id = sb.id
+      JOIN bookings sb ON pt.booking_id = sb.id
       JOIN users u ON sb.user_id = u.user_id
       WHERE pt.status = 'failed' ${dateFilter}
       ORDER BY pt.created_at DESC

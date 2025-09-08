@@ -57,7 +57,7 @@ export async function GET(request: NextRequest) {
       SELECT TABLE_NAME
       FROM INFORMATION_SCHEMA.TABLES
       WHERE TABLE_SCHEMA = DATABASE()
-      AND TABLE_NAME IN ('service_bookings', 'bookings')
+      AND TABLE_NAME IN ('bookings', 'bookings')
     `;
 
     console.log('🔍 DEBUG: Executing table check query...');
@@ -67,8 +67,8 @@ export async function GET(request: NextRequest) {
     const tableNames = tablesResult.map((row: any) => row.TABLE_NAME.toLowerCase());
     console.log('🔍 DEBUG: Available tables:', tableNames);
 
-    const useServiceBookings = tableNames.includes('service_bookings');
-    console.log('🔍 DEBUG: Using service_bookings table:', useServiceBookings);
+    const useServiceBookings = tableNames.includes('bookings');
+    console.log('🔍 DEBUG: Using bookings table:', useServiceBookings);
 
     console.log('🔍 DEBUG: Fetching service packages for provider:', providerId);
 
@@ -105,12 +105,12 @@ export async function GET(request: NextRequest) {
 
     console.log('🔍 DEBUG: Checking payment_status column...');
 
-    // Check if payment_status column exists in service_bookings table
+    // Check if payment_status column exists in bookings table
     const columnsQuery = `
       SELECT COLUMN_NAME
       FROM INFORMATION_SCHEMA.COLUMNS
       WHERE TABLE_SCHEMA = DATABASE()
-      AND TABLE_NAME = 'service_bookings'
+      AND TABLE_NAME = 'bookings'
     `;
 
     console.log('🔍 DEBUG: Executing columns query...');
@@ -124,7 +124,7 @@ export async function GET(request: NextRequest) {
     console.log('🔍 DEBUG: Has payment_status column:', hasPaymentStatusColumn);
 
     if (useServiceBookings) {
-      // Using service_bookings table
+      // Using bookings table
       // Create placeholders for each package ID
       const packagePlaceholders = packageIds.map(() => '?').join(',');
 
@@ -136,7 +136,7 @@ export async function GET(request: NextRequest) {
                sb.delivery_fee, sb.price,
                u.user_id as user_id, u.first_name, u.last_name, u.email, u.phone as phone,
                sp.package_id as package_id, sp.name as service_name, sp.processing_time
-        FROM service_bookings sb
+        FROM bookings sb
         JOIN users u ON sb.user_id = u.user_id
         LEFT JOIN service_packages sp ON sb.package_id = sp.package_id
         WHERE (sb.package_id IN (${packagePlaceholders}) OR sb.provider_id = ?)
@@ -231,13 +231,13 @@ export async function GET(request: NextRequest) {
 
     if (useServiceBookings) {
       statsQueries = {
-        total: `SELECT COUNT(*) as count FROM service_bookings WHERE (package_id IN (${packagePlaceholders}) OR provider_id = ?)`,
-        pending: `SELECT COUNT(*) as count FROM service_bookings WHERE (package_id IN (${packagePlaceholders}) OR provider_id = ?) AND status = 'pending'`,
-        confirmed: `SELECT COUNT(*) as count FROM service_bookings WHERE (package_id IN (${packagePlaceholders}) OR provider_id = ?) AND status = 'confirmed'`,
-        inProgress: `SELECT COUNT(*) as count FROM service_bookings WHERE (package_id IN (${packagePlaceholders}) OR provider_id = ?) AND status = 'in_progress'`,
-        completed: `SELECT COUNT(*) as count FROM service_bookings WHERE (package_id IN (${packagePlaceholders}) OR provider_id = ?) AND status = 'completed'`,
-        cancelled: `SELECT COUNT(*) as count FROM service_bookings WHERE (package_id IN (${packagePlaceholders}) OR provider_id = ?) AND status = 'cancelled'`,
-        totalRevenue: `SELECT COALESCE(SUM(price + IFNULL(delivery_fee, 0)), 0) as revenue FROM service_bookings WHERE (package_id IN (${packagePlaceholders}) OR provider_id = ?) AND status = 'completed'`
+        total: `SELECT COUNT(*) as count FROM bookings WHERE (package_id IN (${packagePlaceholders}) OR provider_id = ?)`,
+        pending: `SELECT COUNT(*) as count FROM bookings WHERE (package_id IN (${packagePlaceholders}) OR provider_id = ?) AND status = 'pending'`,
+        confirmed: `SELECT COUNT(*) as count FROM bookings WHERE (package_id IN (${packagePlaceholders}) OR provider_id = ?) AND status = 'confirmed'`,
+        inProgress: `SELECT COUNT(*) as count FROM bookings WHERE (package_id IN (${packagePlaceholders}) OR provider_id = ?) AND status = 'in_progress'`,
+        completed: `SELECT COUNT(*) as count FROM bookings WHERE (package_id IN (${packagePlaceholders}) OR provider_id = ?) AND status = 'completed'`,
+        cancelled: `SELECT COUNT(*) as count FROM bookings WHERE (package_id IN (${packagePlaceholders}) OR provider_id = ?) AND status = 'cancelled'`,
+        totalRevenue: `SELECT COALESCE(SUM(price + IFNULL(delivery_fee, 0)), 0) as revenue FROM bookings WHERE (package_id IN (${packagePlaceholders}) OR provider_id = ?) AND status = 'completed'`
       };
     } else {
       statsQueries = {
@@ -256,7 +256,7 @@ export async function GET(request: NextRequest) {
     for (const [key, sqlQuery] of Object.entries(statsQueries)) {
       let statsParams: (string | number)[] = [];
       if (useServiceBookings) {
-        // For service_bookings, we need to add each package ID and the provider ID
+        // For bookings, we need to add each package ID and the provider ID
         statsParams = [...packageIds, providerId];
       } else {
         // For regular bookings, we just need the package IDs
@@ -349,7 +349,7 @@ export async function GET(request: NextRequest) {
         } else {
           // Fallback: parse from special_requests where we appended "Receipt: <url>"
           const specials = await query(
-            `SELECT id, special_requests FROM service_bookings WHERE id IN (${bookingIds.map(() => '?').join(',')})`,
+            `SELECT id, special_requests FROM bookings WHERE id IN (${bookingIds.map(() => '?').join(',')})`,
             bookingIds
           ) as any[];
           receipts = (specials || []).map((r: any) => {
@@ -563,12 +563,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Reference validation failed', details: String(refErr) }, { status: 500 });
     }
 
-    // Check if the service_bookings table exists
+    // Check if the bookings table exists
     const tableExistsQuery = `
       SELECT COUNT(*) as tableExists
       FROM information_schema.tables
       WHERE table_schema = DATABASE()
-      AND table_name = 'service_bookings'
+      AND table_name = 'bookings'
     `;
 
     const tableExistsResult = await query(tableExistsQuery) as any[];
@@ -577,16 +577,16 @@ export async function POST(request: NextRequest) {
     if (!tableExists) {
       return NextResponse.json({
         error: 'Database configuration issue',
-        message: 'The service_bookings table does not exist. Please run the database migration first.'
+        message: 'The bookings table does not exist. Please run the database migration first.'
       }, { status: 500 });
     }
 
-    // Get all columns from the service_bookings table to ensure we're using the right schema
+    // Get all columns from the bookings table to ensure we're using the right schema
     const columnsQuery = `
       SELECT COLUMN_NAME
       FROM INFORMATION_SCHEMA.COLUMNS
       WHERE TABLE_SCHEMA = DATABASE()
-      AND TABLE_NAME = 'service_bookings'
+      AND TABLE_NAME = 'bookings'
     `;
 
     const columnsResult = await query(columnsQuery) as any[];
@@ -599,7 +599,7 @@ export async function POST(request: NextRequest) {
     if (missingColumns.length > 0) {
       return NextResponse.json({
         error: 'Database schema issue',
-        message: `The service_bookings table is missing required columns: ${missingColumns.join(', ')}. Please run the database migration.`
+        message: `The bookings table is missing required columns: ${missingColumns.join(', ')}. Please run the database migration.`
       }, { status: 500 });
     }
 
@@ -713,7 +713,7 @@ export async function POST(request: NextRequest) {
 
     // Build the final query
     const insertQuery = `
-      INSERT INTO service_bookings (
+      INSERT INTO bookings (
         ${availableColumns.join(', ')}
       ) VALUES (${placeholders.join(', ')})
     `;
@@ -764,7 +764,7 @@ export async function POST(request: NextRequest) {
               : `Selected Add-ons: ${addOnsText}`;
 
             await transaction.query(
-              'UPDATE service_bookings SET special_requests = ? WHERE id = ?',
+              'UPDATE bookings SET special_requests = ? WHERE id = ?',
               [updatedSpecialRequests, bookingId]
             );
           }

@@ -86,7 +86,7 @@ async function handleSourceChargeable(sourceData: any) {
       const bookingQuery = `
         SELECT pt.booking_id, sb.user_id
         FROM payment_transactions pt
-        JOIN service_bookings sb ON pt.booking_id = sb.id
+        JOIN bookings sb ON pt.booking_id = sb.id
         WHERE pt.source_id = ?
       `;
       const bookingResult = await query(bookingQuery, [sourceId]) as any[];
@@ -113,7 +113,7 @@ async function handlePaymentPaid(paymentData: any) {
     const transactionQuery = `
       SELECT pt.id, pt.booking_id, sb.user_id
       FROM payment_transactions pt
-      JOIN service_bookings sb ON pt.booking_id = sb.id
+      JOIN bookings sb ON pt.booking_id = sb.id
       WHERE pt.payment_intent_id = ? OR pt.source_id = ?
     `;
     const transactionResult = await query(transactionQuery, [paymentId, paymentId]) as any[];
@@ -129,7 +129,7 @@ async function handlePaymentPaid(paymentData: any) {
 
       // Update booking payment status
       const updateBookingQuery = `
-        UPDATE service_bookings
+        UPDATE bookings
         SET payment_status = 'paid'
         WHERE id = ?
       `;
@@ -154,7 +154,7 @@ async function handlePaymentFailed(paymentData: any) {
     const transactionQuery = `
       SELECT pt.id, pt.booking_id, sb.user_id
       FROM payment_transactions pt
-      JOIN service_bookings sb ON pt.booking_id = sb.id
+      JOIN bookings sb ON pt.booking_id = sb.id
       WHERE pt.payment_intent_id = ? OR pt.source_id = ?
     `;
     const transactionResult = await query(transactionQuery, [paymentId, paymentId]) as any[];

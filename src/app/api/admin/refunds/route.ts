@@ -44,14 +44,14 @@ export async function GET(request: NextRequest) {
         u.email,
         sp.name as provider_name,
         sp.provider_id,
-        COALESCE(sb.pet_name, b.pet_name) as pet_name,
-        COALESCE(sb.booking_date, b.booking_date) as booking_date,
-        COALESCE(sb.provider_id, b.provider_id) as booking_provider_id
+        b.pet_name as pet_name,
+        b.booking_date as booking_date,
+        b.provider_id as booking_provider_id
       FROM refunds r
       JOIN users u ON r.user_id = u.user_id
-      LEFT JOIN service_bookings sb ON r.booking_id = sb.id
+      LEFT JOIN bookings sb ON r.booking_id = sb.id
       LEFT JOIN bookings b ON r.booking_id = b.id AND sb.id IS NULL
-      LEFT JOIN service_providers sp ON COALESCE(sb.provider_id, b.provider_id) = sp.provider_id
+      LEFT JOIN service_providers sp ON b.provider_id = sp.provider_id
       WHERE 1=1
     `;
     
@@ -76,7 +76,7 @@ export async function GET(request: NextRequest) {
 
     // Add provider filter if provided
     if (providerId) {
-      refundsQuery += ' AND COALESCE(sb.provider_id, b.provider_id) = ?';
+      refundsQuery += ' AND b.provider_id = ?';
       queryParams.push(parseInt(providerId));
     }
 

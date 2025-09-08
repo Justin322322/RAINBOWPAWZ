@@ -38,12 +38,12 @@ export async function GET(
     let reviews: any[] = [];
 
     try {
-      // First check if service_bookings table has the required columns
+      // First check if bookings table has the required columns
       const columnsResult = await query(`
         SELECT COLUMN_NAME
         FROM INFORMATION_SCHEMA.COLUMNS
         WHERE TABLE_SCHEMA = DATABASE()
-        AND TABLE_NAME = 'service_bookings'
+        AND TABLE_NAME = 'bookings'
         AND COLUMN_NAME IN ('booking_date', 'service_name')
       `) as any[];
 
@@ -72,10 +72,10 @@ export async function GET(
 
       let joinClause = `
         JOIN users u ON r.user_id = u.user_id
-        LEFT JOIN service_bookings sb ON r.booking_id = sb.id
+        LEFT JOIN bookings sb ON r.booking_id = sb.id
       `;
 
-      // Add join to service_packages if service_name is not available in service_bookings
+      // Add join to service_packages if service_name is not available in bookings
       if (!hasServiceNameColumn) {
         joinClause += ` LEFT JOIN service_packages sp ON sb.package_id = sp.package_id`;
       }
@@ -109,7 +109,7 @@ export async function GET(
     } catch (joinError) {
       console.error('Error with dynamic JOIN query:', joinError);
 
-      // Fallback to a simpler query without the service_bookings join
+      // Fallback to a simpler query without the bookings join
       try {
         // Make sure we're using the correct parameter type
         const providerIdParam = isNaN(Number(providerId)) ? providerId : Number(providerId);
@@ -148,10 +148,10 @@ export async function GET(
 
           if (bookingIds.length > 0) {
             try {
-              // Try to get booking dates from service_bookings
+              // Try to get booking dates FROM bookings
               const placeholders = bookingIds.map(() => '?').join(',');
               const bookingsData = await query(
-                `SELECT id, booking_date FROM service_bookings WHERE id IN (${placeholders})`,
+                `SELECT id, booking_date FROM bookings WHERE id IN (${placeholders})`,
                 bookingIds
               ) as any[];
 

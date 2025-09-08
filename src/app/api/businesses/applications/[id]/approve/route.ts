@@ -27,19 +27,19 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
     const body = await request.json().catch(() => ({}));
     const { notes } = body;
 
-    // Check which table exists: business_profiles or service_providers
+    // Check which table exists: service_providers or service_providers
     const tableCheckResult = await query(`
       SELECT table_name
       FROM information_schema.tables
       WHERE table_schema = DATABASE()
-      AND table_name IN ('business_profiles', 'service_providers')
+      AND table_name IN ('service_providers', 'service_providers')
     `) as any[];
 
     // Determine which table to use
     const tableNames = tableCheckResult.map(row => row.TABLE_NAME || row.table_name);
 
     const useServiceProvidersTable = tableNames.includes('service_providers');
-    const useBusinessProfilesTable = tableNames.includes('business_profiles');
+    const useBusinessProfilesTable = tableNames.includes('service_providers');
 
     if (!useServiceProvidersTable && !useBusinessProfilesTable) {
       return NextResponse.json({
@@ -61,7 +61,7 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
       ) as unknown as mysql.ResultSetHeader;
     } else {
       updateResult = await query(
-        `UPDATE business_profiles
+        `UPDATE service_providers
          SET application_status = 'approved',
              verification_date = NOW(),
              verification_notes = ?,
@@ -81,22 +81,22 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
     if (useServiceProvidersTable) {
       businessResult = await query(
         `SELECT
-          bp.*,
+          sp.*,
           u.email,
           u.first_name,
           u.last_name,
-          bp.name as business_name
+          sp.name as business_name
          FROM service_providers bp
-         JOIN users u ON bp.user_id = u.user_id
-         WHERE bp.provider_id = ?`,
+         JOIN users u ON sp.user_id = u.user_id
+         WHERE sp.provider_id = ?`,
         [businessId]
       ) as any[];
     } else {
       businessResult = await query(
-        `SELECT bp.*, u.email, u.first_name, u.last_name
-         FROM business_profiles bp
-         JOIN users u ON bp.user_id = u.user_id
-         WHERE bp.id = ?`,
+        `SELECT sp.*, u.email, u.first_name, u.last_name
+         FROM service_providers bp
+         JOIN users u ON sp.user_id = u.user_id
+         WHERE sp.id = ?`,
         [businessId]
       ) as any[];
     }
@@ -107,17 +107,17 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
     if (useServiceProvidersTable) {
       await query(
         `UPDATE users u
-         JOIN service_providers bp ON u.user_id = bp.user_id
+         JOIN service_providers bp ON u.user_id = sp.user_id
          SET u.is_verified = 1
-         WHERE bp.provider_id = ?`,
+         WHERE sp.provider_id = ?`,
         [businessId]
       );
     } else {
       await query(
         `UPDATE users u
-         JOIN business_profiles bp ON u.user_id = bp.user_id
+         JOIN service_providers bp ON u.user_id = sp.user_id
          SET u.is_verified = 1
-         WHERE bp.provider_id = ?`,
+         WHERE sp.provider_id = ?`,
         [businessId]
       );
     }
@@ -141,7 +141,7 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
     // Log the admin action using the utility function
     try {
       const ipAddress = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip');
-      const tableName = useServiceProvidersTable ? 'service_providers' : 'business_profiles';
+      const tableName = useServiceProvidersTable ? 'service_providers' : 'service_providers';
       await logAdminAction(
         adminId,
         'approve_business',

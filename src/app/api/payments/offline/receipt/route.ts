@@ -67,7 +67,7 @@ export async function POST(request: NextRequest) {
     let providerUserId: number | null = null;
     try {
       const rows = await query(
-        'SELECT provider_id FROM service_bookings WHERE id = ? LIMIT 1',
+        'SELECT provider_id FROM bookings WHERE id = ? LIMIT 1',
         [bookingId]
       ) as any[];
       providerId = rows?.[0]?.provider_id ?? null;
@@ -110,7 +110,7 @@ export async function POST(request: NextRequest) {
 
     await ensureReceiptTable();
 
-    // Upsert by booking if table exists; otherwise fallback to service_bookings
+    // Upsert by booking if table exists; otherwise fallback to bookings
     let tableExists = false;
     try {
       const t = await query("SELECT COUNT(*) as c FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = 'payment_receipts'") as any[];
@@ -136,10 +136,10 @@ export async function POST(request: NextRequest) {
       }
     } else {
       try {
-        const current = await query('SELECT special_requests FROM service_bookings WHERE id = ? LIMIT 1', [bookingId]) as any[];
+        const current = await query('SELECT special_requests FROM bookings WHERE id = ? LIMIT 1', [bookingId]) as any[];
         const prev = current?.[0]?.special_requests || '';
         const appended = prev ? `${prev}\nReceipt: ${path}` : `Receipt: ${path}`;
-        await query('UPDATE service_bookings SET special_requests = ? WHERE id = ?', [appended, bookingId]);
+        await query('UPDATE bookings SET special_requests = ? WHERE id = ?', [appended, bookingId]);
       } catch {}
     }
 
@@ -200,9 +200,9 @@ export async function GET(request: NextRequest) {
     }
 
     if (!receipt) {
-      // Fallback to service_bookings.special_requests
+      // Fallback to bookings.special_requests
       try {
-        const r = await query('SELECT special_requests FROM service_bookings WHERE id = ? LIMIT 1', [bookingId]) as any[];
+        const r = await query('SELECT special_requests FROM bookings WHERE id = ? LIMIT 1', [bookingId]) as any[];
         const text: string = r?.[0]?.special_requests || '';
         const m = text.match(/Receipt:\s*(\S+)/i);
         if (m) {

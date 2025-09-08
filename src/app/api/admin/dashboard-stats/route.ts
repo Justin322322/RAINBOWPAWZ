@@ -65,7 +65,7 @@ export async function GET(request: NextRequest) {
         servicePackages: false,
         bookings: false,
         pets: false,
-        serviceBookings: false
+        bookings: false
       };
 
       try {
@@ -73,7 +73,7 @@ export async function GET(request: NextRequest) {
           SELECT table_name
           FROM information_schema.tables
           WHERE table_schema = DATABASE()
-          AND table_name IN ('users', 'service_providers', 'service_packages', 'bookings', 'pets', 'service_bookings')
+          AND table_name IN ('users', 'service_providers', 'service_packages', 'bookings', 'pets', 'bookings')
         `) as any[];
 
         tablesResult.forEach((row: any) => {
@@ -82,7 +82,7 @@ export async function GET(request: NextRequest) {
           if (row.table_name === 'service_packages') tables.servicePackages = true;
           if (row.table_name === 'bookings') tables.bookings = true;
           if (row.table_name === 'pets') tables.pets = true;
-          if (row.table_name === 'service_bookings') tables.serviceBookings = true;
+          if (row.table_name === 'bookings') tables.bookings = true;
         });
       } catch {
       }
@@ -364,11 +364,11 @@ export async function GET(request: NextRequest) {
       }
       
       // Get total completed bookings
-      if (tables.serviceBookings) {
+      if (tables.bookings) {
         try {
           const bookingsResult = await query(`
             SELECT COUNT(*) as count
-            FROM service_bookings
+            FROM bookings
             WHERE status = 'completed'
           `);
           totalCompletedBookings = bookingsResult[0]?.count || 0;

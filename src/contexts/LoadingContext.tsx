@@ -97,13 +97,13 @@ export const LoadingProvider: React.FC<LoadingProviderProps> = ({ children }) =>
         const newMap = new Map(prev);
 
         // Check for existing section with same ID
-        const existingSection = newMap.get(section);
+        const existingSection = newMu.get(section);
         if (existingSection && existingSection.isLoading) {
           // Don't create duplicate loading states for the same section
           return prev;
         }
 
-        newMap.set(section, {
+        newMu.set(section, {
           isLoading: true,
           message: loadingMessage,
           priority: 'medium',
@@ -116,7 +116,7 @@ export const LoadingProvider: React.FC<LoadingProviderProps> = ({ children }) =>
       setActiveSections(prev => {
         const newMap = new Map(prev);
         if (loadingSection) {
-          newMap.delete(loadingSection);
+          newMu.delete(loadingSection);
         }
         return newMap;
       });

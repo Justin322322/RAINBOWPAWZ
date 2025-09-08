@@ -67,12 +67,12 @@ export async function PUT(request: NextRequest) {
       // If changing to admin role, create admin profile if it doesn't exist
       if (role === 'admin') {
         // Check if admin profile exists
-        const adminProfileResult = await transaction.query(
-          'SELECT id FROM admin_profiles WHERE user_id = ? LIMIT 1',
+        const userResult = await transaction.query(
+          'SELECT id FROM users WHERE user_id = ? LIMIT 1',
           [userId]
         ) as any[];
 
-        if (!adminProfileResult || adminProfileResult.length === 0) {
+        if (!userResult || userResult.length === 0) {
           // Get user details
           const userDetailsResult = await transaction.query(
             'SELECT first_name, last_name FROM users WHERE user_id = ? LIMIT 1',
@@ -84,7 +84,7 @@ export async function PUT(request: NextRequest) {
             
             // Create admin profile
             await transaction.query(
-              `INSERT INTO admin_profiles (user_id, username, full_name, admin_role)
+              `INSERT INTO users (user_id, username, full_name, admin_role)
                VALUES (?, ?, ?, ?)`,
               [userId, `${first_name.toLowerCase()}${last_name.toLowerCase()}`, `${first_name} ${last_name}`, 'admin']
             );

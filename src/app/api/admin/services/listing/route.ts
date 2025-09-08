@@ -147,8 +147,8 @@ async function fetchRelatedData(packageIds: number[]) {
 
   // Fetch inclusions and addons in parallel with optimized queries
   const [inclusions, addons] = await Promise.all([
-    fetchTableData('package_inclusions', 'package_id, description'),
-    fetchTableData('package_addons', 'package_id, description')
+    fetchTableData('service_packages', 'package_id, description'),
+    fetchTableData('service_packages', 'package_id, description')
   ]);
 
   // Process inclusions
@@ -164,8 +164,8 @@ async function fetchRelatedData(packageIds: number[]) {
   });
 
   // Fetch bookings
-  const bookingsTable = await checkTableExists('service_bookings')
-    ? 'service_bookings'
+  const bookingsTable = await checkTableExists('bookings')
+    ? 'bookings'
     : await checkTableExists('bookings')
     ? 'bookings'
     : null;
@@ -182,7 +182,7 @@ async function fetchRelatedData(packageIds: number[]) {
 
   // Fetch reviews
   if (await checkTableExists('reviews')) {
-    const reviewsTable = await checkTableExists('service_bookings') ? 'service_bookings' : null;
+    const reviewsTable = await checkTableExists('bookings') ? 'bookings' : null;
     let reviewsQuery = `SELECT package_id, COUNT(id) as reviewsCount, AVG(rating) as rating FROM reviews WHERE package_id ${clause} GROUP BY package_id`;
 
     if (reviewsTable) {
@@ -205,9 +205,9 @@ async function fetchRelatedData(packageIds: number[]) {
   }
 
   // Fetch images (optimized - minimal logging)
-  if (await checkTableExists('package_images')) {
+  if (await checkTableExists('service_packages')) {
     const images = await safeQuery(
-      `SELECT package_id, image_path, image_data FROM package_images WHERE package_id ${clause} ORDER BY display_order, package_id`,
+      `SELECT package_id, image_path, image_data FROM service_packages sp, JSON_TABLE(sp.images, '$[*]' COLUMNS (url VARCHAR(500) PATH '$.url', alt_text VARCHAR(255) PATH '$.alt_text', is_primary BOOLEAN PATH '$.is_primary')) as images WHERE package_id ${clause} ORDER BY display_order, package_id`,
       params
     );
 

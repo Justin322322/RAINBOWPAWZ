@@ -266,7 +266,7 @@ export default function AdminNavbar({ userName = 'Admin' }) {
   const [profilePicture, setProfilePicture] = useState<string | null>(() => {
     if (typeof window === 'undefined') return null;
     try {
-      const pic = sessionStorage.getItem('admin_profile_picture');
+      const pic = sessionStorage.getItem('user_picture');
       if (pic) return pic;
       const adminDataStr = sessionStorage.getItem('admin_data');
       if (adminDataStr) {
@@ -281,7 +281,7 @@ export default function AdminNavbar({ userName = 'Admin' }) {
 
   useEffect(() => {
     const updateProfilePictureFromStorageOrApi = async () => {
-      const cachedPic = sessionStorage.getItem('admin_profile_picture');
+      const cachedPic = sessionStorage.getItem('user_picture');
       if (cachedPic) {
         setProfilePicture((prev) => prev ?? cachedPic);
         return;
@@ -294,7 +294,7 @@ export default function AdminNavbar({ userName = 'Admin' }) {
           if (adminData.profile_picture) {
             setProfilePicture((prev) => prev ?? adminData.profile_picture);
             try {
-              sessionStorage.setItem('admin_profile_picture', adminData.profile_picture);
+              sessionStorage.setItem('user_picture', adminData.profile_picture);
             } catch {}
             return;
           }
@@ -311,7 +311,7 @@ export default function AdminNavbar({ userName = 'Admin' }) {
             const newProfilePic = data.profile.profile_picture;
             setProfilePicture(newProfilePic);
             try {
-              sessionStorage.setItem('admin_profile_picture', newProfilePic);
+              sessionStorage.setItem('user_picture', newProfilePic);
             } catch {}
           }
         }
@@ -326,7 +326,7 @@ export default function AdminNavbar({ userName = 'Admin' }) {
       if (detail.userType === 'admin' && detail.profilePicturePath) {
         setProfilePicture(detail.profilePicturePath);
         try {
-          sessionStorage.setItem('admin_profile_picture', detail.profilePicturePath);
+          sessionStorage.setItem('user_picture', detail.profilePicturePath);
         } catch {}
       }
     };

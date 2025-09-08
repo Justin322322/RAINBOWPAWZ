@@ -70,19 +70,19 @@ export async function POST(request: NextRequest) {
         // Use a more robust query that checks the table structure first
 
         try {
-          // Check which table exists: business_profiles or service_providers
+          // Check which table exists: service_providers or service_providers
           const tableCheckResult = await query(`
             SELECT table_name
             FROM information_schema.tables
             WHERE table_schema = DATABASE()
-            AND table_name IN ('business_profiles', 'service_providers')
+            AND table_name IN ('service_providers', 'service_providers')
           `) as any[];
 
           // Determine which table to use
           const tableNames = tableCheckResult.map(row => row.TABLE_NAME || row.table_name);
 
           const useServiceProvidersTable = tableNames.includes('service_providers');
-          const useBusinessProfilesTable = tableNames.includes('business_profiles');
+          const useBusinessProfilesTable = tableNames.includes('service_providers');
 
           if (!useServiceProvidersTable && !useBusinessProfilesTable) {
             return NextResponse.json({
@@ -100,12 +100,12 @@ export async function POST(request: NextRequest) {
             ) as any[];
           } else {
             businessExists = await query(
-              'SELECT id, verification_status, application_status, user_id FROM business_profiles WHERE id = ?', 
+              'SELECT id, verification_status, application_status, user_id FROM service_providers WHERE id = ?', 
               [businessId]
             ) as any[];
           }
           if (!businessExists || businessExists.length === 0) {
-            const tableType = useServiceProvidersTable ? 'service_providers' : 'business_profiles';
+            const tableType = useServiceProvidersTable ? 'service_providers' : 'service_providers';
             return NextResponse.json({
               error: `Business profile with ID ${businessId} not found in ${tableType} table`,
               success: false
@@ -166,20 +166,20 @@ export async function POST(request: NextRequest) {
               ]);
             }
           } else {
-            // Check if business_profiles has application_status column (avoid SHOW + placeholders incompatibility)
+            // Check if service_providers has application_status column (avoid SHOW + placeholders incompatibility)
             const columnsResult = await query(
               `SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS 
                WHERE TABLE_SCHEMA = DATABASE() 
                  AND TABLE_NAME = ? 
                  AND COLUMN_NAME = ? 
                LIMIT 1`,
-              ['business_profiles', 'application_status']
+              ['service_providers', 'application_status']
             ) as any[];
             const hasApplicationStatus = columnsResult.length > 0;
 
             if (hasApplicationStatus) {
               await query(`
-                UPDATE business_profiles
+                UPDATE service_providers
                 SET application_status = ?,
                     verification_status = ?,
                     verification_date = NOW(),
@@ -194,7 +194,7 @@ export async function POST(request: NextRequest) {
               ]);
             } else {
               await query(`
-                UPDATE business_profiles
+                UPDATE service_providers
                 SET verification_status = ?,
                     verification_date = NOW(),
                     verification_notes = ?,

@@ -31,11 +31,11 @@ export async function GET(request: NextRequest) {
       SELECT TABLE_NAME
       FROM INFORMATION_SCHEMA.TABLES
       WHERE TABLE_SCHEMA = DATABASE()
-      AND TABLE_NAME IN ('service_bookings', 'bookings', 'service_packages', 'payments', 'reviews')
+      AND TABLE_NAME IN ('bookings', 'bookings', 'service_packages', 'payments', 'reviews')
     `) as any[];
 
     const availableTables = tablesResult.map(row => row.TABLE_NAME.toLowerCase());
-    const hasServiceBookings = availableTables.includes('service_bookings');
+    const hasServiceBookings = availableTables.includes('bookings');
 
     // 1. Calculate revenue using the same method as history endpoint
     let totalRevenue = 0;
@@ -46,7 +46,7 @@ export async function GET(request: NextRequest) {
       // Get total revenue from completed bookings
       const totalRevenueResult = await query(`
         SELECT COALESCE(SUM(price + IFNULL(delivery_fee, 0)), 0) as total 
-        FROM service_bookings
+        FROM bookings
         WHERE provider_id = ? AND status = 'completed'`,
         [providerId]
       ) as any[];
@@ -56,7 +56,7 @@ export async function GET(request: NextRequest) {
       // Get monthly revenue (current month)
       const monthlyRevenueResult = await query(`
         SELECT COALESCE(SUM(price + IFNULL(delivery_fee, 0)), 0) as monthly 
-        FROM service_bookings
+        FROM bookings
         WHERE provider_id = ? AND status = 'completed'
         AND MONTH(booking_date) = MONTH(CURDATE()) 
         AND YEAR(booking_date) = YEAR(CURDATE())`,
@@ -68,7 +68,7 @@ export async function GET(request: NextRequest) {
       // Get previous month revenue for comparison
       const previousMonthRevenueResult = await query(`
         SELECT COALESCE(SUM(price + IFNULL(delivery_fee, 0)), 0) as previous 
-        FROM service_bookings
+        FROM bookings
         WHERE provider_id = ? AND status = 'completed'
         AND MONTH(booking_date) = MONTH(DATE_SUB(CURDATE(), INTERVAL 1 MONTH))
         AND YEAR(booking_date) = YEAR(DATE_SUB(CURDATE(), INTERVAL 1 MONTH))`,
@@ -95,10 +95,10 @@ export async function GET(request: NextRequest) {
     if (hasServiceBookings) {
       // Get all booking counts
       const [totalResult, activeResult, completedResult, cancelledResult] = await Promise.all([
-        query(`SELECT COUNT(*) as count FROM service_bookings WHERE provider_id = ?`, [providerId]),
-        query(`SELECT COUNT(*) as count FROM service_bookings WHERE provider_id = ? AND status IN ('pending', 'confirmed', 'in_progress')`, [providerId]),
-        query(`SELECT COUNT(*) as count FROM service_bookings WHERE provider_id = ? AND status = 'completed'`, [providerId]),
-        query(`SELECT COUNT(*) as count FROM service_bookings WHERE provider_id = ? AND status = 'cancelled'`, [providerId])
+        query(`SELECT COUNT(*) as count FROM bookings WHERE provider_id = ?`, [providerId]),
+        query(`SELECT COUNT(*) as count FROM bookings WHERE provider_id = ? AND status IN ('pending', 'confirmed', 'in_progress')`, [providerId]),
+        query(`SELECT COUNT(*) as count FROM bookings WHERE provider_id = ? AND status = 'completed'`, [providerId]),
+        query(`SELECT COUNT(*) as count FROM bookings WHERE provider_id = ? AND status = 'cancelled'`, [providerId])
       ]) as any[][];
 
       totalBookings = totalResult[0]?.count || 0;
@@ -108,7 +108,7 @@ export async function GET(request: NextRequest) {
 
       // Calculate bookings change (current month vs previous month)
       const thisMonthBookingsResult = await query(`
-        SELECT COUNT(*) as count FROM service_bookings 
+        SELECT COUNT(*) as count FROM bookings 
         WHERE provider_id = ? 
         AND MONTH(created_at) = MONTH(CURDATE()) 
         AND YEAR(created_at) = YEAR(CURDATE())`,
@@ -116,7 +116,7 @@ export async function GET(request: NextRequest) {
       ) as any[];
 
       const prevMonthBookingsResult = await query(`
-        SELECT COUNT(*) as count FROM service_bookings 
+        SELECT COUNT(*) as count FROM bookings 
         WHERE provider_id = ? 
         AND MONTH(created_at) = MONTH(DATE_SUB(CURDATE(), INTERVAL 1 MONTH))
         AND YEAR(created_at) = YEAR(DATE_SUB(CURDATE(), INTERVAL 1 MONTH))`,
@@ -140,7 +140,7 @@ export async function GET(request: NextRequest) {
     if (hasServiceBookings) {
       const newClientsResult = await query(`
         SELECT COUNT(DISTINCT user_id) as count 
-        FROM service_bookings
+        FROM bookings
         WHERE provider_id = ? 
         AND MONTH(created_at) = MONTH(CURDATE()) 
         AND YEAR(created_at) = YEAR(CURDATE())`,
@@ -149,7 +149,7 @@ export async function GET(request: NextRequest) {
 
       const prevClientsResult = await query(`
         SELECT COUNT(DISTINCT user_id) as count 
-        FROM service_bookings
+        FROM bookings
         WHERE provider_id = ? 
         AND MONTH(created_at) = MONTH(DATE_SUB(CURDATE(), INTERVAL 1 MONTH))
         AND YEAR(created_at) = YEAR(DATE_SUB(CURDATE(), INTERVAL 1 MONTH))`,
@@ -190,7 +190,7 @@ export async function GET(request: NextRequest) {
                sb.delivery_fee, sb.price,
                u.user_id as user_id, u.first_name, u.last_name, u.email, u.phone as phone,
                sp.package_id as package_id, sp.name as service_name, sp.processing_time
-        FROM service_bookings sb
+        FROM bookings sb
         JOIN users u ON sb.user_id = u.user_id
         LEFT JOIN service_packages sp ON sb.package_id = sp.package_id
         WHERE sb.provider_id = ?
@@ -223,14 +223,14 @@ export async function GET(request: NextRequest) {
     for (let pkg of servicePackages) {
       const inclusions = await query(
         `SELECT description
-         FROM package_inclusions
+         FROM service_packages sp, JSON_TABLE(sp.inclusions, '$[*]' COLUMNS (name VARCHAR(255) PATH '$.name', description TEXT PATH '$.description', is_included BOOLEAN PATH '$.is_included')) as inclusions
          WHERE package_id = ?`,
         [pkg.id]
       ) as any[];
 
       const images = await query(
         `SELECT image_path, image_data
-         FROM package_images
+         FROM service_packages sp, JSON_TABLE(sp.images, '$[*]' COLUMNS (url VARCHAR(500) PATH '$.url', alt_text VARCHAR(255) PATH '$.alt_text', is_primary BOOLEAN PATH '$.is_primary')) as images
          WHERE package_id = ?
          ORDER BY display_order ASC`,
         [pkg.id]

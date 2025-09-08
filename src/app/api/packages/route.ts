@@ -126,7 +126,7 @@ export async function GET(request: NextRequest) {
       const placeholders = packageIds.map(() => '?').join(',');
       const imagesRows = (await query(
         `SELECT package_id as packageId, image_path, image_data
-         FROM package_images
+         FROM service_packages sp, JSON_TABLE(sp.images, '$[*]' COLUMNS (url VARCHAR(500) PATH '$.url', alt_text VARCHAR(255) PATH '$.alt_text', is_primary BOOLEAN PATH '$.is_primary')) as images
          WHERE package_id IN (${placeholders})
          ORDER BY display_order`,
         packageIds
@@ -348,7 +348,7 @@ export async function POST(request: NextRequest) {
         for (const inc of inclusions) {
           if (inc && typeof inc === 'string' && inc.trim()) {
             await transaction.query(
-              'INSERT INTO package_inclusions (package_id, description) VALUES (?, ?)',
+              'INSERT INTO package_data (package_id, description) VALUES (?, ?)',
               [packageId, inc.trim()]
             );
           }
@@ -361,13 +361,13 @@ export async function POST(request: NextRequest) {
           if (addon && addon.name && addon.name.trim()) {
             try {
               await transaction.query(
-                'INSERT INTO package_addons (package_id, description, price) VALUES (?, ?, ?)',
+                'INSERT INTO package_data (package_id, description, price) VALUES (?, ?, ?)',
                 [packageId, addon.name.trim(), Number(addon.price) || 0]
               );
             } catch (e: any) {
               if (e?.message?.includes('ER_BAD_FIELD_ERROR')) {
                 await transaction.query(
-                  'INSERT INTO package_addons (package_id, description) VALUES (?, ?)',
+                  'INSERT INTO package_data (package_id, description) VALUES (?, ?)',
                   [packageId, addon.name.trim()]
                 );
               } else {
@@ -400,13 +400,13 @@ export async function POST(request: NextRequest) {
 
           if (img.startsWith('data:image/')) {
             await transaction.query(
-              'INSERT INTO package_images (package_id, image_path, display_order, image_data) VALUES (?, ?, ?, ?)',
+              'INSERT INTO package_data (package_id, image_path, display_order, image_data) VALUES (?, ?, ?, ?)',
               [packageId, `package_${packageId}_${Date.now()}_${i}.jpg`, i + 1, img]
             );
           } else {
             const path = normalizePath(img);
             await transaction.query(
-              'INSERT INTO package_images (package_id, image_path, display_order) VALUES (?, ?, ?)',
+              'INSERT INTO package_data (package_id, image_path, display_order) VALUES (?, ?, ?)',
               [packageId, path, i + 1]
             );
           }

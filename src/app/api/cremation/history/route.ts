@@ -41,15 +41,15 @@ export async function GET(request: NextRequest) {
       dateCondition = 'AND YEAR(sb.booking_date) = YEAR(CURDATE())';
     }
 
-    // Check if the service_bookings table exists
+    // Check if the bookings table exists
     let useServiceBookings = true;
     try {
-      await query('SELECT 1 FROM service_bookings LIMIT 1');
+      await query('SELECT 1 FROM bookings LIMIT 1');
     } catch {
       useServiceBookings = false;
     }
 
-    // If service_bookings table doesn't exist, try to use bookings table as fallback
+    // If bookings table doesn't exist, try to use bookings table as fallback
     if (!useServiceBookings) {
       try {
         await query('SELECT 1 FROM bookings LIMIT 1');
@@ -124,7 +124,7 @@ export async function GET(request: NextRequest) {
              sb.delivery_fee, sb.pet_name, sb.pet_type,
              u.first_name, u.last_name,
              p.name as package_name
-      FROM service_bookings sb
+      FROM bookings sb
       JOIN users u ON sb.user_id = u.user_id
       LEFT JOIN service_packages p ON sb.package_id = p.package_id
       WHERE sb.provider_id = ?
@@ -136,22 +136,22 @@ export async function GET(request: NextRequest) {
 
     // Get stats
     const totalBookingsQuery = `
-      SELECT COUNT(*) as count FROM service_bookings sb
+      SELECT COUNT(*) as count FROM bookings sb
       WHERE sb.provider_id = ? ${dateCondition}
     `;
 
     const completedBookingsQuery = `
-      SELECT COUNT(*) as count FROM service_bookings sb
+      SELECT COUNT(*) as count FROM bookings sb
       WHERE sb.provider_id = ? AND sb.status = 'completed' ${dateCondition}
     `;
 
     const cancelledBookingsQuery = `
-      SELECT COUNT(*) as count FROM service_bookings sb
+      SELECT COUNT(*) as count FROM bookings sb
       WHERE sb.provider_id = ? AND sb.status = 'cancelled' ${dateCondition}
     `;
 
     const totalRevenueQuery = `
-      SELECT COALESCE(SUM(sb.price + IFNULL(sb.delivery_fee, 0)), 0) as total FROM service_bookings sb
+      SELECT COALESCE(SUM(sb.price + IFNULL(sb.delivery_fee, 0)), 0) as total FROM bookings sb
       WHERE sb.provider_id = ? AND sb.status = 'completed' ${dateCondition}
     `;
 

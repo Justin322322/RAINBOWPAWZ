@@ -102,7 +102,7 @@ export async function POST(request: NextRequest) {
 
     // Check if the booking was completed more than 5 days ago
     const bookingDateResult = await query(
-      'SELECT booking_date, status, updated_at FROM service_bookings WHERE id = ? AND user_id = ?',
+      'SELECT booking_date, status, updated_at FROM bookings WHERE id = ? AND user_id = ?',
       [booking_id, user_id]
     ) as any[];
 
@@ -127,15 +127,15 @@ export async function POST(request: NextRequest) {
         SELECT TABLE_NAME
         FROM INFORMATION_SCHEMA.TABLES
         WHERE TABLE_SCHEMA = DATABASE()
-        AND TABLE_NAME IN ('service_bookings')
+        AND TABLE_NAME IN ('bookings')
       `) as any[];
 
       const existingTables = new Set(tablesResult.map((row: any) => row.TABLE_NAME));
 
-      if (existingTables.has('service_bookings')) {
+      if (existingTables.has('bookings')) {
         try {
           bookingResult = await query(
-            'SELECT status FROM service_bookings WHERE id = ? AND user_id = ?',
+            'SELECT status FROM bookings WHERE id = ? AND user_id = ?',
             [booking_id, user_id]
           ) as any[];
         } catch {

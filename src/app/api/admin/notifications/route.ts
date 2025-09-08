@@ -79,12 +79,12 @@ export async function GET(request: NextRequest) {
         LIMIT 50
       `);
 
-      // Check which table exists: business_profiles or service_providers
+      // Check which table exists: service_providers or service_providers
       const tableCheckResult = await query(`
         SELECT table_name
         FROM information_schema.tables
         WHERE table_schema = DATABASE()
-        AND table_name IN ('business_profiles', 'service_providers')
+        AND table_name IN ('service_providers', 'service_providers')
       `) as any[];
 
       const tableNames = tableCheckResult.map((row: any) => row.table_name);
@@ -104,7 +104,7 @@ export async function GET(request: NextRequest) {
       } else {
         const pendingApplications = await query(`
           SELECT COUNT(*) as count
-          FROM business_profiles
+          FROM service_providers
           WHERE verification_status IS NULL OR verification_status = 'pending'
         `);
 
@@ -128,7 +128,7 @@ export async function GET(request: NextRequest) {
             'pending_application',
             'Pending Applications',
             `You have ${pendingCount} pending business application${pendingCount > 1 ? 's' : ''} to review.`,
-            useServiceProvidersTable ? 'service_provider' : 'business_profile',
+            useServiceProvidersTable ? 'service_provider' : 'service_provider',
             '/admin/applications'
           ]);
 

@@ -309,7 +309,7 @@ export async function createSystemNotification(
  */
 async function getBookingDetails(bookingId: number): Promise<any> {
   try {
-    // Try service_bookings table first
+    // Try bookings table first
     let bookingQuery = `
       SELECT
         sb.id,
@@ -321,7 +321,7 @@ async function getBookingDetails(bookingId: number): Promise<any> {
         sb.price as total_amount,
         sp.name as service_name,
         COALESCE(spr.name, CONCAT(u.first_name, ' ', u.last_name)) as provider_name
-      FROM service_bookings sb
+      FROM bookings sb
       LEFT JOIN service_packages sp ON sb.package_id = sp.package_id
       LEFT JOIN service_providers spr ON sb.provider_id = spr.provider_id
       LEFT JOIN users u ON sb.provider_id = u.user_id

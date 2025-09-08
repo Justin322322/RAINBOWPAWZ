@@ -159,7 +159,7 @@ export async function GET(request: NextRequest) {
     let _completedBookingsCount = 0;
     try {
       const bookingsResult = await safeQuery(`
-        SELECT COUNT(*) as count FROM service_bookings WHERE status = 'completed'
+        SELECT COUNT(*) as count FROM bookings WHERE status = 'completed'
       `);
       _completedBookingsCount = bookingsResult[0]?.count || 0;
     } catch {

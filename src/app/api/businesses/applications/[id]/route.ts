@@ -12,7 +12,7 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
       return NextResponse.json({ message: 'Invalid business ID' }, { status: 400 });
     }
 
-    // Since you've migrated from business_profiles to service_providers,
+    // Since you've migrated FROM service_providers to service_providers,
     // we'll use only the service_providers table
     const _tableName = 'service_providers';
 
@@ -34,49 +34,49 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
       // Query using only application_status field (verification_status no longer exists)
       businessResult = await query(`
         SELECT
-          bp.*,
+          sp.*,
           u.email,
           u.first_name,
           u.last_name,
-          bp.name as business_name,
-          bp.phone as business_phone,
-          bp.address as business_address,
-          bp.provider_type as business_type,
-          bp.hours as business_hours,
-          bp.description as service_description,
-          bp.application_status,
-          bp.application_status as verification_status, /* For backward compatibility */
+          sp.name as business_name,
+          sp.phone as business_phone,
+          sp.address as business_address,
+          sp.provider_type as business_type,
+          sp.hours as business_hours,
+          sp.description as service_description,
+          sp.application_status,
+          sp.application_status as verification_status, /* For backward compatibility */
           u.status as account_status
         FROM
           service_providers bp
         JOIN
-          users u ON bp.user_id = u.user_id
+          users u ON sp.user_id = u.user_id
         WHERE
-          bp.provider_id = ?
+          sp.provider_id = ?
       `, [businessId]) as any[];
     } else {
       // Fallback query for schemas without application_status
       businessResult = await query(`
         SELECT
-          bp.*,
+          sp.*,
           u.email,
           u.first_name,
           u.last_name,
-          bp.name as business_name,
-          bp.phone as business_phone,
-          bp.address as business_address,
-          bp.provider_type as business_type,
-          bp.hours as business_hours,
-          bp.description as service_description,
+          sp.name as business_name,
+          sp.phone as business_phone,
+          sp.address as business_address,
+          sp.provider_type as business_type,
+          sp.hours as business_hours,
+          sp.description as service_description,
           'pending' as application_status, /* Default fallback status */
           'pending' as verification_status, /* For backward compatibility */
           u.status as account_status
         FROM
           service_providers bp
         JOIN
-          users u ON bp.user_id = u.user_id
+          users u ON sp.user_id = u.user_id
         WHERE
-          bp.provider_id = ?
+          sp.provider_id = ?
       `, [businessId]) as any[];
     }
 

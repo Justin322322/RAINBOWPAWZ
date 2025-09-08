@@ -77,16 +77,16 @@ export async function POST(request: NextRequest) {
     const providerId = providerResult[0].provider_id;
     console.log('Provider ID found:', providerId);
 
-    // Check if package_images table exists
+    // Check if package_data table exists
     try {
       const tableExists = await query(
-        "SELECT COUNT(*) as count FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = 'package_images'"
+        "SELECT COUNT(*) as count FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = 'service_packages'"
       ) as any[];
       
       if (!tableExists || tableExists[0].count === 0) {
-        console.log('package_images table does not exist, creating it...');
+        console.log('package_data table does not exist, creating it...');
         await query(`
-          CREATE TABLE IF NOT EXISTS package_images (
+          CREATE TABLE IF NOT EXISTS package_data (
             id INT AUTO_INCREMENT PRIMARY KEY,
             package_id INT NOT NULL,
             image_path VARCHAR(500) NOT NULL,
@@ -97,10 +97,10 @@ export async function POST(request: NextRequest) {
             INDEX idx_display_order (display_order)
           ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
         `);
-        console.log('package_images table created successfully');
+        console.log('package_data table created successfully');
       }
     } catch (tableError) {
-      console.error('Error checking/creating package_images table:', tableError);
+      console.error('Error checking/creating package_data table:', tableError);
       return NextResponse.json({
         error: 'Database configuration issue - unable to create required table'
       }, { status: 500 });
@@ -169,7 +169,7 @@ export async function POST(request: NextRequest) {
 
           // Get the current max display order
           const orderResult = await query(
-            'SELECT MAX(display_order) as max_order FROM package_images WHERE package_id = ?',
+            'SELECT MAX(display_order) as max_order FROM service_packages sp, JSON_TABLE(sp.images, '$[*]' COLUMNS (url VARCHAR(500) PATH '$.url', alt_text VARCHAR(255) PATH '$.alt_text', is_primary BOOLEAN PATH '$.is_primary')) as images WHERE package_id = ?',
             [packageIdInt]
           ) as any[];
           console.log('Display order result:', orderResult);
@@ -179,7 +179,7 @@ export async function POST(request: NextRequest) {
 
           // Save image data in database
           const insertResult = await query(
-            'INSERT INTO package_images (package_id, image_path, display_order, image_data) VALUES (?, ?, ?, ?)',
+            'INSERT INTO package_data (package_id, image_path, display_order, image_data) VALUES (?, ?, ?, ?)',
             [packageIdInt, `package_${packageIdInt}_${Date.now()}.${fileType.split('/')[1]}`, displayOrder, dataUrl]
           );
           console.log('Image saved to database:', insertResult);

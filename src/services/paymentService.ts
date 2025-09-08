@@ -22,7 +22,7 @@ export async function createPayment(request: CreatePaymentRequest): Promise<Paym
     // Validate booking exists
     const bookingQuery = `
       SELECT id, price, payment_status, user_id
-      FROM service_bookings
+      FROM bookings
       WHERE id = ?
     `;
     const bookingResult = await query(bookingQuery, [request.booking_id]) as any[];
@@ -57,7 +57,7 @@ export async function createPayment(request: CreatePaymentRequest): Promise<Paym
         // Payment status is 'paid' but no successful transaction found
         // Reset payment status to allow retry
         await query(
-          'UPDATE service_bookings SET payment_status = ? WHERE id = ?',
+          'UPDATE bookings SET payment_status = ? WHERE id = ?',
           ['not_paid', request.booking_id]
         );
       }
@@ -251,7 +251,7 @@ export async function getPaymentStatus(bookingId: number): Promise<PaymentStatus
         pt.id as transaction_id,
         pt.amount as amount_paid,
         pt.updated_at as last_payment_date
-      FROM service_bookings sb
+      FROM bookings sb
       LEFT JOIN payment_transactions pt ON sb.id = pt.booking_id AND pt.status = 'succeeded'
       WHERE sb.id = ?
       ORDER BY pt.updated_at DESC
@@ -331,7 +331,7 @@ export async function processPaymentWebhook(sourceId: string, status: string): P
     // Update booking payment status
     if (newStatus === 'succeeded') {
       const updateBookingQuery = `
-        UPDATE service_bookings
+        UPDATE bookings
         SET payment_status = ?
         WHERE id = ?
       `;

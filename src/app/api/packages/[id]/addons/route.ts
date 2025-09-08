@@ -15,12 +15,12 @@ export async function GET(
       }, { status: 400 });
     }
 
-    // Check if package_addons table exists
+    // Check if package_data table exists
     const tableCheckQuery = `
       SELECT COUNT(*) as count
       FROM information_schema.tables
       WHERE table_schema = DATABASE()
-      AND table_name = 'package_addons'
+      AND table_name = 'service_packages'
     `;
 
     const tableCheckResult = await query(tableCheckQuery) as any[];
@@ -38,7 +38,7 @@ export async function GET(
       SELECT COUNT(*) as count
       FROM information_schema.columns
       WHERE table_schema = DATABASE()
-      AND table_name = 'package_addons'
+      AND table_name = 'service_packages'
       AND column_name = 'id'
     `) as any[];
 
@@ -46,7 +46,7 @@ export async function GET(
       SELECT COUNT(*) as count
       FROM information_schema.columns
       WHERE table_schema = DATABASE()
-      AND table_name = 'package_addons'
+      AND table_name = 'service_packages'
       AND column_name = 'addon_id'
     `) as any[];
 
@@ -61,7 +61,7 @@ export async function GET(
     // Fetch add-ons for the package
     const addOnsQuery = `
       SELECT ${idColumn} as id, description, price
-      FROM package_addons
+      FROM service_packages sp, JSON_TABLE(sp.addons, '$[*]' COLUMNS (name VARCHAR(255) PATH '$.name', description TEXT PATH '$.description', price DECIMAL(10,2) PATH '$.price')) as addons
       WHERE package_id = ?
       ORDER BY ${idColumn} ASC
     `;

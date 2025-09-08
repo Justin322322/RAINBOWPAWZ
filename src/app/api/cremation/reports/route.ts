@@ -44,10 +44,10 @@ export async function GET(request: NextRequest) {
       dateCondition = 'AND YEAR(sb.booking_date) = YEAR(CURDATE())';
     }
 
-    // Check if service_bookings table exists, if not try bookings table
+    // Check if bookings table exists, if not try bookings table
     let useServiceBookings = true;
     try {
-      await query('SELECT 1 FROM service_bookings LIMIT 1');
+      await query('SELECT 1 FROM bookings LIMIT 1');
     } catch {
       useServiceBookings = false;
     }
@@ -62,7 +62,7 @@ export async function GET(request: NextRequest) {
         COUNT(CASE WHEN refund_type = 'manual' THEN 1 END) as manual_refunds
       FROM refunds r
       ${useServiceBookings ? `
-        JOIN service_bookings sb ON r.booking_id = sb.id
+        JOIN bookings sb ON r.booking_id = sb.id
         WHERE sb.provider_id = ? ${dateCondition.replace('sb.booking_date', 'r.initiated_at')}
       ` : `
         JOIN bookings b ON r.booking_id = b.id
@@ -85,29 +85,29 @@ export async function GET(request: NextRequest) {
     let topServices: any[] = [];
 
     if (useServiceBookings) {
-      // Use service_bookings table
+      // Use bookings table
       const totalBookingsQuery = `
-        SELECT COUNT(*) as count FROM service_bookings sb
+        SELECT COUNT(*) as count FROM bookings sb
         WHERE sb.provider_id = ? ${dateCondition}
       `;
 
       const completedBookingsQuery = `
-        SELECT COUNT(*) as count FROM service_bookings sb
+        SELECT COUNT(*) as count FROM bookings sb
         WHERE sb.provider_id = ? AND sb.status = 'completed' ${dateCondition}
       `;
 
       const cancelledBookingsQuery = `
-        SELECT COUNT(*) as count FROM service_bookings sb
+        SELECT COUNT(*) as count FROM bookings sb
         WHERE sb.provider_id = ? AND sb.status = 'cancelled' ${dateCondition}
       `;
 
       const pendingBookingsQuery = `
-        SELECT COUNT(*) as count FROM service_bookings sb
+        SELECT COUNT(*) as count FROM bookings sb
         WHERE sb.provider_id = ? AND sb.status IN ('pending', 'confirmed', 'in_progress') ${dateCondition}
       `;
 
       const totalRevenueQuery = `
-        SELECT COALESCE(SUM(sb.price + IFNULL(sb.delivery_fee, 0)), 0) as total FROM service_bookings sb
+        SELECT COALESCE(SUM(sb.price + IFNULL(sb.delivery_fee, 0)), 0) as total FROM bookings sb
         WHERE sb.provider_id = ? AND sb.status = 'completed' ${dateCondition}
       `;
 
@@ -116,7 +116,7 @@ export async function GET(request: NextRequest) {
           p.name,
           COUNT(sb.id) as bookings,
           COALESCE(SUM(CASE WHEN sb.status = 'completed' THEN sb.price + IFNULL(sb.delivery_fee, 0) ELSE 0 END), 0) as revenue
-        FROM service_bookings sb
+        FROM bookings sb
         LEFT JOIN service_packages p ON sb.package_id = p.package_id
         WHERE sb.provider_id = ? ${dateCondition}
         GROUP BY p.package_id, p.name

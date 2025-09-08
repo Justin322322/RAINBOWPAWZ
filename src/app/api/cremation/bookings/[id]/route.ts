@@ -15,7 +15,7 @@ export async function GET(
       return NextResponse.json({ error: 'Booking ID is required' }, { status: 400 });
     }
 
-    // Try to fetch booking from service_bookings table with all related data
+    // Try to fetch booking FROM bookings table with all related data
     const bookingQuery = `
       SELECT
         sb.id,
@@ -43,7 +43,7 @@ export async function GET(
         sp.package_id,
         sp.name as service_name,
         sp.processing_time
-      FROM service_bookings sb
+      FROM bookings sb
       LEFT JOIN users u ON sb.user_id = u.user_id
       LEFT JOIN service_packages sp ON sb.package_id = sp.package_id
       WHERE sb.id = ?
@@ -115,8 +115,8 @@ export async function PUT(
       return NextResponse.json({ error: 'Valid status is required' }, { status: 400 });
     }
 
-    // Update booking status in service_bookings table
-    const updateQuery = `UPDATE service_bookings SET status = ? WHERE id = ?`;
+    // Update booking status in bookings table
+    const updateQuery = `UPDATE bookings SET status = ? WHERE id = ?`;
     const result = await query(updateQuery, [status, bookingId]) as any;
 
     if (result.affectedRows > 0) {

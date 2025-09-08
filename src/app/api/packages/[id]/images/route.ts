@@ -90,7 +90,7 @@ export async function DELETE(
 
     // Check if image exists in database using the converted database path
     const imageRecord = await query(
-      'SELECT image_id FROM package_images WHERE package_id = ? AND image_path = ?',
+      'SELECT image_id FROM service_packages sp, JSON_TABLE(sp.images, '$[*]' COLUMNS (url VARCHAR(500) PATH '$.url', alt_text VARCHAR(255) PATH '$.alt_text', is_primary BOOLEAN PATH '$.is_primary')) as images WHERE package_id = ? AND image_path = ?',
       [packageId, dbImagePath]
     ) as any[];
 
@@ -99,7 +99,7 @@ export async function DELETE(
       
       // Let's also search for any image paths for this package to help debugging
       const _allImages = await query(
-        'SELECT image_path FROM package_images WHERE package_id = ?',
+        'SELECT image_path FROM service_packages sp, JSON_TABLE(sp.images, '$[*]' COLUMNS (url VARCHAR(500) PATH '$.url', alt_text VARCHAR(255) PATH '$.alt_text', is_primary BOOLEAN PATH '$.is_primary')) as images WHERE package_id = ?',
         [packageId]
       ) as any[];
       
@@ -108,7 +108,7 @@ export async function DELETE(
 
     // Delete from database using the database path
     const _deleteResult = await query(
-      'DELETE FROM package_images WHERE package_id = ? AND image_path = ?',
+      'DELETE FROM service_packages sp, JSON_TABLE(sp.images, '$[*]' COLUMNS (url VARCHAR(500) PATH '$.url', alt_text VARCHAR(255) PATH '$.alt_text', is_primary BOOLEAN PATH '$.is_primary')) as images WHERE package_id = ? AND image_path = ?',
       [packageId, dbImagePath]
     );
 

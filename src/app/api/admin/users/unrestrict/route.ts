@@ -81,12 +81,12 @@ export async function POST(request: NextRequest) {
           }, { status: 400 });
         }
 
-        // Check which table exists: business_profiles or service_providers
+        // Check which table exists: service_providers or service_providers
         const tableCheckResult = await query(`
           SELECT table_name
           FROM information_schema.tables
           WHERE table_schema = DATABASE()
-          AND table_name IN ('business_profiles', 'service_providers')
+          AND table_name IN ('service_providers', 'service_providers')
         `) as any[];
 
         const tableNames = tableCheckResult.map((row: any) => row.table_name);
@@ -179,9 +179,9 @@ export async function POST(request: NextRequest) {
           }
 
         } else {
-          // Handle business_profiles table
+          // Handle service_providers table
           const businessExists = await query(
-            'SELECT id, user_id FROM business_profiles WHERE id = ?', 
+            'SELECT id, user_id FROM service_providers WHERE id = ?', 
             [businessId]
           ) as any[];
           
@@ -195,10 +195,10 @@ export async function POST(request: NextRequest) {
           const businessUserId = businessExists[0].user_id;
 
           // Check available columns safely
-          const columnsResult = await query('SHOW COLUMNS FROM business_profiles') as any[];
+          const columnsResult = await query('SHOW COLUMNS FROM service_providers') as any[];
           const columnNames = columnsResult.map((col: any) => col.Field);
 
-          // Build safe update query for business_profiles
+          // Build safe update query for service_providers
           const updateParts = [];
           const updateParams = [];
 
@@ -235,7 +235,7 @@ export async function POST(request: NextRequest) {
           updateParams.push(businessId);
 
           if (updateParts.length > 0) {
-            const updateQuery = `UPDATE business_profiles SET ${updateParts.join(', ')} WHERE id = ?`;
+            const updateQuery = `UPDATE service_providers SET ${updateParts.join(', ')} WHERE id = ?`;
             await query(updateQuery, updateParams);
           }
 

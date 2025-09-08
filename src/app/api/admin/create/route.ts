@@ -75,14 +75,14 @@ export async function POST(request: NextRequest) {
 
       // Check if admin profile exists
       const existingProfileResult = await transaction.query(
-        'SELECT id FROM admin_profiles WHERE user_id = ?',
+        'SELECT id FROM users WHERE user_id = ?',
         [userId]
       ) as any[];
 
       if (existingProfileResult && existingProfileResult.length > 0) {
         // Update existing profile
         await transaction.query(
-          `UPDATE admin_profiles
+          `UPDATE users
            SET username = ?, full_name = ?, admin_role = ?
            WHERE user_id = ?`,
           [username, `${firstName} ${lastName}`, adminRole, userId]
@@ -90,7 +90,7 @@ export async function POST(request: NextRequest) {
       } else {
         // Create new admin profile
         await transaction.query(
-          `INSERT INTO admin_profiles (user_id, username, full_name, admin_role)
+          `INSERT INTO users (user_id, username, full_name, admin_role)
            VALUES (?, ?, ?, ?)`,
           [userId, username, `${firstName} ${lastName}`, adminRole]
         );

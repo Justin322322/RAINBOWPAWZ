@@ -84,14 +84,14 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams;
     const status = searchParams.get('status');
 
-    // First, try a direct query to service_bookings table
+    // First, try a direct query to bookings table
     try {
       // Try both string and number versions of the user ID
       const userIdNumber = Number(userId);
 
       // Query with both string and number versions of the user ID
       const directQuery = `
-        SELECT * FROM service_bookings
+        SELECT * FROM bookings
         WHERE user_id = ? OR user_id = ?
       `;
       const directResult = await query(directQuery, [userIdNumber, userId.toString()]) as any[];
@@ -252,14 +252,14 @@ export async function GET(request: NextRequest) {
 
       if (!tableExistsCheck || tableExistsCheck[0].count === 0) {
 
-        // Check if service_bookings table exists
-        const serviceBookingsCheck = await query(
-          "SELECT COUNT(*) as count FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = 'service_bookings'"
+        // Check if bookings table exists
+        const bookingsCheck = await query(
+          "SELECT COUNT(*) as count FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = 'bookings'"
         ) as any[];
 
-        if (serviceBookingsCheck && serviceBookingsCheck[0].count > 0) {
+        if (bookingsCheck && bookingsCheck[0].count > 0) {
 
-          // Build query for service_bookings table
+          // Build query for bookings table
           bookingsQuery = `
             SELECT sb.*,
                    st.name as service_name,
@@ -269,7 +269,7 @@ export async function GET(request: NextRequest) {
                    sb.pet_type as pet_type,
                    CONCAT('Service Provider #', sb.provider_id) as provider_name,
                    sb.location_address as provider_address
-            FROM service_bookings sb
+            FROM bookings sb
             LEFT JOIN service_types st ON sb.service_type_id = st.id
             WHERE sb.user_id = ?
           `;
@@ -434,26 +434,26 @@ export async function GET(request: NextRequest) {
       // If no bookings found, return empty array
       if (!bookings || bookings.length === 0) {
 
-        // Check service_bookings table as a fallback
+        // Check bookings table as a fallback
         try {
-          // Use a more detailed query to get service_bookings with package information
-          const serviceBookingsQuery = `
+          // Use a more detailed query to get bookings with package information
+          const bookingsQuery = `
             SELECT sb.*,
                    sp.name as package_name,
                    sp.description as package_description,
-                   bp.business_name as provider_name,
-                   bp.business_address as provider_address
-            FROM service_bookings sb
+                   sp.business_name as provider_name,
+                   sp.business_address as provider_address
+            FROM bookings sb
             LEFT JOIN service_packages sp ON sb.package_id = sp.package_id
-            LEFT JOIN business_profiles bp ON sb.provider_id = bp.id
+            LEFT JOIN service_providers bp ON sb.provider_id = sp.id
             WHERE sb.user_id = ?
           `;
-          const serviceBookings = await query(serviceBookingsQuery, [userId]) as any[];
+          const bookings = await query(bookingsQuery, [userId]) as any[];
 
-          if (serviceBookings && serviceBookings.length > 0) {
+          if (bookings && bookings.length > 0) {
 
             // Format the bookings data
-            const formattedBookings = serviceBookings.map(booking => {
+            const formattedBookings = bookings.map(booking => {
               // Format dates for consistency
               const bookingDate = booking.booking_date ? new Date(booking.booking_date) : null;
               const formattedDate = bookingDate ? bookingDate.toISOString().split('T')[0] : null;
@@ -480,9 +480,9 @@ export async function GET(request: NextRequest) {
           }
 
           // If the join query fails, try a simpler query
-          if (!serviceBookings || serviceBookings.length === 0) {
+          if (!bookings || bookings.length === 0) {
             const simpleServiceBookingsQuery = `
-              SELECT * FROM service_bookings WHERE user_id = ?
+              SELECT * FROM bookings WHERE user_id = ?
             `;
             const simpleServiceBookings = await query(simpleServiceBookingsQuery, [userId]) as any[];
 

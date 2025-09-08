@@ -170,7 +170,7 @@ export default function ProfilePictureUpload({
         // Persist to lightweight dedicated key so other views can immediately reflect it
         try {
           if (userType === 'business') {
-            sessionStorage.setItem('business_profile_picture', result.profilePicturePath);
+            sessionStorage.setItem('service_provider_picture', result.profilePicturePath);
           }
         } catch {}
 

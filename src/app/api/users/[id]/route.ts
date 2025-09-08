@@ -72,10 +72,10 @@ export async function GET(request: NextRequest) {
             user.pets = 0;
           }
 
-          // Check if service_bookings table exists
+          // Check if bookings table exists
           const bookingsTableExists = await query(
             `SELECT COUNT(*) as count FROM information_schema.tables 
-             WHERE table_schema = DATABASE() AND table_name = 'service_bookings'`
+             WHERE table_schema = DATABASE() AND table_name = 'bookings'`
           ) as any[];
 
           const hasBookingsTable = bookingsTableExists[0].count > 0;
@@ -84,7 +84,7 @@ export async function GET(request: NextRequest) {
           if (hasBookingsTable) {
             try {
               const bookingsResult = await query(
-                `SELECT COUNT(*) as count FROM service_bookings 
+                `SELECT COUNT(*) as count FROM bookings 
                  WHERE user_id = ? AND status = 'completed'`,
                 [user.id]
               ) as any[];
@@ -102,7 +102,7 @@ export async function GET(request: NextRequest) {
         // For business accounts, fetch additional business details including verification status
         if (user.role === 'business') {
           try {
-            // Look up data in service_providers table instead of business_profiles
+            // Look up data in service_providers table instead of service_providers
             const serviceProviderResult = await query(
               `SELECT id, name, provider_type, application_status
                FROM service_providers WHERE user_id = ? LIMIT 1`,
@@ -164,20 +164,20 @@ export async function GET(request: NextRequest) {
         const adminUser = adminUserResult[0];
 
         // Get admin profile details
-        const adminProfileResult = await query(
+        const userResult = await query(
           `SELECT username, full_name, admin_role
-           FROM admin_profiles
+           FROM users
            WHERE user_id = ? LIMIT 1`,
           [userId]
         ) as any[];
 
-        if (adminProfileResult && adminProfileResult.length > 0) {
-          const adminProfile = adminProfileResult[0];
+        if (userResult && userResult.length > 0) {
+          const user = userResult[0];
 
           // Merge admin profile details with user data
-          adminUser.username = adminProfile.username;
-          adminUser.full_name = adminProfile.full_name;
-          adminUser.admin_role = adminProfile.admin_role;
+          adminUser.username = user.username;
+          adminUser.full_name = user.full_name;
+          adminUser.admin_role = user.admin_role;
           adminUser.user_type = 'admin'; // For backward compatibility
 
           return NextResponse.json(adminUser);

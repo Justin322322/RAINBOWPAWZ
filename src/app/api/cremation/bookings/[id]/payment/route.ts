@@ -27,12 +27,12 @@ export async function PUT(
     }
 
 
-    // Check if service_bookings table exists
+    // Check if bookings table exists
     const tableCheckQuery = `
       SELECT COUNT(*) as count
       FROM INFORMATION_SCHEMA.TABLES
       WHERE TABLE_SCHEMA = DATABASE()
-      AND TABLE_NAME = 'service_bookings'
+      AND TABLE_NAME = 'bookings'
     `;
     const tableResult = await query(tableCheckQuery) as any[];
     const hasServiceBookings = tableResult[0].count > 0;
@@ -40,7 +40,7 @@ export async function PUT(
     if (!hasServiceBookings) {
       return NextResponse.json({
         error: 'Service bookings table not found',
-        details: 'The service_bookings table does not exist in the database'
+        details: 'The bookings table does not exist in the database'
       }, { status: 500 });
     }
 
@@ -49,7 +49,7 @@ export async function PUT(
       SELECT COUNT(*) as count
       FROM INFORMATION_SCHEMA.COLUMNS
       WHERE TABLE_SCHEMA = DATABASE()
-      AND TABLE_NAME = 'service_bookings'
+      AND TABLE_NAME = 'bookings'
       AND COLUMN_NAME = 'payment_status'
     `;
     const columnResult = await query(columnCheckQuery) as any[];
@@ -67,8 +67,8 @@ export async function PUT(
       });
     }
 
-    // Update payment status in service_bookings table
-    const updateQuery = `UPDATE service_bookings SET payment_status = ? WHERE id = ?`;
+    // Update payment status in bookings table
+    const updateQuery = `UPDATE bookings SET payment_status = ? WHERE id = ?`;
     const result = await query(updateQuery, [paymentStatus, bookingId]) as any;
 
     if (result.affectedRows === 0) {
@@ -81,7 +81,7 @@ export async function PUT(
     // Get the updated booking details
     const getBookingQuery = `
       SELECT payment_method, payment_status
-      FROM service_bookings
+      FROM bookings
       WHERE id = ?
     `;
     const bookingResult = await query(getBookingQuery, [bookingId]) as any[];

@@ -326,7 +326,7 @@ async function processManualRefund(
  */
 async function getBookingPaymentInfo(bookingId: number): Promise<BookingPaymentInfo | null> {
   try {
-    // Try service_bookings table first
+    // Try bookings table first
     let bookingResults = await query(`
       SELECT 
         sb.id as booking_id,
@@ -337,7 +337,7 @@ async function getBookingPaymentInfo(bookingId: number): Promise<BookingPaymentI
         pt.source_id,
         pt.payment_id,
         pt.transaction_id
-      FROM service_bookings sb
+      FROM bookings sb
       LEFT JOIN payment_transactions pt ON sb.id = pt.booking_id
       WHERE sb.id = ?
       LIMIT 1

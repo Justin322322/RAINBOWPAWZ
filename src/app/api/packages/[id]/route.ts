@@ -39,24 +39,24 @@ export async function GET(
 
     const pkg = rows[0];
     const inclusions = (await query(
-      `SELECT description FROM package_inclusions WHERE package_id = ?`,
+      `SELECT description FROM service_packages sp, JSON_TABLE(sp.inclusions, '$[*]' COLUMNS (name VARCHAR(255) PATH '$.name', description TEXT PATH '$.description', is_included BOOLEAN PATH '$.is_included')) as inclusions WHERE package_id = ?`,
       [packageId]
     )) as any[];
 
     const addOns = (await query(
-      `SELECT addon_id as id, description, price FROM package_addons WHERE package_id = ?`,
+      `SELECT addon_id as id, description, price FROM service_packages sp, JSON_TABLE(sp.addons, '$[*]' COLUMNS (name VARCHAR(255) PATH '$.name', description TEXT PATH '$.description', price DECIMAL(10,2) PATH '$.price')) as addons WHERE package_id = ?`,
       [packageId]
     )) as any[];
 
     const images = (await query(
-      `SELECT image_path, image_data FROM package_images WHERE package_id = ? ORDER BY display_order`,
+      `SELECT image_path, image_data FROM service_packages sp, JSON_TABLE(sp.images, '$[*]' COLUMNS (url VARCHAR(500) PATH '$.url', alt_text VARCHAR(255) PATH '$.alt_text', is_primary BOOLEAN PATH '$.is_primary')) as images WHERE package_id = ? ORDER BY display_order`,
       [packageId]
     )) as any[];
 
     // Get size pricing if available
     const sizePricing = (await query(
       `SELECT size_category, weight_range_min, weight_range_max, price
-       FROM package_size_pricing WHERE package_id = ? ORDER BY weight_range_min`,
+       FROM service_packages sp, JSON_TABLE(sp.size_pricing, '$[*]' COLUMNS (pet_size VARCHAR(50) PATH '$.pet_size', price DECIMAL(10,2) PATH '$.price', weight_range VARCHAR(50) PATH '$.weight_range')) as pricing WHERE package_id = ? ORDER BY weight_range_min`,
       [packageId]
     )) as any[];
 
@@ -250,7 +250,7 @@ export async function PATCH(
         ) as any;
         // Replace size pricing
         await transaction.query(
-          'DELETE FROM package_size_pricing WHERE package_id = ?',
+          'DELETE FROM service_packages sp, JSON_TABLE(sp.size_pricing, '$[*]' COLUMNS (pet_size VARCHAR(50) PATH '$.pet_size', price DECIMAL(10,2) PATH '$.price', weight_range VARCHAR(50) PATH '$.weight_range')) as pricing WHERE package_id = ?',
           [packageId]
         );
 
@@ -309,7 +309,7 @@ export async function PATCH(
 
         // delete old inclusions
         await transaction.query(
-          'DELETE FROM package_inclusions WHERE package_id = ?',
+          'DELETE FROM service_packages sp, JSON_TABLE(sp.inclusions, '$[*]' COLUMNS (name VARCHAR(255) PATH '$.name', description TEXT PATH '$.description', is_included BOOLEAN PATH '$.is_included')) as inclusions WHERE package_id = ?',
           [packageId]
         );
 
@@ -318,7 +318,7 @@ export async function PATCH(
           for (const inc of body.inclusions) {
             if (inc && inc.trim()) {
               await transaction.query(
-                'INSERT INTO package_inclusions (package_id, description) VALUES (?, ?)',
+                'INSERT INTO package_data (package_id, description) VALUES (?, ?)',
                 [packageId, inc.trim()]
               );
             }
@@ -327,7 +327,7 @@ export async function PATCH(
 
         // delete old add-ons
         await transaction.query(
-          'DELETE FROM package_addons WHERE package_id = ?',
+          'DELETE FROM service_packages sp, JSON_TABLE(sp.addons, '$[*]' COLUMNS (name VARCHAR(255) PATH '$.name', description TEXT PATH '$.description', price DECIMAL(10,2) PATH '$.price')) as addons WHERE package_id = ?',
           [packageId]
         );
 
@@ -336,7 +336,7 @@ export async function PATCH(
           for (const addon of body.addOns) {
             if (addon && addon.name && addon.name.trim()) {
               await transaction.query(
-                'INSERT INTO package_addons (package_id, description, price) VALUES (?, ?, ?)',
+                'INSERT INTO package_data (package_id, description, price) VALUES (?, ?, ?)',
                 [packageId, addon.name.trim(), Number(addon.price) || 0]
               );
             }
@@ -365,7 +365,7 @@ export async function PATCH(
           };
           // Get current images from database
           const currentImages = await transaction.query(
-            'SELECT image_path FROM package_images WHERE package_id = ?',
+            'SELECT image_path FROM service_packages sp, JSON_TABLE(sp.images, '$[*]' COLUMNS (url VARCHAR(500) PATH '$.url', alt_text VARCHAR(255) PATH '$.alt_text', is_primary BOOLEAN PATH '$.is_primary')) as images WHERE package_id = ?',
             [packageId]
           ) as any[];
           
@@ -381,7 +381,7 @@ export async function PATCH(
           // Remove image records from database only
           for (const imagePath of imagesToRemove) {
             await transaction.query(
-              'DELETE FROM package_images WHERE package_id = ? AND image_path = ?',
+              'DELETE FROM service_packages sp, JSON_TABLE(sp.images, '$[*]' COLUMNS (url VARCHAR(500) PATH '$.url', alt_text VARCHAR(255) PATH '$.alt_text', is_primary BOOLEAN PATH '$.is_primary')) as images WHERE package_id = ? AND image_path = ?',
               [packageId, imagePath]
             );
           }
@@ -392,7 +392,7 @@ export async function PATCH(
           if (imagesToAdd.length > 0) {
             // Find the maximum display_order among remaining images to avoid duplicates
             const maxOrderResult = await transaction.query(
-              'SELECT COALESCE(MAX(display_order), 0) as max_order FROM package_images WHERE package_id = ?',
+              'SELECT COALESCE(MAX(display_order), 0) as max_order FROM service_packages sp, JSON_TABLE(sp.images, '$[*]' COLUMNS (url VARCHAR(500) PATH '$.url', alt_text VARCHAR(255) PATH '$.alt_text', is_primary BOOLEAN PATH '$.is_primary')) as images WHERE package_id = ?',
               [packageId]
             ) as any[];
             
@@ -406,13 +406,13 @@ export async function PATCH(
               if (imagePath.startsWith('data:image/')) {
                 // Store base64 data directly in database
                 await transaction.query(
-                  'INSERT INTO package_images (package_id, image_path, display_order, image_data) VALUES (?, ?, ?, ?)',
+                  'INSERT INTO package_data (package_id, image_path, display_order, image_data) VALUES (?, ?, ?, ?)',
                   [packageId, `package_${packageId}_${Date.now()}_${i}.jpg`, displayOrder, imagePath]
                 );
               } else {
                 // Handle file-based images (legacy approach)
                 await transaction.query(
-                  'INSERT INTO package_images (package_id, image_path, display_order) VALUES (?, ?, ?)',
+                  'INSERT INTO package_data (package_id, image_path, display_order) VALUES (?, ?, ?)',
                   [packageId, imagePath, displayOrder]
                 );
               }

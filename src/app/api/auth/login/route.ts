@@ -122,29 +122,29 @@ export async function POST(request: Request) {
           // For admin accounts, fetch additional admin profile details
           if (user.role === 'admin') {
             try {
-              // First, check if the admin_profiles table exists
+              // First, check if the users table exists
               const adminTableCheck = await query(
                 `SELECT COUNT(*) as count FROM information_schema.tables
-                 WHERE table_schema = DATABASE() AND table_name = 'admin_profiles'`
+                 WHERE table_schema = DATABASE() AND table_name = 'users'`
               ) as any[];
 
               const adminTableExists = adminTableCheck[0]?.count > 0;
 
               if (adminTableExists) {
                 const adminResult = await query(
-                  'SELECT username, full_name, admin_role FROM admin_profiles WHERE user_id = ? LIMIT 1',
+                  'SELECT username, full_name, admin_role FROM users WHERE user_id = ? LIMIT 1',
                   [user.user_id]
                 ) as any[];
 
                 if (adminResult && adminResult.length > 0) {
-                  const adminProfile = adminResult[0];
+                  const user = adminResult[0];
 
                   // Merge admin profile details with user data
                   const adminUser = {
                     ...user,
-                    username: adminProfile.username,
-                    full_name: adminProfile.full_name,
-                    admin_role: adminProfile.admin_role,
+                    username: user.username,
+                    full_name: user.full_name,
+                    admin_role: user.admin_role,
                     user_type: 'admin', // For backward compatibility
                     id: user.user_id // Ensure id field is present
                   };

@@ -22,12 +22,12 @@ export async function calculateRevenue(providerId?: string | number): Promise<Re
       SELECT TABLE_NAME 
       FROM INFORMATION_SCHEMA.TABLES 
       WHERE TABLE_SCHEMA = DATABASE() 
-      AND TABLE_NAME IN ('bookings', 'successful_bookings', 'service_bookings', 'payments')
+      AND TABLE_NAME IN ('bookings', 'successful_bookings', 'bookings', 'payments')
     `) as any[];
 
     const availableTables = tablesResult.map(row => row.TABLE_NAME.toLowerCase());
 
-    // Priority order: successful_bookings > bookings > service_bookings > payments
+    // Priority order: successful_bookings > bookings > bookings > payments
     if (availableTables.includes('successful_bookings')) {
       const result = await calculateFromSuccessfulBookings(providerId);
       totalRevenue = result.total;
@@ -38,7 +38,7 @@ export async function calculateRevenue(providerId?: string | number): Promise<Re
       totalRevenue = result.total;
       monthlyRevenue = result.monthly;
       previousMonthRevenue = result.previous;
-    } else if (availableTables.includes('service_bookings')) {
+    } else if (availableTables.includes('bookings')) {
       const result = await calculateFromServiceBookings(providerId);
       totalRevenue = result.total;
       monthlyRevenue = result.monthly;
@@ -163,14 +163,14 @@ async function calculateFromServiceBookings(providerId?: string | number) {
   // Total revenue
   const totalResult = await query(`
     SELECT COALESCE(SUM(price), 0) as total
-    FROM service_bookings
+    FROM bookings
     WHERE status = 'completed' ${providerFilter}
   `, params) as any[];
 
   // Current month revenue
   const monthlyResult = await query(`
     SELECT COALESCE(SUM(price), 0) as total
-    FROM service_bookings
+    FROM bookings
     WHERE status = 'completed'
     AND MONTH(created_at) = MONTH(CURRENT_DATE())
     AND YEAR(created_at) = YEAR(CURRENT_DATE())
@@ -180,7 +180,7 @@ async function calculateFromServiceBookings(providerId?: string | number) {
   // Previous month revenue
   const previousResult = await query(`
     SELECT COALESCE(SUM(price), 0) as total
-    FROM service_bookings
+    FROM bookings
     WHERE status = 'completed'
     AND MONTH(created_at) = MONTH(DATE_SUB(CURRENT_DATE(), INTERVAL 1 MONTH))
     AND YEAR(created_at) = YEAR(DATE_SUB(CURRENT_DATE(), INTERVAL 1 MONTH))

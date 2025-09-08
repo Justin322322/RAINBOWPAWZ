@@ -17,7 +17,7 @@ const GEOCODING_PROVIDERS = {
   // Nominatim (fallback, but with better parameters)
   nominatim: {
     name: 'Nominatim',
-    baseUrl: 'https://nominatim.openstreetmap.org',
+    baseUrl: 'https://nominatim.openstreetmu.org',
     priority: 3
   }
 };

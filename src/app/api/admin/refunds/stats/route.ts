@@ -90,9 +90,9 @@ export async function GET(request: NextRequest) {
         COUNT(r.id) as refund_count,
         COALESCE(SUM(r.amount), 0) as total_refunded
       FROM refunds r
-      LEFT JOIN service_bookings sb ON r.booking_id = sb.id
+      LEFT JOIN bookings sb ON r.booking_id = sb.id
       LEFT JOIN bookings b ON r.booking_id = b.id AND sb.id IS NULL
-      LEFT JOIN service_providers sp ON COALESCE(sb.provider_id, b.provider_id) = sp.provider_id
+      LEFT JOIN service_providers sp ON b.provider_id = sp.provider_id
       WHERE ${baseCondition} AND sp.provider_id IS NOT NULL
       GROUP BY sp.provider_id, sp.name
       ORDER BY total_refunded DESC

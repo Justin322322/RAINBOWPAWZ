@@ -179,7 +179,7 @@ export async function cancelBookingWithRefund(
  */
 async function getBookingInfo(bookingId: number): Promise<any | null> {
   try {
-    // Try service_bookings table first
+    // Try bookings table first
     let results = await query(`
       SELECT 
         sb.id,
@@ -194,7 +194,7 @@ async function getBookingInfo(bookingId: number): Promise<any | null> {
         u.last_name,
         u.email,
         sp.name as service_name
-      FROM service_bookings sb
+      FROM bookings sb
       JOIN users u ON sb.user_id = u.user_id
       LEFT JOIN service_packages sp ON sb.package_id = sp.package_id
       WHERE sb.id = ?
@@ -249,9 +249,9 @@ async function cancelBooking(
   ipAddress?: string
 ): Promise<boolean> {
   try {
-    // Try updating service_bookings first
+    // Try updating bookings first
     let result = await query(`
-      UPDATE service_bookings 
+      UPDATE bookings 
       SET status = 'cancelled', 
           updated_at = NOW(),
           notes = CASE 

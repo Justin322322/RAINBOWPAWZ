@@ -30,7 +30,7 @@ export async function GET(request: NextRequest) {
         sp.name as service_name,
         sp.name as provider_name
       FROM payment_transactions pt
-      JOIN service_bookings sb ON pt.booking_id = sb.id
+      JOIN bookings sb ON pt.booking_id = sb.id
       LEFT JOIN service_providers sp ON sb.provider_id = sp.provider_id
       WHERE pt.booking_id = ?
       ORDER BY pt.created_at DESC
@@ -43,7 +43,7 @@ export async function GET(request: NextRequest) {
       // Check if booking exists but has no payment transactions
       const bookingQuery = `
         SELECT id, payment_status, payment_method, price
-        FROM service_bookings
+        FROM bookings
         WHERE id = ?
       `;
       const bookingResult = await query(bookingQuery, [bookingId]) as any[];
@@ -106,7 +106,7 @@ export async function GET(request: NextRequest) {
           // Update booking payment status if payment succeeded
           if (latestStatus === 'succeeded') {
             const updateBookingQuery = `
-              UPDATE service_bookings
+              UPDATE bookings
               SET payment_status = 'paid'
               WHERE id = ?
             `;

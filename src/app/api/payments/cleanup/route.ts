@@ -50,7 +50,7 @@ async function cleanupSpecificBooking(bookingId: number, dryRun: boolean) {
   // Check if booking exists and its payment status
   const bookingQuery = `
     SELECT id, payment_status, payment_method
-    FROM service_bookings
+    FROM bookings
     WHERE id = ?
   `;
   const bookingResult = await query(bookingQuery, [bookingId]) as any[];
@@ -94,7 +94,7 @@ async function cleanupSpecificBooking(bookingId: number, dryRun: boolean) {
   if (booking.payment_status === 'paid' && successfulPayments.length === 0) {
     if (!dryRun) {
       await query(
-        'UPDATE service_bookings SET payment_status = ? WHERE id = ?',
+        'UPDATE bookings SET payment_status = ? WHERE id = ?',
         ['not_paid', bookingId]
       );
       result.actionTaken = 'Reset payment status from paid to not_paid';
@@ -104,7 +104,7 @@ async function cleanupSpecificBooking(bookingId: number, dryRun: boolean) {
   } else if (booking.payment_status === 'not_paid' && successfulPayments.length > 0) {
     if (!dryRun) {
       await query(
-        'UPDATE service_bookings SET payment_status = ? WHERE id = ?',
+        'UPDATE bookings SET payment_status = ? WHERE id = ?',
         ['paid', bookingId]
       );
       result.actionTaken = 'Updated payment status from not_paid to paid';
@@ -125,7 +125,7 @@ async function cleanupAllOrphanedPayments(dryRun: boolean) {
   // Find all bookings marked as paid but with no successful payment transactions
   const orphanedQuery = `
     SELECT sb.id, sb.payment_status, sb.payment_method, sb.created_at
-    FROM service_bookings sb
+    FROM bookings sb
     LEFT JOIN payment_transactions pt ON sb.id = pt.booking_id AND pt.status = 'succeeded'
     WHERE sb.payment_status = 'paid' AND pt.id IS NULL
   `;
@@ -134,7 +134,7 @@ async function cleanupAllOrphanedPayments(dryRun: boolean) {
   // Find bookings marked as not_paid but with successful payment transactions
   const inconsistentQuery = `
     SELECT sb.id, sb.payment_status, sb.payment_method, sb.created_at, pt.id as payment_id
-    FROM service_bookings sb
+    FROM bookings sb
     INNER JOIN payment_transactions pt ON sb.id = pt.booking_id AND pt.status = 'succeeded'
     WHERE sb.payment_status = 'not_paid'
   `;
@@ -152,7 +152,7 @@ async function cleanupAllOrphanedPayments(dryRun: boolean) {
     // Reset orphaned bookings
     for (const booking of orphanedBookings) {
       await query(
-        'UPDATE service_bookings SET payment_status = ? WHERE id = ?',
+        'UPDATE bookings SET payment_status = ? WHERE id = ?',
         ['not_paid', booking.id]
       );
       result.actionsPerformed.push(`Reset booking ${booking.id} from paid to not_paid`);
@@ -161,7 +161,7 @@ async function cleanupAllOrphanedPayments(dryRun: boolean) {
     // Fix inconsistent bookings
     for (const booking of inconsistentBookings) {
       await query(
-        'UPDATE service_bookings SET payment_status = ? WHERE id = ?',
+        'UPDATE bookings SET payment_status = ? WHERE id = ?',
         ['paid', booking.id]
       );
       result.actionsPerformed.push(`Updated booking ${booking.id} from not_paid to paid`);

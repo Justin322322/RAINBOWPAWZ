@@ -33,7 +33,7 @@ export async function GET(request: NextRequest) {
     // Check for pending bookings for this provider
     const pendingBookings = await query(`
       SELECT COUNT(*) as count
-      FROM service_bookings
+      FROM bookings
       WHERE provider_id = ? AND status = 'pending'
     `, [providerId]) as any[];
 

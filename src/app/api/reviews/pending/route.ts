@@ -65,7 +65,7 @@ export async function GET(request: NextRequest) {
         SELECT TABLE_NAME
         FROM INFORMATION_SCHEMA.TABLES
         WHERE TABLE_SCHEMA = DATABASE()
-        AND TABLE_NAME IN ('business_services', 'service_bookings')
+        AND TABLE_NAME IN ('business_services', 'bookings')
       `) as any[];
 
       const existingTables = new Set(tablesResult.map((row: any) => row.TABLE_NAME));
@@ -80,7 +80,7 @@ export async function GET(request: NextRequest) {
                   sb.booking_date,
                   sp.package_id as service_type_id,
                   sp.name as service_name
-            FROM service_bookings sb
+            FROM bookings sb
             JOIN service_packages sp ON sb.package_id = sp.package_id
             JOIN service_providers spr ON sp.provider_id = spr.provider_id
             WHERE sb.user_id = ?
@@ -139,8 +139,8 @@ export async function GET(request: NextRequest) {
         }
       }
 
-      // If we have service_bookings but no results yet, try a simpler query
-      if (existingTables.has('service_bookings') && pendingReviews.length === 0) {
+      // If we have bookings but no results yet, try a simpler query
+      if (existingTables.has('bookings') && pendingReviews.length === 0) {
         try {
           const directQuery = `
             SELECT
@@ -149,7 +149,7 @@ export async function GET(request: NextRequest) {
               'Service Provider' as provider_name,
               sb.booking_date,
               'Cremation Service' as service_name
-            FROM service_bookings sb
+            FROM bookings sb
             WHERE sb.user_id = ?
             AND sb.status = 'completed'
             ORDER BY sb.booking_date DESC
@@ -216,7 +216,7 @@ export async function GET(request: NextRequest) {
               'Service Provider' as provider_name,
               booking_date,
               'Cremation Service' as service_name
-            FROM service_bookings
+            FROM bookings
             WHERE user_id = ?
             AND status = 'completed'
             ORDER BY booking_date DESC
