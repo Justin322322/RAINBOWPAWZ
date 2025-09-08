@@ -64,37 +64,32 @@ export async function PUT(request: NextRequest) {
     // **🔥 FIX: Use proper transaction management to prevent connection leaks**
     const _result = await withTransaction(async (transaction) => {
 
-      // Check if users table exists, create if not
-      const tablesResult = await transaction.query(
-        "SHOW TABLES LIKE 'users'"
-      ) as any[];
-
-      if (!tablesResult || tablesResult.length === 0) {
-        await transaction.query(`
-          CREATE TABLE users (
-            restriction_id INT AUTO_INCREMENT PRIMARY KEY,
-            user_id INT NOT NULL,
-            reason TEXT,
-            restriction_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            duration VARCHAR(50) DEFAULT 'indefinite',
-            report_count INT DEFAULT 0,
-            is_active BOOLEAN DEFAULT 1,
-            FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
-          )
-        `);
-      }
+      // Ensure user_restrictions table exists (DDL safe with IF NOT EXISTS)
+      await transaction.query(`
+        CREATE TABLE IF NOT EXISTS user_restrictions (
+          restriction_id INT AUTO_INCREMENT PRIMARY KEY,
+          user_id INT NOT NULL,
+          reason TEXT,
+          restriction_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          duration VARCHAR(50) DEFAULT 'indefinite',
+          report_count INT DEFAULT 0,
+          is_active TINYINT(1) DEFAULT 1,
+          INDEX idx_user_active (user_id, is_active),
+          FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+      `);
 
       if (restricted) {
         // Check if user is already restricted
         const restrictionResult = await transaction.query(
-          'SELECT restriction_id FROM users WHERE user_id = ? AND is_active = 1 LIMIT 1',
+          'SELECT restriction_id FROM user_restrictions WHERE user_id = ? AND is_active = 1 LIMIT 1',
           [userId]
         ) as any[];
 
         if (restrictionResult && restrictionResult.length > 0) {
           // Update existing restriction
           await transaction.query(
-            `UPDATE users
+            `UPDATE user_restrictions
              SET reason = ?,
                  duration = ?,
                  report_count = ?,
@@ -105,7 +100,7 @@ export async function PUT(request: NextRequest) {
         } else {
           // Create new restriction
           await transaction.query(
-            `INSERT INTO users (user_id, reason, duration, report_count)
+            `INSERT INTO user_restrictions (user_id, reason, duration, report_count)
              VALUES (?, ?, ?, ?)`,
             [userId, reason, duration, reportCount]
           );
@@ -127,7 +122,7 @@ export async function PUT(request: NextRequest) {
       } else {
         // Remove restriction
         await transaction.query(
-          'UPDATE users SET is_active = 0 WHERE user_id = ? AND is_active = 1',
+          'UPDATE user_restrictions SET is_active = 0 WHERE user_id = ? AND is_active = 1',
           [userId]
         );
 
@@ -171,7 +166,7 @@ export async function PUT(request: NextRequest) {
     if (restricted) {
       const restrictionResult = await query(
         `SELECT restriction_id, reason, restriction_date, duration, report_count, is_active
-         FROM users
+         FROM user_restrictions
          WHERE user_id = ? AND is_active = 1
          LIMIT 1`,
         [userId]

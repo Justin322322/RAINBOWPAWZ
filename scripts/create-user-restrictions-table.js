@@ -16,32 +16,29 @@ function getCfg(){
 async function main(){
   const cfg = getCfg();
   const conn = await mysql.createConnection(cfg);
-  console.log('[password-reset] Connected');
+  console.log('[user-restrictions] Connected');
 
   const sql = `
-    CREATE TABLE IF NOT EXISTS password_reset_tokens (
-      id INT AUTO_INCREMENT PRIMARY KEY,
+    CREATE TABLE IF NOT EXISTS user_restrictions (
+      restriction_id INT AUTO_INCREMENT PRIMARY KEY,
       user_id INT NOT NULL,
-      token VARCHAR(100) NOT NULL,
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      expires_at DATETIME NOT NULL,
-      is_used TINYINT(1) DEFAULT 0,
-      UNIQUE KEY unique_token (token),
-      INDEX idx_user_id (user_id),
-      INDEX idx_token (token),
-      INDEX idx_expires_at (expires_at),
-      INDEX idx_is_used (is_used),
+      reason TEXT,
+      restriction_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      duration VARCHAR(50) DEFAULT 'indefinite',
+      report_count INT DEFAULT 0,
+      is_active TINYINT(1) DEFAULT 1,
+      INDEX idx_user_active (user_id, is_active),
       FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`;
 
   await conn.execute(sql);
-  console.log('[password-reset] Table ensured');
+  console.log('[user-restrictions] Table ensured');
   await conn.end();
-  console.log('[password-reset] Done');
+  console.log('[user-restrictions] Done');
 }
 
 main().catch(err => {
-  console.error('[password-reset] Error:', err.message);
+  console.error('[user-restrictions] Error:', err.message);
   process.exit(1);
 });
 
