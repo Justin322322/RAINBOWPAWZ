@@ -98,8 +98,8 @@ export async function GET(request: NextRequest) {
       console.warn('Error checking pending bookings for notification count:', error);
     }
 
-    // Calculate total unread count including pending bookings
-    const totalUnreadCount = unreadCount + pendingBookingsCount;
+    // Keep unread count strictly to real notifications to avoid UI mismatch
+    const totalUnreadCount = unreadCount;
 
     console.log('Notification counts:', {
       notifications_unified: notifications_unified.length,

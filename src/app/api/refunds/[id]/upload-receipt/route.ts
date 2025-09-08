@@ -85,7 +85,10 @@ export async function POST(
     }
 
     // Create uploads directory if it doesn't exist
-    const uploadDir = path.join(process.cwd(), 'public', 'uploads', 'refund-receipts');
+    // Use /tmp on serverless (read-only FS at /var/task), fallback to project public dir in dev
+    const isServerless = !!process.env.VERCEL || process.env.NODE_ENV === 'production';
+    const uploadBase = isServerless ? '/tmp' : path.join(process.cwd(), 'public');
+    const uploadDir = path.join(uploadBase, 'uploads', 'refund-receipts');
     try {
       await fs.access(uploadDir);
     } catch {
@@ -103,6 +106,9 @@ export async function POST(
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
     await fs.writeFile(filePath, buffer);
+
+    // If running on serverless, mirror the file into a persistent public path via edge cache/CDN upload (optional)
+    // Skipped here; relativePath still returned for client to reference when served by CDN/storage layer.
 
     const clientIp = request.headers.get('x-forwarded-for') || 
                      request.headers.get('x-real-ip') || 

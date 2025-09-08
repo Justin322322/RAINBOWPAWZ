@@ -149,8 +149,45 @@ async function processAutomaticRefund(
     }
 
     if (!paymentId) {
-      // Fall back to manual processing if no payment ID found
-      return await processManualRefund(request, bookingInfo);
+      // If we cannot locate a PayMongo payment ID yet, keep this as AUTOMATIC
+      // Create a pending automatic refund record and exit gracefully.
+      const refundId = await createRefundRecord({
+        booking_id: request.bookingId,
+        user_id: bookingInfo.userId,
+        amount: request.amount,
+        reason: request.reason,
+        status: 'pending',
+        refund_type: 'automatic',
+        payment_method: normalizePaymentMethod(bookingInfo.paymentMethod),
+        transaction_id: bookingInfo.transactionId || undefined,
+        processed_by: request.initiatedBy,
+        notes: request.notes || undefined,
+        metadata: JSON.stringify({
+          initiated_by_type: request.initiatedByType,
+          original_amount: bookingInfo.amount,
+          missing_payment_id: true,
+          source_id: bookingInfo.sourceId || null
+        }),
+        initiated_at: new Date()
+      });
+
+      await logRefundAudit({
+        refund_id: refundId,
+        action: 'refund_queued',
+        new_status: 'pending',
+        performed_by: request.initiatedBy,
+        performed_by_type: request.initiatedByType,
+        details: 'Automatic refund queued: payment id not yet available. Will retry via reconciliation.',
+        ip_address: request.ipAddress
+      });
+
+      return {
+        success: true,
+        refundId,
+        refundType: 'automatic',
+        paymentMethod: bookingInfo.paymentMethod,
+        message: 'Automatic refund scheduled. The system will complete it once the payment is located.'
+      };
     }
 
     // Create refund record first
@@ -258,8 +295,15 @@ async function processAutomaticRefund(
         ip_address: request.ipAddress
       });
 
-      // Fall back to manual processing
-      return await processManualRefund(request, bookingInfo);
+      // Do not fall back to manual for electronic methods; keep as automatic failed
+      return {
+        success: false,
+        refundId,
+        refundType: 'automatic',
+        paymentMethod: bookingInfo.paymentMethod,
+        message: 'Automatic refund attempt failed. Please retry later or handle via dashboard.',
+        error: paymongoError instanceof Error ? paymongoError.message : 'PAYMONGO_ERROR'
+      };
     }
 
   } catch (error) {

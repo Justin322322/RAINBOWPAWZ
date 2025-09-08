@@ -100,6 +100,7 @@ interface CreateNotificationParams {
   link?: string | null;
   shouldSendEmail?: boolean;
   emailSubject?: string;
+  category?: 'booking' | 'payment' | 'refund' | 'review' | 'admin' | 'marketing' | 'system';
 }
 
 interface NotificationResult {
@@ -117,6 +118,19 @@ interface UserEmailData {
 // Type for INSERT query results that have insertId
 type InsertResult = OkPacket | ResultSetHeader;
 
+// Map UI notification "type" to DB enum type/category
+function normalizeDbNotification(
+  uiType: 'info' | 'success' | 'warning' | 'error',
+  category?: CreateNotificationParams['category']
+): { dbType: 'email' | 'sms' | 'push' | 'system'; dbCategory: NonNullable<CreateNotificationParams['category']>; dbStatus: 'pending' | 'sent' | 'delivered' | 'failed' | 'read' } {
+  // We use unified table for in-app messages → type should be 'system'
+  const dbType = 'system' as const;
+  const dbCategory = category ?? 'system';
+  // Initial status should be 'delivered' for in-app (already persisted), or 'pending' if you prefer queue semantics
+  const dbStatus = 'delivered' as const;
+  return { dbType, dbCategory, dbStatus };
+}
+
 /**
  * Create a notification with minimal overhead (for critical operations)
  */
@@ -125,19 +139,22 @@ export async function createNotificationFast({
   title,
   message,
   type = 'info',
-  link: _link = null
+  link: _link = null,
+  category
 }: {
   userId: number;
   title: string;
   message: string;
   type?: 'info' | 'success' | 'warning' | 'error';
   link?: string | null;
+  category?: CreateNotificationParams['category'];
 }): Promise<NotificationResult> {
   try {
+    const { dbType, dbCategory, dbStatus } = normalizeDbNotification(type, category);
     const result = await query(
-      `INSERT INTO notifications_unified (user_id, title, message, type, created_at)
-       VALUES (?, ?, ?, ?, NOW())`,
-      [userId, title, message, type]
+      `INSERT INTO notifications_unified (user_id, title, message, type, category, status, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, NOW())`,
+      [userId, title, message, dbType, dbCategory, dbStatus]
     ) as unknown as InsertResult;
 
     return {
@@ -165,11 +182,12 @@ export async function createNotification({
   type = 'info',
   link = null,
   shouldSendEmail = false,
-  emailSubject
+  emailSubject,
+  category
 }: CreateNotificationParams): Promise<NotificationResult> {
   try {
     await ensureNotificationsTable();
-    const result = await insertNotificationWithRetry(userId, title, message, type, null);
+    const result = await insertNotificationWithRetry(userId, title, message, type, category ?? 'system', null);
 
     if (shouldSendEmail) {
       await sendEmailNotification(userId, title, message, type, link, emailSubject);
@@ -198,6 +216,7 @@ async function insertNotificationWithRetry(
   title: string,
   message: string,
   type: string,
+  category: CreateNotificationParams['category'],
   _link: string | null
 ): Promise<InsertResult> {
   const maxRetries = 3;
@@ -205,10 +224,11 @@ async function insertNotificationWithRetry(
 
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
+      const { dbType, dbCategory, dbStatus } = normalizeDbNotification(type as any, category);
       return await query(
-        `INSERT INTO notifications_unified (user_id, title, message, type, created_at)
-         VALUES (?, ?, ?, ?, NOW())`,
-        [userId, title, message, type]
+        `INSERT INTO notifications_unified (user_id, title, message, type, category, status, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, NOW())`,
+        [userId, title, message, dbType, dbCategory, dbStatus]
       ) as unknown as InsertResult;
     } catch (error) {
       lastError = error instanceof Error ? error : new Error('Unknown error');
