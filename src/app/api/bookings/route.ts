@@ -227,7 +227,9 @@ export async function GET(request: NextRequest) {
             provider_address: providerAddress,
             service_name: 'Cremation Service',
             service_description: 'Pet cremation service',
-            service_price: booking.price || 0,
+            service_price: booking.base_price || booking.total_price || booking.price || 0,
+            total_amount: booking.total_price || booking.base_price || booking.price || 0,
+            price: booking.base_price || booking.total_price || booking.price || 0,
             pet_name: booking.pet_name || 'Unknown Pet',
             pet_type: booking.pet_type || 'Unknown Type',
             refund: refundData
@@ -470,7 +472,9 @@ export async function GET(request: NextRequest) {
                 provider_address: booking.provider_address || 'No address available',
                 service_name: booking.package_name || 'Cremation Service',
                 service_description: booking.package_description || 'Pet cremation service',
-                service_price: booking.price || 0,
+                service_price: booking.base_price || booking.total_price || booking.price || 0,
+                total_amount: booking.total_price || booking.base_price || booking.price || 0,
+                price: booking.base_price || booking.total_price || booking.price || 0,
                 pet_name: booking.pet_name || 'Unknown Pet',
                 pet_type: booking.pet_type || 'Unknown Type'
               };
@@ -599,7 +603,9 @@ export async function GET(request: NextRequest) {
                   provider_address: providerAddress,
                   service_name: 'Cremation Service',
                   service_description: 'Pet cremation service',
-                  service_price: booking.price || 0,
+                  service_price: booking.base_price || booking.total_price || booking.price || 0,
+                  total_amount: booking.total_price || booking.base_price || booking.price || 0,
+                  price: booking.base_price || booking.total_price || booking.price || 0,
                   pet_name: booking.pet_name || 'Unknown Pet',
                   pet_type: booking.pet_type || 'Unknown Type'
                 };
@@ -903,6 +909,9 @@ export async function GET(request: NextRequest) {
                 provider_address: booking.provider_address || 'Provider Address',
                 service_name: booking.service_name || 'Cremation Service',
                 service_description: booking.service_description || 'Pet cremation service',
+                service_price: booking.base_price || booking.total_price || booking.service_price || booking.price || 0,
+                total_amount: booking.total_price || booking.base_price || booking.price || 0,
+                price: booking.base_price || booking.total_price || booking.price || 0,
                 pet_name: booking.pet_name || 'Pet',
                 pet_type: booking.pet_type || 'Unknown'
               };
@@ -960,7 +969,9 @@ export async function GET(request: NextRequest) {
                 provider_address: 'Provider Address',
                 service_name: 'Cremation Service',
                 service_description: 'Pet cremation service',
-                service_price: booking.total_price,
+                service_price: booking.base_price || booking.total_price || booking.price || 0,
+                total_amount: booking.total_price || booking.base_price || booking.price || 0,
+                price: booking.base_price || booking.total_price || booking.price || 0,
                 pet_name: booking.pet_name || 'Pet',
                 pet_type: booking.pet_type || 'Unknown'
               }));
