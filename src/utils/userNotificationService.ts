@@ -17,8 +17,9 @@ interface NotificationRecord {
   title: string;
   message: string;
   type: 'info' | 'success' | 'warning' | 'error';
-  status: boolean; // Database returns boolean
-  link: string | null;
+  status: boolean; // Database may return tinyint(1)
+  // link column not present in schema; keep optional for compatibility
+  link?: string | null;
   created_at: string;
 }
 
@@ -29,7 +30,7 @@ interface ConvertedNotificationRecord {
   message: string;
   type: 'info' | 'success' | 'warning' | 'error';
   status: number; // Frontend expects number (0 or 1)
-  link: string | null;
+  link?: string | null;
   created_at: string;
 }
 
@@ -114,13 +115,13 @@ export async function getUserNotifications(userId: number, limit: number = 10): 
   try {
     await ensureNotificationsTable();
     const idColumn = await getNotificationIdColumn();
-    
+
     const selectQuery = idColumn === 'notification_id'
-      ? `SELECT notification_id as id, user_id, title, message, type, status, link, created_at 
+      ? `SELECT notification_id as id, user_id, title, message, type, status, created_at, NULL as link
          FROM notifications_unified WHERE user_id = ? ORDER BY created_at DESC LIMIT ${Number(limit)}`
-      : `SELECT id, user_id, title, message, type, status, link, created_at 
+      : `SELECT id, user_id, title, message, type, status, created_at, NULL as link
          FROM notifications_unified WHERE user_id = ? ORDER BY created_at DESC LIMIT ${Number(limit)}`;
-    
+
     const notifications_unified = await query(selectQuery, [userId]) as NotificationRecord[];
     
     // Convert boolean status to number (0 or 1) to match frontend expectations

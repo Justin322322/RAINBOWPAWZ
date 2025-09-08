@@ -198,7 +198,7 @@ async function insertNotificationWithRetry(
   title: string,
   message: string,
   type: string,
-  link: string | null
+  _link: string | null
 ): Promise<InsertResult> {
   const maxRetries = 3;
   let lastError: Error = new Error('No attempts made');
@@ -206,9 +206,9 @@ async function insertNotificationWithRetry(
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
       return await query(
-        `INSERT INTO notifications_unified (user_id, title, message, type, link)
-         VALUES (?, ?, ?, ?, ?)`,
-        [userId, title, message, type, link]
+        `INSERT INTO notifications_unified (user_id, title, message, type, created_at)
+         VALUES (?, ?, ?, ?, NOW())`,
+        [userId, title, message, type]
       ) as unknown as InsertResult;
     } catch (error) {
       lastError = error instanceof Error ? error : new Error('Unknown error');

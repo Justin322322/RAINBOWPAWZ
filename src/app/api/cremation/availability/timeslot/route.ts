@@ -29,11 +29,10 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid Provider ID' }, { status: 400 });
     }
 
-    // Check if provider exists and get time slots data
+    // Check if provider exists (do not reference removed JSON columns)
     const checkQuery = `
       SELECT
-        provider_id,
-        time_slots_data
+        provider_id
       FROM service_providers
       WHERE provider_id = ?
     `;

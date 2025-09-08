@@ -272,7 +272,7 @@ export async function queueEmail(emailData: EmailData): Promise<{ success: boole
 
     // Insert the email into the queue
     const result = await query(
-      `INSERT INTO notifications_unified_unified
+      `INSERT INTO email_queue
        (to_email, subject, html, text, from_email, cc, bcc, attachments, status, attempts)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending', 0)`,
       [
@@ -306,7 +306,7 @@ export async function processEmailQueue(limit: number = 10): Promise<{ processed
 
     // Get pending emails from the queue
     const pendingEmails = await query(
-      `SELECT * FROM notifications_unified_unified
+      `SELECT * FROM email_queue
        WHERE status = 'pending' AND attempts < 3
        ORDER BY created_at ASC
        LIMIT ${Number(limit)}`,
@@ -337,7 +337,7 @@ export async function processEmailQueue(limit: number = 10): Promise<{ processed
         if (result.success) {
           // Update the email status to sent
           await query(
-            `UPDATE notifications_unified_unified
+            `UPDATE email_queue
              SET status = 'sent', sent_at = NOW(), updated_at = NOW()
              WHERE id = ?`,
             [email.id]
@@ -346,7 +346,7 @@ export async function processEmailQueue(limit: number = 10): Promise<{ processed
         } else {
           // Update the email status to failed and increment attempts
           await query(
-            `UPDATE notifications_unified_unified
+            `UPDATE email_queue
              SET status = 'failed', attempts = attempts + 1, error = ?, updated_at = NOW()
              WHERE id = ?`,
             [result.error, email.id]
@@ -356,7 +356,7 @@ export async function processEmailQueue(limit: number = 10): Promise<{ processed
       } catch (error) {
         // Update the email status to failed and increment attempts
         await query(
-          `UPDATE notifications_unified_unified
+          `UPDATE email_queue
            SET status = 'failed', attempts = attempts + 1, error = ?, updated_at = NOW()
            WHERE id = ?`,
           [error instanceof Error ? error.message : 'Unknown error', email.id]
@@ -381,7 +381,7 @@ export async function processEmailQueue(limit: number = 10): Promise<{ processed
 async function ensureEmailQueueTable(): Promise<void> {
   try {
     await query(`
-      CREATE TABLE IF NOT EXISTS notifications_unified_unified (
+      CREATE TABLE IF NOT EXISTS email_queue (
         id INT AUTO_INCREMENT PRIMARY KEY,
         to_email VARCHAR(255) NOT NULL,
         subject VARCHAR(255) NOT NULL,
@@ -391,7 +391,7 @@ async function ensureEmailQueueTable(): Promise<void> {
         cc VARCHAR(255),
         bcc VARCHAR(255),
         attachments TEXT,
-        status ENUM('pending', 'sent', 'failed') NOT NULL DEFAULT 'pending',
+        status ENUM('pending','sent','failed') NOT NULL DEFAULT 'pending',
         attempts INT NOT NULL DEFAULT 0,
         error TEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -401,18 +401,7 @@ async function ensureEmailQueueTable(): Promise<void> {
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
     `);
 
-    // Also ensure the notifications_unified table exists
-    await query(`
-      CREATE TABLE IF NOT EXISTS notifications_unified_unified (
-        id INT AUTO_INCREMENT PRIMARY KEY,
-        recipient VARCHAR(255) NOT NULL,
-        subject VARCHAR(255) NOT NULL,
-        message_id VARCHAR(255),
-        sent_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        INDEX (recipient),
-        INDEX (sent_at)
-      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
-    `);
+    // Also ensure the notifications_unified log table exists (no-op removed)
   } catch (error) {
     throw error;
   }
