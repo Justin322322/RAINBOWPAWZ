@@ -198,13 +198,12 @@ export async function sendEmail(emailData: EmailData): Promise<{ success: boolea
           throw new Error(`Email rejected for recipients: ${info.rejected.join(', ')}`);
         }
 
-        // Record the successful email in the database
-        try {
-          await recordEmailSent(emailData.to, emailData.subject, info.messageId);
+        // Record the successful email in the database (best-effort)
+        const recorded = await recordEmailSent(emailData.to, emailData.subject, info.messageId);
+        if (recorded) {
           console.log('Email recorded in database successfully');
-        } catch (recordError) {
-          console.warn('Failed to record email in database:', recordError);
-          // Continue even if recording fails
+        } else {
+          console.warn('Email sent but not recorded in DB (likely missing email_queue table).');
         }
 
         return { success: true, messageId: info.messageId };
@@ -417,7 +416,7 @@ async function ensureEmailQueueTable(): Promise<void> {
 /**
  * Record sent email in the database for tracking
  */
-async function recordEmailSent(recipient: string, subject: string, _messageId: string): Promise<void> {
+async function recordEmailSent(recipient: string, subject: string, _messageId: string): Promise<boolean> {
   try {
     // Best-effort: only attempt to ensure table outside prod or when allowed
     await ensureEmailQueueTable();
@@ -428,9 +427,11 @@ async function recordEmailSent(recipient: string, subject: string, _messageId: s
        VALUES (?, ?, '', '', ?, 'sent', 1, NOW())`,
       [recipient, subject, process.env.SMTP_USER || null]
     );
+    return true;
   } catch (error) {
-    console.error('Failed to record email in log:', error);
-    // Don't throw the error - we don't want logging failures to affect email sending
+    // Downgrade to warn and return false so callers can reflect accurate state
+    console.warn('Failed to record email in log (non-fatal):', error);
+    return false;
   }
 }
 

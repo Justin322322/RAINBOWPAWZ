@@ -140,12 +140,8 @@ async function processAutomaticRefund(
       // Some integrations store intent/payment id in provider_transaction_id
       paymentId = bookingInfo.transactionId;
     } else if (bookingInfo.sourceId) {
-      // Find payment by source ID
-      const payments = await listPaymentsBySource(bookingInfo.sourceId);
-      const successfulPayment = payments.find(p => p.attributes.status === 'paid');
-      if (successfulPayment) {
-        paymentId = successfulPayment.id;
-      }
+      // Listing payments by source is no longer supported by PayMongo.
+      // Leave paymentId null and allow reconciliation via webhook or later jobs.
     }
 
     if (!paymentId) {

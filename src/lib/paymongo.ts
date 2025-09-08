@@ -335,30 +335,15 @@ export async function retrievePayment(paymentId: string): Promise<PayMongoPaymen
 }
 
 /**
- * List payments for a source (useful for finding payment ID from source ID)
+ * NOTE: PayMongo no longer allows filtering payments by source.id via query params.
+ * This function is intentionally removed to prevent API errors like:
+ * "source.id attribute is not allowed to be used as a filter."
+ *
+ * Keep a stub that always throws with a clear message so any accidental
+ * usages surface immediately during development.
  */
-export async function listPaymentsBySource(sourceId: string): Promise<PayMongoPayment[]> {
-  const secretKey = process.env.PAYMONGO_SECRET_KEY;
-
-  if (!secretKey) {
-    throw new Error('PayMongo secret key is not configured');
-  }
-
-  const response = await fetch(`${PAYMONGO_BASE_URL}/payments?source_id=${sourceId}`, {
-    method: 'GET',
-    headers: {
-      'Authorization': `Basic ${Buffer.from(secretKey + ':').toString('base64')}`,
-      'Content-Type': 'application/json',
-    }
-  });
-
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(`PayMongo API Error: ${error.errors?.[0]?.detail || 'Unknown error'}`);
-  }
-
-  const result = await response.json();
-  return result.data || [];
+export async function listPaymentsBySource(_sourceId: string): Promise<PayMongoPayment[]> {
+  throw new Error('Unsupported operation: PayMongo payments cannot be listed by source_id. Use captured payment_id/payment_intent_id or rely on webhooks to reconcile.');
 }
 
 
