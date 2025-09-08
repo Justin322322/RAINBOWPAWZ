@@ -74,11 +74,11 @@ export async function GET(request: NextRequest) {
         END as admin_name,
         COUNT(*) as count
       FROM admin_logs al
-      LEFT JOIN users ap ON al.admin_id = u.user_id AND al.admin_id != 0
+      LEFT JOIN users u ON al.admin_id = u.user_id AND al.admin_id != 0
       WHERE 1=1 ${dateCondition}
       GROUP BY al.admin_id,
-        CASE WHEN al.admin_id = 0 THEN 'system' ELSE u.username END,
-        CASE WHEN al.admin_id = 0 THEN 'System' ELSE u.full_name END
+        admin_username,
+        admin_name
       ORDER BY count DESC
       LIMIT 10
     `) as any[];

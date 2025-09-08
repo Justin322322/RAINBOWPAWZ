@@ -235,7 +235,9 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
       const userAccountType = await getAccountTypeAsync();
       const endpoint = userAccountType === 'admin'
         ? '/api/admin/notifications_unified'
-        : '/api/user/notifications_unified';
+        : userAccountType === 'business'
+          ? '/api/cremation/notifications_unified'
+          : '/api/user/notifications_unified';
 
       const response = await fetch(endpoint, {
         method: 'PATCH',
@@ -292,7 +294,9 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
       const userAccountType = await getAccountTypeAsync();
       const endpoint = userAccountType === 'admin'
         ? '/api/admin/notifications_unified'
-        : '/api/user/notifications_unified';
+        : userAccountType === 'business'
+          ? '/api/cremation/notifications_unified'
+          : '/api/user/notifications_unified';
 
       const response = await fetch(endpoint, {
         method: 'PATCH',
