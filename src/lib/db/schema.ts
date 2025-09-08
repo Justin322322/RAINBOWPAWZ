@@ -6,15 +6,15 @@ export async function ensureAvailabilityTablesExist(): Promise<boolean> {
       SELECT TABLE_NAME
       FROM INFORMATION_SCHEMA.TABLES
       WHERE TABLE_SCHEMA = DATABASE()
-      AND TABLE_NAME IN ('provider_availability', 'provider_time_slots')
+      AND TABLE_NAME IN ('service_providers', 'service_providers')
     `;
 
     const tablesResult = await query(tablesCheckQuery);
     const existingTables = (tablesResult as any[]).map((row: any) => row.TABLE_NAME.toLowerCase());
 
-    if (!existingTables.includes("provider_availability")) {
+    if (!existingTables.includes("service_providers")) {
       const createAvailabilityTableQuery = `
-        CREATE TABLE provider_availability (
+        CREATE TABLE service_providers (
           id INT AUTO_INCREMENT PRIMARY KEY,
           provider_id INT NOT NULL,
           date DATE NOT NULL,
@@ -27,9 +27,9 @@ export async function ensureAvailabilityTablesExist(): Promise<boolean> {
       await query(createAvailabilityTableQuery);
     }
 
-    if (!existingTables.includes("provider_time_slots")) {
+    if (!existingTables.includes("service_providers")) {
       const createTimeSlotsTableQuery = `
-        CREATE TABLE provider_time_slots (
+        CREATE TABLE service_providers (
           id INT AUTO_INCREMENT PRIMARY KEY,
           provider_id INT NOT NULL,
           date DATE NOT NULL,
@@ -47,7 +47,7 @@ export async function ensureAvailabilityTablesExist(): Promise<boolean> {
         SELECT COLUMN_NAME
         FROM INFORMATION_SCHEMA.COLUMNS
         WHERE TABLE_SCHEMA = DATABASE()
-        AND TABLE_NAME = 'provider_time_slots'
+        AND TABLE_NAME = 'service_providers'
         AND COLUMN_NAME = 'available_services'
       `;
 
@@ -55,7 +55,7 @@ export async function ensureAvailabilityTablesExist(): Promise<boolean> {
 
       if ((columnResult as any[]).length === 0) {
         const addColumnQuery = `
-          ALTER TABLE provider_time_slots
+          ALTER TABLE service_providers
           ADD COLUMN available_services TEXT DEFAULT NULL
         `;
         await query(addColumnQuery);

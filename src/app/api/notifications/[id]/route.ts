@@ -40,7 +40,7 @@ export async function DELETE(
     // Check which column name to use (id or notification_id)
     let idColumn = 'id';
     try {
-      const tableInfo = await query(`DESCRIBE notifications`) as any[];
+      const tableInfo = await query(`DESCRIBE notifications_unified_unified`) as any[];
       const hasNotificationId = tableInfo.some((col: any) => col.Field === 'notification_id');
       const hasId = tableInfo.some((col: any) => col.Field === 'id');
       
@@ -48,19 +48,19 @@ export async function DELETE(
         idColumn = 'notification_id';
       }
     } catch (describeError) {
-      console.warn('Could not describe notifications table:', describeError);
+      console.warn('Could not describe notifications_unified table:', describeError);
     }
 
     // SECURITY FIX: Check if the notification exists and belongs to the user
     let notificationResult;
     if (idColumn === 'notification_id') {
       notificationResult = await query(
-        'SELECT notification_id, user_id FROM notifications WHERE notification_id = ?',
+        'SELECT notification_id, user_id FROM notifications_unified WHERE notification_id = ?',
         [notificationId]
       ) as any[];
     } else {
       notificationResult = await query(
-        'SELECT id, user_id FROM notifications WHERE id = ?',
+        'SELECT id, user_id FROM notifications_unified WHERE id = ?',
         [notificationId]
       ) as any[];
     }
@@ -74,10 +74,10 @@ export async function DELETE(
 
     const notification = notificationResult[0];
 
-    // Verify ownership (users can only delete their own notifications)
+    // Verify ownership (users can only delete their own notifications_unified)
     if (notification.user_id.toString() !== userId) {
       return NextResponse.json(
-        createStandardErrorResponse('Forbidden: You can only delete your own notifications', 403),
+        createStandardErrorResponse('Forbidden: You can only delete your own notifications_unified', 403),
         { status: 403 }
       );
     }
@@ -85,9 +85,9 @@ export async function DELETE(
     // Delete the notification
     let deleteQuery;
     if (idColumn === 'notification_id') {
-      deleteQuery = 'DELETE FROM notifications WHERE notification_id = ?';
+      deleteQuery = 'DELETE FROM notifications_unified_unified WHERE notification_id = ?';
     } else {
-      deleteQuery = 'DELETE FROM notifications WHERE id = ?';
+      deleteQuery = 'DELETE FROM notifications_unified_unified WHERE id = ?';
     }
     
     await query(deleteQuery, [notificationId]);

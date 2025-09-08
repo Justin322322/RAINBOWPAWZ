@@ -138,7 +138,7 @@ function AdminSettingsPage({ adminData }: AdminSettingsProps) {
 
         <ProfileSection
           title="Notification Preferences"
-          subtitle="Choose how you want to receive notifications about system activities and updates"
+          subtitle="Choose how you want to receive notifications_unified about system activities and updates"
           showSkeleton={showSkeleton || isLoading}
         >
           <ProfileCard>
@@ -227,7 +227,7 @@ function AdminSettingsPage({ adminData }: AdminSettingsProps) {
                       <div>
                         <h3 className="font-medium text-gray-900">Email Notifications</h3>
                         <p className="text-sm text-gray-500">
-                          Receive email notifications for system activities and administrative updates
+                          Receive email notifications_unified for system activities and administrative updates
                         </p>
                       </div>
                     </div>
@@ -253,10 +253,10 @@ function AdminSettingsPage({ adminData }: AdminSettingsProps) {
                       <h4 className="text-sm font-medium text-blue-800">About Notifications</h4>
                       <div className="mt-1 text-sm text-blue-700">
                         <ul className="list-disc list-inside space-y-1">
-                          <li>SMS notifications are sent for critical system alerts and urgent administrative matters</li>
-                          <li>Email notifications include detailed reports, user activity summaries, and system updates</li>
+                          <li>SMS notifications_unified are sent for critical system alerts and urgent administrative matters</li>
+                          <li>Email notifications_unified include detailed reports, user activity summaries, and system updates</li>
                           <li>You can change these preferences at any time</li>
-                          <li>Critical security notifications will always be sent regardless of these settings</li>
+                          <li>Critical security notifications_unified will always be sent regardless of these settings</li>
                         </ul>
                       </div>
                     </div>

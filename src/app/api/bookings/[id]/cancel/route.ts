@@ -102,7 +102,7 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
-    // Send booking cancellation notifications (fallback if not sent by cancellation service)
+    // Send booking cancellation notifications_unified (fallback if not sent by cancellation service)
     try {
       await createBookingNotification(parseInt(bookingId), 'booking_cancelled', {
         reason: 'Customer requested cancellation',
@@ -111,8 +111,8 @@ export async function POST(request: NextRequest) {
         refund_id: cancellationResult.refundId
       });
     } catch (notificationError) {
-      console.error('Error sending cancellation notifications:', notificationError);
-      // Continue with the process even if notifications fail
+      console.error('Error sending cancellation notifications_unified:', notificationError);
+      // Continue with the process even if notifications_unified fail
     }
 
     // Simulate a small delay to show loading state

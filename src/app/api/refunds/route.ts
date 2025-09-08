@@ -137,10 +137,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Send notifications based on refund result
+    // Send notifications_unified based on refund result
     if (refundResult.success && refundResult.refundId) {
       try {
-        // Get additional booking details for notifications
+        // Get additional booking details for notifications_unified
         const notificationData = {
           refundId: refundResult.refundId,
           bookingId: parseInt(bookingId),
@@ -158,8 +158,8 @@ export async function POST(request: NextRequest) {
           await sendRefundInitiatedNotification(notificationData, refundResult.instructions);
         }
       } catch (notificationError) {
-        console.error('Failed to send refund notifications:', notificationError);
-        // Don't fail the refund if notifications fail
+        console.error('Failed to send refund notifications_unified:', notificationError);
+        // Don't fail the refund if notifications_unified fail
       }
     }
 

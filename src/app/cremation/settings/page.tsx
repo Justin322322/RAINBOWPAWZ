@@ -277,7 +277,7 @@ function CremationSettingsPage({ userData }: CremationSettingsProps) {
 
         <ProfileSection
           title="Notification Preferences"
-          subtitle="Choose how you want to receive notifications about booking updates and business activities"
+          subtitle="Choose how you want to receive notifications_unified about booking updates and business activities"
           showSkeleton={showSkeleton || isLoading}
         >
           <ProfileCard>
@@ -366,7 +366,7 @@ function CremationSettingsPage({ userData }: CremationSettingsProps) {
                       <div>
                         <h3 className="font-medium text-gray-900">Email Notifications</h3>
                         <p className="text-sm text-gray-500">
-                          Receive email notifications for booking confirmations, reviews, and business updates
+                          Receive email notifications_unified for booking confirmations, reviews, and business updates
                         </p>
                       </div>
                     </div>
@@ -392,10 +392,10 @@ function CremationSettingsPage({ userData }: CremationSettingsProps) {
                       <h4 className="text-sm font-medium text-blue-800">About Notifications</h4>
                       <div className="mt-1 text-sm text-blue-700">
                         <ul className="list-disc list-inside space-y-1">
-                          <li>SMS notifications are sent for new bookings, status updates, and urgent customer requests</li>
-                          <li>Email notifications include detailed booking information, customer reviews, and business reports</li>
+                          <li>SMS notifications_unified are sent for new bookings, status updates, and urgent customer requests</li>
+                          <li>Email notifications_unified include detailed booking information, customer reviews, and business reports</li>
                           <li>You can change these preferences at any time</li>
-                          <li>Critical system notifications will always be sent regardless of these settings</li>
+                          <li>Critical system notifications_unified will always be sent regardless of these settings</li>
                         </ul>
                       </div>
                     </div>

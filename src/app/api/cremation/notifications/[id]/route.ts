@@ -30,7 +30,7 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
     // Check which column name to use (id or notification_id)
     let idColumn = 'id';
     try {
-      const tableInfo = await query(`DESCRIBE notifications`) as any[];
+      const tableInfo = await query(`DESCRIBE notifications_unified_unified`) as any[];
       const hasNotificationId = tableInfo.some((col: any) => col.Field === 'notification_id');
       const hasId = tableInfo.some((col: any) => col.Field === 'id');
       
@@ -38,30 +38,30 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
         idColumn = 'notification_id';
       }
     } catch (describeError) {
-      console.warn('Could not describe notifications table:', describeError);
+      console.warn('Could not describe notifications_unified table:', describeError);
     }
 
     // Fetch the specific notification for this cremation provider
-    const notifications = await query(`
+    const notifications_unified = await query(`
       SELECT 
         ${idColumn} as id,
         title,
         message,
         type,
         link,
-        is_read,
+        status,
         created_at
-      FROM notifications 
+      FROM notifications_unified_unified 
       WHERE ${idColumn} = ? AND user_id = ?
     `, [parseInt(notificationId), parseInt(user.userId)]) as any[];
 
-    if (!notifications || notifications.length === 0) {
+    if (!notifications_unified || notifications_unified.length === 0) {
       return NextResponse.json({
         error: 'Notification not found'
       }, { status: 404 });
     }
 
-    const notification = notifications[0];
+    const notification = notifications_unified[0];
 
     return NextResponse.json({
       success: true,
@@ -105,7 +105,7 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
     // Check which column name to use (id or notification_id)
     let idColumn = 'id';
     try {
-      const tableInfo = await query(`DESCRIBE notifications`) as any[];
+      const tableInfo = await query(`DESCRIBE notifications_unified_unified`) as any[];
       const hasNotificationId = tableInfo.some((col: any) => col.Field === 'notification_id');
       const hasId = tableInfo.some((col: any) => col.Field === 'id');
       
@@ -113,13 +113,13 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
         idColumn = 'notification_id';
       }
     } catch (describeError) {
-      console.warn('Could not describe notifications table:', describeError);
+      console.warn('Could not describe notifications_unified table:', describeError);
     }
 
     // Mark the specific notification as read for this cremation provider
     const result = await query(`
-      UPDATE notifications 
-      SET is_read = 1 
+      UPDATE notifications_unified_unified_unified 
+      SET status = 1 
       WHERE ${idColumn} = ? AND user_id = ?
     `, [parseInt(notificationId), parseInt(user.userId)]) as any;
 

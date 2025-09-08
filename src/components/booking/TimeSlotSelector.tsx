@@ -160,7 +160,7 @@ export default function TimeSlotSelector({
       }
 
       // A day is available if:
-      // 1. The day is marked as available in the provider_availability table AND
+      // 1. The day is marked as available in the service_providers table AND
       // 2. There is at least one time slot for this day AND
       // 3. The day is not in the past
       const isAvailable = (availabilityInfo?.isAvailable === true) &&

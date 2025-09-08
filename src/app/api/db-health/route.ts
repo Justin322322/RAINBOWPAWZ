@@ -36,7 +36,7 @@ export async function GET() {
       'service_packages',
       'pets',
       'users',
-      'notifications',
+      'notifications_unified',
       'payment_transactions'
     ];
     

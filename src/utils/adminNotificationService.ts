@@ -64,7 +64,7 @@ export async function createAdminNotification({
       [type, title, message, entityType, entityId, link]
     ) as any;
 
-    // Send email notifications to all admins if requested
+    // Send email notifications_unified to all admins if requested
     if (shouldSendEmail) {
       await sendAdminEmailNotifications(title, message, type, link, emailSubject);
     }
@@ -79,7 +79,7 @@ export async function createAdminNotification({
           title,
           message,
           type,
-          is_read: 0,
+          status: 0,
           link,
           created_at: new Date().toISOString()
         });
@@ -99,7 +99,7 @@ export async function createAdminNotification({
 }
 
 /**
- * Send email notifications to all admins with email notifications enabled
+ * Send email notifications_unified to all admins with email notifications_unified enabled
  */
 async function sendAdminEmailNotifications(
   title: string,
@@ -109,7 +109,7 @@ async function sendAdminEmailNotifications(
   emailSubject?: string
 ): Promise<void> {
   try {
-    // Get all admins with email notifications enabled
+    // Get all admins with email notifications_unified enabled
     const adminsResult = await query(`
       SELECT user_id, email, first_name, email_notifications
       FROM users 
@@ -138,7 +138,7 @@ async function sendAdminEmailNotifications(
 
     await Promise.allSettled(emailPromises);
   } catch (error) {
-    console.error('Error sending admin email notifications:', error);
+    console.error('Error sending admin email notifications_unified:', error);
   }
 }
 
@@ -307,7 +307,7 @@ async function ensureAdminNotificationsTable(): Promise<boolean> {
           entity_type VARCHAR(50) DEFAULT NULL,
           entity_id INT DEFAULT NULL,
           link VARCHAR(255) DEFAULT NULL,
-          is_read TINYINT(1) DEFAULT 0,
+          status TINYINT(1) DEFAULT 0,
           created_at TIMESTAMP NOT NULL DEFAULT current_timestamp()
         )
       `);

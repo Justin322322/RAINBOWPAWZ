@@ -5,7 +5,7 @@ import { verifySecureAuth } from '@/lib/secureAuth';
 const sseConnections = new Map<string, ReadableStreamDefaultController>();
 
 /**
- * GET - Server-Sent Events endpoint for real-time notifications
+ * GET - Server-Sent Events endpoint for real-time notifications_unified
  */
 export async function GET(request: NextRequest) {
   try {
@@ -27,7 +27,7 @@ export async function GET(request: NextRequest) {
         // Send initial connection confirmation
         controller.enqueue(`data: ${JSON.stringify({
           type: 'connection',
-          message: 'Connected to real-time notifications',
+          message: 'Connected to real-time notifications_unified',
           timestamp: new Date().toISOString()
         })}\n\n`);
 

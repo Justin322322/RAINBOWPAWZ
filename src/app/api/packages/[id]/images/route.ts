@@ -88,18 +88,17 @@ export async function DELETE(
       return NextResponse.json({ error: 'Package not found or access denied' }, { status: 403 });
     }
 
-    // Check if image exists in database using the converted database path
+    // Check if image exists in database using simple JSON query
     const imageRecord = await query(
-      'SELECT image_id FROM service_packages sp, JSON_TABLE(sp.images, '$[*]' COLUMNS (url VARCHAR(500) PATH '$.url', alt_text VARCHAR(255) PATH '$.alt_text', is_primary BOOLEAN PATH '$.is_primary')) as images WHERE package_id = ? AND image_path = ?',
-      [packageId, dbImagePath]
-    ) as any[];
-
+      'SELECT images FROM service_packages WHERE package_id = ?',
+      [packageId]
+    );
 
     if (!imageRecord.length) {
       
-      // Let's also search for any image paths for this package to help debugging
+      // Package not found
       const _allImages = await query(
-        'SELECT image_path FROM service_packages sp, JSON_TABLE(sp.images, '$[*]' COLUMNS (url VARCHAR(500) PATH '$.url', alt_text VARCHAR(255) PATH '$.alt_text', is_primary BOOLEAN PATH '$.is_primary')) as images WHERE package_id = ?',
+        'SELECT images FROM service_packages WHERE package_id = ?',
         [packageId]
       ) as any[];
       
@@ -108,7 +107,7 @@ export async function DELETE(
 
     // Delete from database using the database path
     const _deleteResult = await query(
-      'DELETE FROM service_packages sp, JSON_TABLE(sp.images, '$[*]' COLUMNS (url VARCHAR(500) PATH '$.url', alt_text VARCHAR(255) PATH '$.alt_text', is_primary BOOLEAN PATH '$.is_primary')) as images WHERE package_id = ? AND image_path = ?',
+      'UPDATE service_packages SET images = JSON_REMOVE(images, JSON_UNQUOTE(JSON_SEARCH(images, "one", ?))) WHERE package_id = ?',
       [packageId, dbImagePath]
     );
 

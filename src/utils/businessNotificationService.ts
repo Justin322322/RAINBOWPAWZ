@@ -117,12 +117,12 @@ export async function createBusinessNotification({
   try {
     console.log('Creating business notification:', { userId, title, type, link });
     
-    // Ensure the notifications table exists
+    // Ensure the notifications_unified_unified table exists
     await ensureNotificationsTable();
 
     // Check if notification already exists to prevent duplicates
     const existingNotification = await query(`
-      SELECT id FROM notifications 
+      SELECT id FROM notifications_unified 
       WHERE user_id = ? AND title = ? AND message = ? AND created_at > DATE_SUB(NOW(), INTERVAL 1 HOUR)
     `, [userId, title, message]) as any[];
 
@@ -136,7 +136,7 @@ export async function createBusinessNotification({
 
     // Insert the notification
     const result = await query(
-      `INSERT INTO notifications (user_id, title, message, type, link, is_read, created_at)
+      `INSERT INTO notifications_unified_unified_unified (user_id, title, message, type, link, status, created_at)
        VALUES (?, ?, ?, ?, ?, 0, NOW())`,
       [userId, title, message, type, link]
     ) as any;
@@ -150,13 +150,13 @@ export async function createBusinessNotification({
         title,
         message,
         type,
-        is_read: 0,
+        status: 0,
         link,
         created_at: new Date().toISOString()
       });
     } catch {}
 
-    // Send email notification if requested and user has email notifications enabled
+    // Send email notification if requested and user has email notifications_unified enabled
     if (shouldSendEmail) {
       await sendBusinessEmailNotification(userId, title, message, type, link, emailSubject);
     }
@@ -175,7 +175,7 @@ export async function createBusinessNotification({
 }
 
 /**
- * Send email notification to business user if they have email notifications enabled
+ * Send email notification to business user if they have email notifications_unified enabled
  */
 async function sendBusinessEmailNotification(
   userId: number,
@@ -195,7 +195,7 @@ async function sendBusinessEmailNotification(
           email, 
           first_name, 
           sp.name AS business_name,
-          COALESCE(email_notifications, 1) as email_notifications
+          COALESCE(email_notifications_unified, 1) as email_notifications
         FROM users u
         LEFT JOIN service_providers sp ON u.user_id = sp.user_id
         WHERE u.user_id = ? AND u.role = 'business'
@@ -208,7 +208,7 @@ async function sendBusinessEmailNotification(
           email, 
           first_name, 
           sp.name AS business_name,
-          1 as email_notifications
+          1 as email_notifications_unified
         FROM users u
         LEFT JOIN service_providers sp ON u.user_id = sp.user_id
         WHERE u.user_id = ? AND u.role = 'business'
@@ -222,11 +222,11 @@ async function sendBusinessEmailNotification(
 
     const user = userResult[0];
 
-    // Check if user has email notifications enabled (default to true)
+    // Check if user has email notifications_unified enabled (default to true)
     const emailNotificationsEnabled = user.email_notifications !== null ? Boolean(user.email_notifications) : true;
 
     if (!emailNotificationsEnabled) {
-      console.log('Email notifications disabled for user:', userId);
+      console.log('Email notifications_unified disabled for user:', userId);
       return;
     }
 
@@ -254,7 +254,7 @@ async function sendBusinessEmailNotification(
 }
 
 /**
- * Create email content for business notifications
+ * Create email content for business notifications_unified_unified
  */
 function createBusinessEmailContent(
   firstName: string,
@@ -289,7 +289,7 @@ function createBusinessEmailContent(
 }
 
 /**
- * Ensure the notifications table exists
+ * Ensure the notifications_unified_unified table exists
  */
 async function ensureNotificationsTable(): Promise<void> {
   try {
@@ -297,27 +297,27 @@ async function ensureNotificationsTable(): Promise<void> {
     const tableExists = await query(`
       SELECT COUNT(*) as count 
       FROM information_schema.tables 
-      WHERE table_schema = DATABASE() AND table_name = 'notifications'
+      WHERE table_schema = DATABASE() AND table_name = 'notifications_unified'
     `) as any[];
 
     if (tableExists[0].count === 0) {
-      console.log('Creating notifications table...');
+      console.log('Creating notifications_unified_unified table...');
       
       // Create the table if it doesn't exist
       await query(`
-        CREATE TABLE IF NOT EXISTS notifications (
+        CREATE TABLE IF NOT EXISTS notifications_unified (
           id INT AUTO_INCREMENT PRIMARY KEY,
           user_id INT NOT NULL,
           title VARCHAR(255) NOT NULL,
           message TEXT NOT NULL,
           type ENUM('info', 'success', 'warning', 'error') NOT NULL DEFAULT 'info',
           link VARCHAR(255) DEFAULT NULL,
-          is_read TINYINT(1) DEFAULT 0,
+          status TINYINT(1) DEFAULT 0,
           created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
           updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
           FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE,
           INDEX idx_user_id (user_id),
-          INDEX idx_is_read (is_read),
+          INDEX idx_status (status),
           INDEX idx_created_at (created_at)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
       `);
@@ -327,7 +327,7 @@ async function ensureNotificationsTable(): Promise<void> {
       console.log('Notifications table already exists');
     }
   } catch (error) {
-    console.error('Error ensuring notifications table exists:', error);
+    console.error('Error ensuring notifications_unified table exists:', error);
     throw error;
   }
 } 

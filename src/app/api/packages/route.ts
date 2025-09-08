@@ -328,7 +328,7 @@ export async function POST(request: NextRequest) {
           if (!sizeCategory || isNaN(min) || isNaN(p)) continue;
           try {
             await transaction.query(
-              `INSERT INTO package_size_pricing
+              `INSERT INTO service_packages
                 (package_id, size_category, weight_range_min, weight_range_max, price)
                VALUES (?, ?, ?, ?, ?)`,
               [packageId, sizeCategory, min, max, p]
@@ -417,7 +417,7 @@ export async function POST(request: NextRequest) {
       if (Array.isArray(body.supportedPetTypes)) {
         // Deactivate all existing pet types
         await transaction.query(
-          'UPDATE business_pet_types SET is_active = 0 WHERE provider_id = ?',
+          'UPDATE service_types SET is_active = 0 WHERE provider_id = ?',
           [providerId]
         );
 
@@ -426,12 +426,12 @@ export async function POST(request: NextRequest) {
           // Try to insert; if duplicate, update is_active
           try {
             await transaction.query(
-              'INSERT INTO business_pet_types (provider_id, pet_type, is_active) VALUES (?, ?, 1)',
+              'INSERT INTO service_types (provider_id, pet_type, is_active) VALUES (?, ?, 1)',
               [providerId, petType]
             );
           } catch {
             await transaction.query(
-              'UPDATE business_pet_types SET is_active = 1 WHERE provider_id = ? AND pet_type = ?',
+              'UPDATE service_types SET is_active = 1 WHERE provider_id = ? AND pet_type = ?',
               [providerId, petType]
             );
           }

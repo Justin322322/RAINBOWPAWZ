@@ -44,7 +44,7 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
-    let restoredUser: any = null; // Store user info for notifications
+    let restoredUser: any = null; // Store user info for notifications_unified
 
     try {
       if (userType === 'personal') {
@@ -57,12 +57,12 @@ export async function POST(request: NextRequest) {
 
         // Update any existing restrictions to inactive
         await query(`
-          UPDATE user_restrictions
+          UPDATE users
           SET is_active = 0
           WHERE user_id = ? AND is_active = 1
         `, [userId]);
 
-        // Get user details for notifications
+        // Get user details for notifications_unified
         const userResult = await query(`
           SELECT user_id, first_name, last_name, email, phone, sms_notifications
           FROM users WHERE user_id = ?
@@ -163,12 +163,12 @@ export async function POST(request: NextRequest) {
 
           // Update restrictions
           await query(`
-            UPDATE user_restrictions
+            UPDATE users
             SET is_active = 0
             WHERE user_id = ? AND is_active = 1
           `, [businessUserId]);
 
-          // Get user details for notifications
+          // Get user details for notifications_unified
           const userResult = await query(`
             SELECT user_id, first_name, last_name, email, phone, sms_notifications
             FROM users WHERE user_id = ?
@@ -248,12 +248,12 @@ export async function POST(request: NextRequest) {
 
           // Update restrictions
           await query(`
-            UPDATE user_restrictions
+            UPDATE users
             SET is_active = 0
             WHERE user_id = ? AND is_active = 1
           `, [businessUserId]);
 
-          // Get user details for notifications
+          // Get user details for notifications_unified
           const userResult = await query(`
             SELECT user_id, first_name, last_name, email, phone, sms_notifications
             FROM users WHERE user_id = ?
@@ -277,7 +277,7 @@ export async function POST(request: NextRequest) {
       }, { status: 500 });
     }
 
-    // Send restoration notifications asynchronously after successful database operations
+    // Send restoration notifications_unified asynchronously after successful database operations
     if (restoredUser) {
       // Don't await this to prevent blocking the response
       notifyUserOfRestoration(restoredUser, userType)
@@ -345,7 +345,7 @@ async function notifyUserOfRestoration(user: any, userType: string) {
           title,
           message,
           type: 'success',
-          is_read: 0,
+          status: 0,
           link: userType === 'cremation_center' ? '/cremation/dashboard' : '/user/furparent_dashboard',
           created_at: new Date().toISOString()
         });
@@ -394,7 +394,7 @@ async function notifyUserOfRestoration(user: any, userType: string) {
   }
 }
 
-// Email template for restoration notifications
+// Email template for restoration notifications_unified
 function createRestorationNotificationEmail({
   userName,
   userType

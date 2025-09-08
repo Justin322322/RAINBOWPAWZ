@@ -124,7 +124,7 @@ export async function cancelBookingWithRefund(
 
     const refundResult = await processRefund(refundRequest);
 
-    // Send refund notifications
+    // Send refund notifications_unified
     if (refundResult.success && refundResult.refundId) {
       try {
         const notificationData = {
@@ -144,8 +144,8 @@ export async function cancelBookingWithRefund(
           await sendRefundInitiatedNotification(notificationData, refundResult.instructions);
         }
       } catch (notificationError) {
-        console.error('Failed to send refund notifications:', notificationError);
-        // Don't fail the cancellation if notifications fail
+        console.error('Failed to send refund notifications_unified:', notificationError);
+        // Don't fail the cancellation if notifications_unified fail
       }
     }
 

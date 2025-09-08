@@ -64,14 +64,14 @@ export async function PUT(request: NextRequest) {
     // **🔥 FIX: Use proper transaction management to prevent connection leaks**
     const _result = await withTransaction(async (transaction) => {
 
-      // Check if user_restrictions table exists, create if not
+      // Check if users table exists, create if not
       const tablesResult = await transaction.query(
-        "SHOW TABLES LIKE 'user_restrictions'"
+        "SHOW TABLES LIKE 'users'"
       ) as any[];
 
       if (!tablesResult || tablesResult.length === 0) {
         await transaction.query(`
-          CREATE TABLE user_restrictions (
+          CREATE TABLE users (
             restriction_id INT AUTO_INCREMENT PRIMARY KEY,
             user_id INT NOT NULL,
             reason TEXT,
@@ -87,14 +87,14 @@ export async function PUT(request: NextRequest) {
       if (restricted) {
         // Check if user is already restricted
         const restrictionResult = await transaction.query(
-          'SELECT restriction_id FROM user_restrictions WHERE user_id = ? AND is_active = 1 LIMIT 1',
+          'SELECT restriction_id FROM users WHERE user_id = ? AND is_active = 1 LIMIT 1',
           [userId]
         ) as any[];
 
         if (restrictionResult && restrictionResult.length > 0) {
           // Update existing restriction
           await transaction.query(
-            `UPDATE user_restrictions
+            `UPDATE users
              SET reason = ?,
                  duration = ?,
                  report_count = ?,
@@ -105,7 +105,7 @@ export async function PUT(request: NextRequest) {
         } else {
           // Create new restriction
           await transaction.query(
-            `INSERT INTO user_restrictions (user_id, reason, duration, report_count)
+            `INSERT INTO users (user_id, reason, duration, report_count)
              VALUES (?, ?, ?, ?)`,
             [userId, reason, duration, reportCount]
           );
@@ -120,14 +120,14 @@ export async function PUT(request: NextRequest) {
           [userId]
         );
 
-        // Send notifications to the user (non-blocking)
+        // Send notifications_unified to the user (non-blocking)
         notifyUserOfRestriction(userCheckResult[0], reason, duration).catch(error => {
           console.error('Failed to send restriction notification:', error);
         });
       } else {
         // Remove restriction
         await transaction.query(
-          'UPDATE user_restrictions SET is_active = 0 WHERE user_id = ? AND is_active = 1',
+          'UPDATE users SET is_active = 0 WHERE user_id = ? AND is_active = 1',
           [userId]
         );
 
@@ -171,7 +171,7 @@ export async function PUT(request: NextRequest) {
     if (restricted) {
       const restrictionResult = await query(
         `SELECT restriction_id, reason, restriction_date, duration, report_count, is_active
-         FROM user_restrictions
+         FROM users
          WHERE user_id = ? AND is_active = 1
          LIMIT 1`,
         [userId]
@@ -229,7 +229,7 @@ async function notifyUserOfRestriction(user: any, reason: string, duration?: str
           title,
           message,
           type: 'error',
-          is_read: 0,
+          status: 0,
           link: null,
           created_at: new Date().toISOString()
         });
@@ -279,7 +279,7 @@ async function notifyUserOfRestriction(user: any, reason: string, duration?: str
   }
 }
 
-// Email template for restriction notifications
+// Email template for restriction notifications_unified
 function createRestrictionNotificationEmail({
   userName,
   reason,

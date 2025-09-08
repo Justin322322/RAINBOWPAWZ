@@ -4,7 +4,7 @@ import { verifySecureAuth } from '@/lib/secureAuth';
 
 /**
  * API endpoint to check for new pending bookings for cremation businesses
- * GET /api/cremation/notifications/pending-bookings
+ * GET /api/cremation/notifications_unified/pending-bookings
  */
 export async function GET(request: NextRequest) {
   try {
@@ -102,7 +102,7 @@ export async function GET(request: NextRequest) {
 
 /**
  * POST endpoint to mark pending bookings as notified
- * POST /api/cremation/notifications/pending-bookings
+ * POST /api/cremation/notifications_unified/pending-bookings
  */
 export async function POST(request: NextRequest) {
   try {

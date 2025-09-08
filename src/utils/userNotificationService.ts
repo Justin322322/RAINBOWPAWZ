@@ -17,7 +17,7 @@ interface NotificationRecord {
   title: string;
   message: string;
   type: 'info' | 'success' | 'warning' | 'error';
-  is_read: boolean; // Database returns boolean
+  status: boolean; // Database returns boolean
   link: string | null;
   created_at: string;
 }
@@ -28,7 +28,7 @@ interface ConvertedNotificationRecord {
   title: string;
   message: string;
   type: 'info' | 'success' | 'warning' | 'error';
-  is_read: number; // Frontend expects number (0 or 1)
+  status: number; // Frontend expects number (0 or 1)
   link: string | null;
   created_at: string;
 }
@@ -85,7 +85,7 @@ function determineNotificationLink(_type: string, _entityId?: number): string | 
 }
 
 /**
- * Ensure the notifications table exists
+ * Ensure the notifications_unified table exists
  */
 async function ensureNotificationsTable(): Promise<boolean> {
   try {
@@ -93,22 +93,22 @@ async function ensureNotificationsTable(): Promise<boolean> {
       SELECT COUNT(*) as count
       FROM information_schema.tables
       WHERE table_schema = DATABASE()
-      AND table_name = 'notifications'
+      AND table_name = 'notifications_unified_unified'
     `) as Array<{ count: number }>;
 
     if (tableExists[0].count === 0) {
       await query(`
-        CREATE TABLE IF NOT EXISTS notifications (
+        CREATE TABLE IF NOT EXISTS notifications_unified_unified (
           id INT AUTO_INCREMENT PRIMARY KEY,
           user_id INT NOT NULL,
           title VARCHAR(255) NOT NULL,
           message TEXT NOT NULL,
           type ENUM('info', 'success', 'warning', 'error') DEFAULT 'info',
-          is_read BOOLEAN DEFAULT FALSE,
+          status BOOLEAN DEFAULT FALSE,
           link VARCHAR(255) DEFAULT NULL,
           created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
           INDEX idx_user_id (user_id),
-          INDEX idx_is_read (is_read),
+          INDEX idx_status (status),
           INDEX idx_created_at (created_at)
         )
       `);
@@ -117,32 +117,32 @@ async function ensureNotificationsTable(): Promise<boolean> {
     return true;
   } catch (error) {
     if (process.env.NODE_ENV === 'development') {
-      console.error("Error ensuring notifications table exists:", error);
+      console.error("Error ensuring notifications_unified table exists:", error);
     }
     return false;
   }
 }
 
 /**
- * Get the correct ID column name for the notifications table
+ * Get the correct ID column name for the notifications_unified table
  */
 async function getNotificationIdColumn(): Promise<'id' | 'notification_id'> {
   try {
-    const tableInfo = await query(`DESCRIBE notifications`) as TableColumnInfo[];
+    const tableInfo = await query(`DESCRIBE notifications_unified_unified`) as TableColumnInfo[];
     const hasNotificationId = tableInfo.some(col => col.Field === 'notification_id');
     const hasId = tableInfo.some(col => col.Field === 'id');
     
     return hasNotificationId && !hasId ? 'notification_id' : 'id';
   } catch (error) {
     if (process.env.NODE_ENV === 'development') {
-      console.warn('Could not describe notifications table:', error);
+      console.warn('Could not describe notifications_unified table:', error);
     }
     return 'id'; // Default fallback
   }
 }
 
 /**
- * Get notifications for a specific user
+ * Get notifications_unified for a specific user
  */
 export async function getUserNotifications(userId: number, limit: number = 10): Promise<ConvertedNotificationRecord[]> {
   try {
@@ -150,23 +150,23 @@ export async function getUserNotifications(userId: number, limit: number = 10): 
     const idColumn = await getNotificationIdColumn();
     
     const selectQuery = idColumn === 'notification_id'
-      ? `SELECT notification_id as id, user_id, title, message, type, is_read, link, created_at 
-         FROM notifications WHERE user_id = ? ORDER BY created_at DESC LIMIT ${Number(limit)}`
-      : `SELECT id, user_id, title, message, type, is_read, link, created_at 
-         FROM notifications WHERE user_id = ? ORDER BY created_at DESC LIMIT ${Number(limit)}`;
+      ? `SELECT notification_id as id, user_id, title, message, type, status, link, created_at 
+         FROM notifications_unified_unified WHERE user_id = ? ORDER BY created_at DESC LIMIT ${Number(limit)}`
+      : `SELECT id, user_id, title, message, type, status, link, created_at 
+         FROM notifications_unified_unified WHERE user_id = ? ORDER BY created_at DESC LIMIT ${Number(limit)}`;
     
-    const notifications = await query(selectQuery, [userId]) as NotificationRecord[];
+    const notifications_unified = await query(selectQuery, [userId]) as NotificationRecord[];
     
-    // Convert boolean is_read to number (0 or 1) to match frontend expectations
-    const convertedNotifications = (notifications || []).map(notification => ({
+    // Convert boolean status to number (0 or 1) to match frontend expectations
+    const convertedNotifications = (notifications_unified || []).map(notification => ({
       ...notification,
-      is_read: notification.is_read ? 1 : 0
+      status: notification.status ? 1 : 0
     }));
     
     return convertedNotifications;
   } catch (error) {
     if (process.env.NODE_ENV === 'development') {
-      console.error("Error fetching user notifications:", error);
+      console.error("Error fetching user notifications_unified:", error);
     }
     return [];
   }
@@ -180,8 +180,8 @@ export async function markNotificationAsRead(notificationId: number, userId: num
     const idColumn = await getNotificationIdColumn();
     
     const updateQuery = idColumn === 'notification_id'
-      ? 'UPDATE notifications SET is_read = TRUE WHERE notification_id = ? AND user_id = ?'
-      : 'UPDATE notifications SET is_read = TRUE WHERE id = ? AND user_id = ?';
+      ? 'UPDATE notifications_unified_unified SET status = TRUE WHERE notification_id = ? AND user_id = ?'
+      : 'UPDATE notifications_unified_unified SET status = TRUE WHERE id = ? AND user_id = ?';
     
     await query(updateQuery, [notificationId, userId]);
     return true;
@@ -194,19 +194,19 @@ export async function markNotificationAsRead(notificationId: number, userId: num
 }
 
 /**
- * Mark all notifications as read for a user
+ * Mark all notifications_unified as read for a user
  */
 export async function markAllNotificationsAsRead(userId: number): Promise<boolean> {
   try {
     await query(`
-      UPDATE notifications 
-      SET is_read = TRUE 
-      WHERE user_id = ? AND is_read = FALSE
+      UPDATE notifications_unified_unified_unified 
+      SET status = TRUE 
+      WHERE user_id = ? AND status = FALSE
     `, [userId]);
     return true;
   } catch (error) {
     if (process.env.NODE_ENV === 'development') {
-      console.error("Error marking all notifications as read:", error);
+      console.error("Error marking all notifications_unified as read:", error);
     }
     return false;
   }

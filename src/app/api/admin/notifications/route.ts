@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { verifySecureAuth } from '@/lib/secureAuth';
 
-// Get admin notifications
+// Get admin notifications_unified
 export async function GET(request: NextRequest) {
   try {
     // Use secure authentication for consistency
@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
         error: 'Unauthorized',
         details: 'Admin access required',
         success: false,
-        notifications: []
+        notifications_unified: []
       }, { 
         status: 401,
         headers: {
@@ -27,7 +27,7 @@ export async function GET(request: NextRequest) {
         error: 'Unauthorized',
         details: 'Admin access required',
         success: false,
-        notifications: []
+        notifications_unified: []
       }, { 
         status: 403,
         headers: {
@@ -41,7 +41,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const unreadOnly = searchParams.get('unread_only') === 'true';
 
-    // Get notifications from the database
+    // Get notifications_unified from the database
     // First check if the admin_notifications table exists
     try {
       const tableCheck = await query(`
@@ -64,17 +64,17 @@ export async function GET(request: NextRequest) {
             entity_type VARCHAR(50),
             entity_id INT,
             link VARCHAR(255),
-            is_read TINYINT(1) DEFAULT 0,
+            status TINYINT(1) DEFAULT 0,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
           )
         `);
 
       }
 
-      // Get notifications based on unread_only parameter
-      const notifications = await query(`
+      // Get notifications_unified based on unread_only parameter
+      const notifications_unified = await query(`
         SELECT * FROM admin_notifications
-        ${unreadOnly ? 'WHERE is_read = 0' : ''}
+        ${unreadOnly ? 'WHERE status = 0' : ''}
         ORDER BY created_at DESC
         LIMIT 50
       `);
@@ -115,7 +115,7 @@ export async function GET(request: NextRequest) {
       if (pendingCount > 0) {
         const applicationNotification = await query(`
           SELECT * FROM admin_notifications
-          WHERE type = 'pending_application' AND is_read = 0
+          WHERE type = 'pending_application' AND status = 0
           LIMIT 1
         `);
 
@@ -132,20 +132,20 @@ export async function GET(request: NextRequest) {
             '/admin/applications'
           ]);
 
-          // Fetch notifications based on unread_only parameter
+          // Fetch notifications_unified based on unread_only parameter
           const newNotifications = await query(`
             SELECT * FROM admin_notifications
-            ${unreadOnly ? 'WHERE is_read = 0' : ''}
+            ${unreadOnly ? 'WHERE status = 0' : ''}
             ORDER BY created_at DESC
             LIMIT 50
           `);
 
-          // Calculate unread count from the new notifications
-          const unreadCount = newNotifications.filter((notification: any) => notification.is_read === 0).length;
+          // Calculate unread count from the new notifications_unified
+          const unreadCount = newNotifications.filter((notification: any) => notification.status === 0).length;
 
           return NextResponse.json({
             success: true,
-            notifications: newNotifications,
+            notifications_unified: newNotifications,
             pendingApplications: pendingCount,
             unread_count: unreadCount
           }, {
@@ -157,12 +157,12 @@ export async function GET(request: NextRequest) {
         }
       }
 
-      // Calculate unread count from the notifications
-      const unreadCount = notifications.filter((notification: any) => notification.is_read === 0).length;
+      // Calculate unread count from the notifications_unified
+      const unreadCount = notifications_unified.filter((notification: any) => notification.status === 0).length;
 
       return NextResponse.json({
         success: true,
-        notifications,
+        notifications_unified,
         pendingApplications: pendingCount,
         unread_count: unreadCount
       }, {
@@ -176,7 +176,7 @@ export async function GET(request: NextRequest) {
         success: false,
         error: 'Database error',
         details: dbError instanceof Error ? dbError.message : 'Unknown database error',
-        notifications: [],
+        notifications_unified: [],
         pendingApplications: 0
       }, {
         status: 500,
@@ -188,10 +188,10 @@ export async function GET(request: NextRequest) {
     }
   } catch (error) {
     return NextResponse.json({
-      error: 'Failed to fetch notifications',
+      error: 'Failed to fetch notifications_unified',
       details: error instanceof Error ? error.message : 'Unknown error',
       success: false,
-      notifications: [],
+      notifications_unified: [],
       pendingApplications: 0
     }, { 
       status: 500,
@@ -203,7 +203,7 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// Mark notifications as read (PATCH method for consistency with user API)
+// Mark notifications_unified as read (PATCH method for consistency with user API)
 export async function PATCH(request: NextRequest) {
   try {
     // Use secure authentication for consistency
@@ -242,16 +242,16 @@ export async function PATCH(request: NextRequest) {
 
     try {
       if (markAll) {
-        // Mark all notifications as read
+        // Mark all notifications_unified as read
         await query(`
           UPDATE admin_notifications
-          SET is_read = 1
+          SET status = 1
         `);
       } else if (notificationId) {
         // Mark specific notification as read
         await query(`
           UPDATE admin_notifications
-          SET is_read = 1
+          SET status = 1
           WHERE id = ?
         `, [notificationId]);
       } else {
@@ -309,7 +309,7 @@ export async function PATCH(request: NextRequest) {
   }
 }
 
-// Mark notifications as read (POST method for bulk operations)
+// Mark notifications_unified as read (POST method for bulk operations)
 export async function POST(request: NextRequest) {
   try {
     // Use secure authentication for consistency
@@ -348,28 +348,28 @@ export async function POST(request: NextRequest) {
 
     try {
       if (markAll) {
-        // Mark all notifications as read
+        // Mark all notifications_unified as read
         if (type) {
-          // Mark all notifications of a specific type as read
+          // Mark all notifications_unified of a specific type as read
           await query(`
             UPDATE admin_notifications
-            SET is_read = 1
+            SET status = 1
             WHERE type = ?
           `, [type]);
         } else {
-          // Mark all notifications as read
+          // Mark all notifications_unified as read
           await query(`
             UPDATE admin_notifications
-            SET is_read = 1
+            SET status = 1
           `);
         }
       } else if (notificationIds && Array.isArray(notificationIds) && notificationIds.length > 0) {
-        // Mark specific notifications as read
+        // Mark specific notifications_unified as read
         // Use a safer approach with multiple parameters
         const placeholders = notificationIds.map(() => '?').join(',');
         await query(`
           UPDATE admin_notifications
-          SET is_read = 1
+          SET status = 1
           WHERE id IN (${placeholders})
         `, [...notificationIds]);
       } else {
@@ -397,7 +397,7 @@ export async function POST(request: NextRequest) {
       });
     } catch (dbError) {
       return NextResponse.json({
-        error: 'Database error while marking notifications as read',
+        error: 'Database error while marking notifications_unified as read',
         details: dbError instanceof Error ? dbError.message : 'Unknown database error',
         success: false
       }, {
@@ -410,7 +410,7 @@ export async function POST(request: NextRequest) {
     }
   } catch (error) {
     return NextResponse.json({
-      error: 'Failed to mark notifications as read',
+      error: 'Failed to mark notifications_unified as read',
       details: error instanceof Error ? error.message : 'Unknown error',
       success: false
     }, { 

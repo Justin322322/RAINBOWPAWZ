@@ -303,7 +303,7 @@ function formatPhilippinePhoneNumber(phoneNumber: string): string {
 }
 
 /**
- * Create SMS message for booking notifications
+ * Create SMS message for booking notifications_unified
  */
 export function createBookingSMSMessage(
   customerName: string,

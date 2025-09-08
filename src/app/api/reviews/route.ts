@@ -220,17 +220,17 @@ export async function POST(request: NextRequest) {
 
     // Create a notification for the service provider
     try {
-      // Check if the notifications table exists
+      // Check if the notifications_unified table exists
       const tablesResult = await query(`
         SELECT TABLE_NAME
         FROM INFORMATION_SCHEMA.TABLES
         WHERE TABLE_SCHEMA = DATABASE()
-        AND TABLE_NAME IN ('notifications', 'businesses')
+        AND TABLE_NAME IN ('notifications_unified', 'businesses')
       `) as any[];
 
       const existingTables = new Set(tablesResult.map((row: any) => row.TABLE_NAME));
 
-      if (!existingTables.has('notifications')) {
+      if (!existingTables.has('notifications_unified')) {
         return NextResponse.json({
           success: true,
           reviewId: result.insertId,

@@ -65,7 +65,7 @@ export async function verifyOtp({
 
     // Check for rate limiting (max 15 attempts in 10 minutes)
     const rateLimitResult = await query(
-      `SELECT COUNT(*) as count FROM otp_attempts
+      `SELECT COUNT(*) as count FROM auth_tokens
        WHERE user_id = ? AND attempt_type = 'verify' AND attempt_time > DATE_SUB(NOW(), INTERVAL 10 MINUTE)`,
       [userId]
     ) as any[];
@@ -76,13 +76,13 @@ export async function verifyOtp({
 
     // Record the verification attempt
     await query(
-      'INSERT INTO otp_attempts (user_id, attempt_type, ip_address) VALUES (?, ?, ?)',
+      'INSERT INTO auth_tokens (user_id, attempt_type, ip_address) VALUES (?, ?, ?)',
       [userId, 'verify', ipAddress]
     );
 
     // Get only the latest valid OTP for the user
     const otpResult = await query(
-      `SELECT id, otp_code, expires_at, is_used FROM otp_codes
+      `SELECT id, token_value, expires_at, is_used FROM auth_tokens
        WHERE user_id = ? AND is_used = 0 AND expires_at > NOW()
        ORDER BY created_at DESC LIMIT 1`,
       [userId]
@@ -95,13 +95,13 @@ export async function verifyOtp({
     const storedOtp = otpResult[0];
 
     // Check if the OTP matches
-    if (storedOtp.otp_code !== otpCode) {
+    if (storedOtp.token_value !== otpCode) {
       return { success: false, error: 'Invalid verification code. Please try again.', message: 'Invalid verification code. Please try again.' };
     }
 
     // Mark the OTP as used
     await query(
-      'UPDATE otp_codes SET is_used = 1 WHERE id = ?',
+      'UPDATE auth_tokens SET is_used = 1 WHERE id = ?',
       [storedOtp.id]
     );
 
@@ -150,7 +150,7 @@ export async function generateOtp({
 
     // Check for rate limiting (max 10 attempts in 10 minutes)
     const rateLimitResult = await query(
-      `SELECT COUNT(*) as count FROM otp_attempts
+      `SELECT COUNT(*) as count FROM auth_tokens
       WHERE user_id = ? AND attempt_type = 'generate' AND attempt_time > DATE_SUB(NOW(), INTERVAL 10 MINUTE)`,
       [userId]
     ) as any[];
@@ -169,19 +169,19 @@ export async function generateOtp({
     // First, invalidate any existing OTPs for this user
     try {
       await query(
-        'UPDATE otp_codes SET is_used = 1 WHERE user_id = ? AND is_used = 0',
+        'UPDATE auth_tokens SET is_used = 1 WHERE user_id = ? AND is_used = 0',
         [userId]
       );
 
       // Store the new OTP in the database
       await query(
-        'INSERT INTO otp_codes (user_id, otp_code, expires_at) VALUES (?, ?, ?)',
+        'INSERT INTO auth_tokens (user_id, token_value, expires_at) VALUES (?, ?, ?)',
         [userId, otpCode, expiresAt]
       );
 
       // Record the attempt
       await query(
-        'INSERT INTO otp_attempts (user_id, attempt_type, ip_address) VALUES (?, ?, ?)',
+        'INSERT INTO auth_tokens (user_id, attempt_type, ip_address) VALUES (?, ?, ?)',
         [userId, 'generate', ipAddress]
       );
     } catch {

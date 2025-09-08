@@ -150,7 +150,7 @@ async function ensureNotificationColumns() {
     if (!existingColumns.includes('sms_notifications')) {
       await query(`
         ALTER TABLE users
-        ADD COLUMN sms_notifications BOOLEAN DEFAULT TRUE COMMENT 'User preference for SMS notifications'
+        ADD COLUMN sms_notifications BOOLEAN DEFAULT TRUE COMMENT 'User preference for SMS notifications_unified'
       `);
     }
 
@@ -158,7 +158,7 @@ async function ensureNotificationColumns() {
     if (!existingColumns.includes('email_notifications')) {
       await query(`
         ALTER TABLE users
-        ADD COLUMN email_notifications BOOLEAN DEFAULT TRUE COMMENT 'User preference for email notifications'
+        ADD COLUMN email_notifications BOOLEAN DEFAULT TRUE COMMENT 'User preference for email notifications_unified'
       `);
     }
 

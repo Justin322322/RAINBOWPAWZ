@@ -332,7 +332,7 @@ export default function PendingVerificationPage() {
 
       // Create notification for admin about document upload
       try {
-        const notificationResponse = await fetch('/api/notifications/system', {
+        const notificationResponse = await fetch('/api/notifications_unified/system', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

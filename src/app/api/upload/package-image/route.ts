@@ -169,7 +169,7 @@ export async function POST(request: NextRequest) {
 
           // Get the current max display order
           const orderResult = await query(
-            'SELECT MAX(display_order) as max_order FROM service_packages sp, JSON_TABLE(sp.images, '$[*]' COLUMNS (url VARCHAR(500) PATH '$.url', alt_text VARCHAR(255) PATH '$.alt_text', is_primary BOOLEAN PATH '$.is_primary')) as images WHERE package_id = ?',
+            'SELECT COALESCE(JSON_LENGTH(images), 0) as max_order FROM service_packages WHERE package_id = ?',
             [packageIdInt]
           ) as any[];
           console.log('Display order result:', orderResult);

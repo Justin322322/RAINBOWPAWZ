@@ -28,11 +28,11 @@ async function columnExists(tableName: string, columnName: string): Promise<bool
 
 async function ensureCompatibleStorage(): Promise<void> {
   if (process.env.ALLOW_DDL === 'true') {
-    // Create provider_payment_qr table if missing so we have a durable store
-    if (!(await tableExists('provider_payment_qr'))) {
+    // Create service_providers table if missing so we have a durable store
+    if (!(await tableExists('service_providers'))) {
       try {
         await query(`
-          CREATE TABLE IF NOT EXISTS provider_payment_qr (
+          CREATE TABLE IF NOT EXISTS service_providers (
             provider_id INT PRIMARY KEY,
             qr_path MEDIUMTEXT NULL,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
@@ -71,13 +71,13 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ success: true, qrPath: null });
     }
 
-    // Prefer provider_payment_qr if the table exists, else fallback to service_providers.payment_qr_path
+    // Prefer service_providers if the table exists, else fallback to service_providers.payment_qr_path
     let qrPath: string | null = null;
 
-    if (await tableExists('provider_payment_qr')) {
+    if (await tableExists('service_providers')) {
       try {
         const qrRows = await query(
-          'SELECT qr_path FROM provider_payment_qr WHERE provider_id = ? LIMIT 1',
+          'SELECT qr_path FROM service_providers WHERE provider_id = ? LIMIT 1',
           [providerId]
         ) as any[];
         qrPath = qrRows?.[0]?.qr_path || null;
@@ -156,7 +156,7 @@ export async function POST(request: NextRequest) {
     const base64Data = Buffer.from(arrayBuffer).toString('base64');
     const dataUrl = `data:${file.type};base64,${base64Data}`;
 
-    const hasQrTable = await tableExists('provider_payment_qr');
+    const hasQrTable = await tableExists('service_providers');
     const hasSpColumn = await columnExists('service_providers', 'payment_qr_path');
 
     if (!hasQrTable && !hasSpColumn) {
@@ -164,21 +164,21 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({
         error: 'No storage schema for payment QR',
         code: 'MISSING_QR_STORAGE',
-        message: 'Neither provider_payment_qr table nor service_providers.payment_qr_path column exists. Enable ALLOW_DDL=true and redeploy to auto-create provider_payment_qr, or add the column/table via migration.'
+        message: 'Neither service_providers table nor service_providers.payment_qr_path column exists. Enable ALLOW_DDL=true and redeploy to auto-create service_providers, or add the column/table via migration.'
       }, { status: 409 });
     }
 
-    // Best-effort: write to provider_payment_qr if available
+    // Best-effort: write to service_providers if available
     if (hasQrTable) {
       try {
         const existing = await query(
-          'SELECT provider_id FROM provider_payment_qr WHERE provider_id = ? LIMIT 1',
+          'SELECT provider_id FROM service_providers WHERE provider_id = ? LIMIT 1',
           [providerId]
         ) as any[];
         if (existing && existing.length > 0) {
-          await query('UPDATE provider_payment_qr SET qr_path = ? WHERE provider_id = ?', [dataUrl, providerId]);
+          await query('UPDATE service_providers SET qr_path = ? WHERE provider_id = ?', [dataUrl, providerId]);
         } else {
-          await query('INSERT INTO provider_payment_qr (provider_id, qr_path) VALUES (?, ?)', [providerId, dataUrl]);
+          await query('INSERT INTO service_providers (provider_id, qr_path) VALUES (?, ?)', [providerId, dataUrl]);
         }
       } catch {}
     }

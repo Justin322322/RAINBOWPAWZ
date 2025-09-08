@@ -4,7 +4,7 @@ import { verifySecureAuth } from '@/lib/secureAuth';
 import { getUserNotifications, markNotificationAsRead, markAllNotificationsAsRead } from '@/utils/userNotificationService';
 
 /**
- * GET - Fetch user notifications
+ * GET - Fetch user notifications_unified
  */
 export async function GET(request: NextRequest) {
   try {
@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Allow both regular users and business users (service providers) to access notifications
+    // Allow both regular users and business users (service providers) to access notifications_unified
     if (user.accountType !== 'user' && user.accountType !== 'business') {
       return NextResponse.json({
         error: 'Unauthorized - User or business access required'
@@ -25,20 +25,20 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const limit = parseInt(searchParams.get('limit') || '10');
 
-    // Fetch notifications
-    const notifications = await getUserNotifications(parseInt(user.userId), limit);
+    // Fetch notifications_unified
+    const notifications_unified = await getUserNotifications(parseInt(user.userId), limit);
 
-    // Calculate unread count from the notifications
-    const unreadCount = notifications.filter(notification => notification.is_read === 0).length;
+    // Calculate unread count from the notifications_unified
+    const unreadCount = notifications_unified.filter(notification => notification.status === 0).length;
 
     return NextResponse.json({
       success: true,
-      notifications,
+      notifications_unified,
       unread_count: unreadCount
     });
 
   } catch (error) {
-    console.error('Fetch notifications error:', error);
+    console.error('Fetch notifications_unified error:', error);
     return NextResponse.json({
       error: 'Internal server error',
       details: error instanceof Error ? error.message : 'Unknown error'
@@ -57,7 +57,7 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Allow both regular users and business users (service providers) to mark notifications as read
+    // Allow both regular users and business users (service providers) to mark notifications_unified as read
     if (user.accountType !== 'user' && user.accountType !== 'business') {
       return NextResponse.json({
         error: 'Unauthorized - User or business access required'
@@ -68,17 +68,17 @@ export async function PATCH(request: NextRequest) {
     const { notificationId, markAll } = body;
 
     if (markAll) {
-      // Mark all notifications as read
+      // Mark all notifications_unified as read
       const success = await markAllNotificationsAsRead(parseInt(user.userId));
       
       if (success) {
         return NextResponse.json({
           success: true,
-          message: 'All notifications marked as read'
+          message: 'All notifications_unified marked as read'
         });
       } else {
         return NextResponse.json({
-          error: 'Failed to mark notifications as read'
+          error: 'Failed to mark notifications_unified as read'
         }, { status: 500 });
       }
     } else if (notificationId) {

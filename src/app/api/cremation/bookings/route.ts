@@ -788,7 +788,7 @@ export async function POST(request: NextRequest) {
       // Find the time slot that matches this booking
       const findTimeSlotQuery = `
         SELECT id 
-        FROM provider_time_slots 
+        FROM service_providers 
         WHERE provider_id = ? 
         AND date = ? 
         AND start_time = ?
@@ -803,7 +803,7 @@ export async function POST(request: NextRequest) {
       if (timeSlots && timeSlots.length > 0) {
         // Delete the time slot to prevent it from being booked again
         const timeSlotId = timeSlots[0].id;
-        await query('DELETE FROM provider_time_slots WHERE id = ?', [timeSlotId]);
+        await query('DELETE FROM service_providers WHERE id = ?', [timeSlotId]);
       } else {
         // Time slot not found, continue
       }
@@ -817,13 +817,13 @@ export async function POST(request: NextRequest) {
       // Create booking created notification
       await createBookingNotification(bookingId, 'booking_created');
 
-      // Schedule reminder notifications if booking date is in the future
+      // Schedule reminder notifications_unified if booking date is in the future
       if (bookingDate && bookingTime) {
         await scheduleBookingReminders(bookingId);
       }
     } catch (notificationError) {
       // Log notification errors but don't fail the booking creation
-      console.error('Error creating booking notifications:', notificationError);
+      console.error('Error creating booking notifications_unified:', notificationError);
     }
 
     // Create notification for the business user about the new pending booking

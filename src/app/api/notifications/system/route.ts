@@ -4,7 +4,7 @@ import { createSystemNotification } from '@/utils/comprehensiveNotificationServi
 import { createStandardErrorResponse, createStandardSuccessResponse } from '@/utils/rateLimitUtils';
 
 /**
- * API endpoint for creating system-wide notifications
+ * API endpoint for creating system-wide notifications_unified
  * Only accessible by admin users
  */
 

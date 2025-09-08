@@ -71,7 +71,7 @@ export async function POST(request: NextRequest) {
           WHERE user_id = ?
         `, [userStatus, userId]);
 
-        // Get user details for notifications
+        // Get user details for notifications_unified
         const userDetails = await query(`
           SELECT user_id, first_name, last_name, email, phone, sms_notifications
           FROM users
@@ -79,9 +79,9 @@ export async function POST(request: NextRequest) {
         `, [userId]) as any[];
 
         if (action === 'restrict') {
-          // Add entry to user_restrictions table
+          // Add entry to users table
           await query(`
-            INSERT INTO user_restrictions (user_id, reason, duration, is_active)
+            INSERT INTO users (user_id, reason, duration, is_active)
             VALUES (?, ?, ?, 1)
           `, [userId, reason, duration || null]);
 
@@ -92,7 +92,7 @@ export async function POST(request: NextRequest) {
         } else {
           // Update existing restrictions to inactive
           await query(`
-            UPDATE user_restrictions
+            UPDATE users
             SET is_active = 0
             WHERE user_id = ? AND is_active = 1
           `, [userId]);
@@ -202,7 +202,7 @@ export async function POST(request: NextRequest) {
             WHERE user_id = ?
           `, [userStatus, businessUserId]);
 
-          // Get user details for notifications
+          // Get user details for notifications_unified
           const userDetails = await query(`
             SELECT user_id, first_name, last_name, email, phone
             FROM users
@@ -211,7 +211,7 @@ export async function POST(request: NextRequest) {
 
           if (action === 'restrict') {
             await query(`
-              INSERT INTO user_restrictions (user_id, reason, duration, is_active)
+              INSERT INTO users (user_id, reason, duration, is_active)
               VALUES (?, ?, ?, 1)
             `, [businessUserId, reason, duration || null]);
 
@@ -221,7 +221,7 @@ export async function POST(request: NextRequest) {
             }
           } else {
             await query(`
-              UPDATE user_restrictions
+              UPDATE users
               SET is_active = 0
               WHERE user_id = ? AND is_active = 1
             `, [businessUserId]);
@@ -310,7 +310,7 @@ export async function POST(request: NextRequest) {
             WHERE user_id = ?
           `, [userStatus, businessUserId]);
 
-          // Get user details for notifications
+          // Get user details for notifications_unified
           const userDetails = await query(`
             SELECT user_id, first_name, last_name, email, phone
             FROM users
@@ -319,7 +319,7 @@ export async function POST(request: NextRequest) {
 
           if (action === 'restrict') {
             await query(`
-              INSERT INTO user_restrictions (user_id, reason, duration, is_active)
+              INSERT INTO users (user_id, reason, duration, is_active)
               VALUES (?, ?, ?, 1)
             `, [businessUserId, reason, duration || null]);
 
@@ -329,7 +329,7 @@ export async function POST(request: NextRequest) {
             }
           } else {
             await query(`
-              UPDATE user_restrictions
+              UPDATE users
               SET is_active = 0
               WHERE user_id = ? AND is_active = 1
             `, [businessUserId]);
@@ -406,7 +406,7 @@ async function notifyUserOfRestriction(user: any, reason: string, duration?: str
           title,
           message,
           type: 'error',
-          is_read: 0,
+          status: 0,
           link: null,
           created_at: new Date().toISOString()
         });
@@ -456,7 +456,7 @@ async function notifyUserOfRestriction(user: any, reason: string, duration?: str
   }
 }
 
-// Email template for restriction notifications
+// Email template for restriction notifications_unified
 function createRestrictionNotificationEmail({
   userName,
   reason,

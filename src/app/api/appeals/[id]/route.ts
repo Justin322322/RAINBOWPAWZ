@@ -149,7 +149,7 @@ export async function GET(
     const appeals = await query(`
       SELECT a.*, u.first_name, u.last_name, u.email, u.phone, u.sms_notifications,
              admin.first_name as admin_first_name, admin.last_name as admin_last_name
-      FROM user_appeals a
+      FROM users a
       LEFT JOIN users u ON a.user_id = u.user_id
       LEFT JOIN users admin ON a.admin_id = admin.user_id
       WHERE a.appeal_id = ?
@@ -202,7 +202,7 @@ export async function PUT(
     // Get appeal details
     const appeals = await query(`
       SELECT a.*, u.first_name, u.last_name, u.email, u.phone, u.sms_notifications
-      FROM user_appeals a
+      FROM users a
       LEFT JOIN users u ON a.user_id = u.user_id
       WHERE a.appeal_id = ?
     `, [appealId]) as any[];
@@ -217,7 +217,7 @@ export async function PUT(
     // Update appeal status
     await withTransaction(async (transaction) => {
       await transaction.query(`
-        UPDATE user_appeals 
+        UPDATE users 
         SET status = ?, admin_response = ?, admin_id = ?, reviewed_at = NOW(), 
             resolved_at = CASE WHEN ? IN ('approved', 'rejected') THEN NOW() ELSE NULL END
         WHERE appeal_id = ?
@@ -230,7 +230,7 @@ export async function PUT(
       `, [appealId, previousStatus, status, user.userId, admin_response]);
     });
 
-    // Send notifications
+    // Send notifications_unified
     const emailTemplate = createStatusEmail(status, `${appeal.first_name} ${appeal.last_name}`, admin_response);
     
     try {
@@ -314,7 +314,7 @@ export async function DELETE(
 
     // Check if appeal exists
     const existingAppeals = await query(`
-      SELECT appeal_id FROM user_appeals WHERE appeal_id = ?
+      SELECT appeal_id FROM users WHERE appeal_id = ?
     `, [appealId]) as any[];
 
     if (!existingAppeals?.length) {
@@ -322,7 +322,7 @@ export async function DELETE(
     }
 
     // Delete the appeal
-    await query(`DELETE FROM user_appeals WHERE appeal_id = ?`, [appealId]);
+    await query(`DELETE FROM users WHERE appeal_id = ?`, [appealId]);
 
     return NextResponse.json({
       success: true,

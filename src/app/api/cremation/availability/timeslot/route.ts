@@ -37,7 +37,7 @@ export async function DELETE(request: NextRequest) {
         DATE_FORMAT(date, '%Y-%m-%d') as date,
         TIME_FORMAT(start_time, '%H:%i') as start_time,
         TIME_FORMAT(end_time, '%H:%i') as end_time
-      FROM provider_time_slots
+      FROM service_providers
       WHERE id = ?
     `;
     const checkResult = await query(checkQuery, [slotId]) as any[];
@@ -50,7 +50,7 @@ export async function DELETE(request: NextRequest) {
         const result = await withTransaction(async (transaction) => {
           // Delete time slots for the date and provider
           const deleteByDateQuery = `
-            DELETE FROM provider_time_slots
+            DELETE FROM service_providers
             WHERE provider_id = ? AND date = ?
           `;
 
@@ -102,7 +102,7 @@ export async function DELETE(request: NextRequest) {
 
       // Delete the time slot using only the ID for maximum reliability
       const deleteSlotQuery = `
-        DELETE FROM provider_time_slots
+        DELETE FROM service_providers
         WHERE id = ?
       `;
       const deleteResult = await transaction.query(deleteSlotQuery, [slotId]) as any;
@@ -115,7 +115,7 @@ export async function DELETE(request: NextRequest) {
 
       // Check if there are any remaining time slots for this date
       const remainingSlotsQuery = `
-        SELECT COUNT(*) as count FROM provider_time_slots
+        SELECT COUNT(*) as count FROM service_providers
         WHERE provider_id = ? AND date = ?
       `;
       const remainingResult = await transaction.query(remainingSlotsQuery, [providerIdNum, slotDate]) as any[];

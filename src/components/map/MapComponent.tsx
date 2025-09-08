@@ -154,7 +154,7 @@ export default function MapComponent({
       } else if (type === 'provider' && providerId !== undefined) {
         setProviderCoordinates(prev => {
           const newMap = new Map(prev);
-          newMu.set(providerId, result.coordinates);
+          newMap.set(providerId, result.coordinates);
           return newMap;
         });
       }

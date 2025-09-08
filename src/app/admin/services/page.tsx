@@ -349,7 +349,7 @@ const AdminServicesPage = React.memo(function AdminServicesPage() {
   }, []);
   const closeDetails = useCallback(() => setShowModal(false), []);
 
-  // clear notifications
+  // clear notifications_unified
   useEffect(() => {
     if (notification.type) {
       const t = setTimeout(() => setNotification({ message:'', type:null }), 5000);

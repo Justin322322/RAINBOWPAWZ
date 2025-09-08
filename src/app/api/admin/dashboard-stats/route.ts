@@ -64,8 +64,7 @@ export async function GET(request: NextRequest) {
         serviceProviders: false,
         servicePackages: false,
         bookings: false,
-        pets: false,
-        bookings: false
+        pets: false
       };
 
       try {

@@ -9,7 +9,7 @@ interface FurParentDashboardWrapperProps {
 }
 
 /**
- * Wrapper component for the fur parent dashboard that creates review notifications
+ * Wrapper component for the fur parent dashboard that creates review notifications_unified
  * This component should be used to wrap the content of each fur parent dashboard page
  */
 const FurParentDashboardWrapper: React.FC<FurParentDashboardWrapperProps> = ({
@@ -17,7 +17,7 @@ const FurParentDashboardWrapper: React.FC<FurParentDashboardWrapperProps> = ({
   userData
 }) => {
   useEffect(() => {
-    // Create review notifications if user has pending reviews
+    // Create review notifications_unified if user has pending reviews
     const checkAndCreateReviewNotifications = async () => {
       if (!userData || !userData.id) return;
 
@@ -59,7 +59,7 @@ const FurParentDashboardWrapper: React.FC<FurParentDashboardWrapperProps> = ({
         // Mark notification as sent
         localStorage.setItem(lastNotificationKey, Date.now().toString());
       } catch (error) {
-        console.error('Error creating review notifications:', error);
+        console.error('Error creating review notifications_unified:', error);
       }
     };
 

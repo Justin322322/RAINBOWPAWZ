@@ -1,6 +1,6 @@
 /**
  * Refund Notification Service
- * Handles email and SMS notifications for refund processes
+ * Handles email and SMS notifications_unified for refund processes
  */
 
 import { query } from '@/lib/db';

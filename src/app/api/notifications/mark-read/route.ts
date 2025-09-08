@@ -73,7 +73,7 @@ export async function POST(request: NextRequest) {
     // Check which column name to use (id or notification_id)
     let idColumn = 'id';
     try {
-      const tableInfo = await query(`DESCRIBE notifications`) as any[];
+      const tableInfo = await query(`DESCRIBE notifications_unified_unified`) as any[];
       const hasNotificationId = tableInfo.some((col: any) => col.Field === 'notification_id');
       const hasId = tableInfo.some((col: any) => col.Field === 'id');
       
@@ -81,24 +81,24 @@ export async function POST(request: NextRequest) {
         idColumn = 'notification_id';
       }
     } catch (describeError) {
-      console.warn('Could not describe notifications table:', describeError);
+      console.warn('Could not describe notifications_unified table:', describeError);
     }
 
     let updateQuery;
     let queryParams;
 
     if (markAll) {
-      // Mark all notifications as read for this user
-      updateQuery = 'UPDATE notifications SET is_read = 1 WHERE user_id = ? AND is_read = 0';
+      // Mark all notifications_unified as read for this user
+      updateQuery = 'UPDATE notifications_unified_unified SET status = 1 WHERE user_id = ? AND status = 0';
       queryParams = [userId];
     } else {
-      // Mark specific notifications as read
+      // Mark specific notifications_unified as read
       // SECURITY FIX: Build safe parameterized query without template literals
       const placeholders = notificationIds.map(() => '?').join(',');
       if (idColumn === 'notification_id') {
-        updateQuery = `UPDATE notifications SET is_read = 1 WHERE notification_id IN (${placeholders}) AND user_id = ?`;
+        updateQuery = `UPDATE notifications_unified_unified_unified SET status = 1 WHERE notification_id IN (${placeholders}) AND user_id = ?`;
       } else {
-        updateQuery = `UPDATE notifications SET is_read = 1 WHERE id IN (${placeholders}) AND user_id = ?`;
+        updateQuery = `UPDATE notifications_unified_unified_unified SET status = 1 WHERE id IN (${placeholders}) AND user_id = ?`;
       }
       queryParams = [...notificationIds, userId];
     }
@@ -111,7 +111,7 @@ export async function POST(request: NextRequest) {
         createStandardSuccessResponse({
           affectedRows: result.affectedRows
         }, markAll
-          ? 'All notifications marked as read'
+          ? 'All notifications_unified marked as read'
           : `${result.affectedRows} notification(s) marked as read`
         ),
         {
@@ -125,7 +125,7 @@ export async function POST(request: NextRequest) {
     } catch (dbError) {
       console.error('Database error in mark-read:', dbError);
       return NextResponse.json(
-        createStandardErrorResponse('Database error while marking notifications as read', 500, {
+        createStandardErrorResponse('Database error while marking notifications_unified as read', 500, {
           details: dbError instanceof Error ? dbError.message : 'Unknown database error'
         }),
         {
@@ -141,7 +141,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('Unexpected error in mark-read:', error);
     return NextResponse.json(
-      createStandardErrorResponse('Failed to mark notifications as read', 500, {
+      createStandardErrorResponse('Failed to mark notifications_unified as read', 500, {
         details: error instanceof Error ? error.message : 'Unknown error'
       }),
       {

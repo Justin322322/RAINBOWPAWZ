@@ -1192,7 +1192,7 @@ export async function POST(request: NextRequest) {
           // Find the time slot that matches this booking
           const findTimeSlotQuery = `
             SELECT id 
-            FROM provider_time_slots 
+            FROM service_providers 
             WHERE provider_id = ? 
             AND date = ? 
             AND start_time = ?
@@ -1207,7 +1207,7 @@ export async function POST(request: NextRequest) {
           if (timeSlots && timeSlots.length > 0) {
             // Delete the time slot to prevent it from being booked again
             const timeSlotId = timeSlots[0].id;
-            await query('DELETE FROM provider_time_slots WHERE id = ?', [timeSlotId]);
+            await query('DELETE FROM service_providers WHERE id = ?', [timeSlotId]);
           } else {
           }
         }

@@ -50,7 +50,7 @@ export async function DELETE(
       return NextResponse.json({ error: 'Invalid authentication token' }, { status: 401 });
     }
 
-    // Allow both regular users and business users (service providers) to delete notifications
+    // Allow both regular users and business users (service providers) to delete notifications_unified
     if (accountType !== 'user' && accountType !== 'business') {
       return NextResponse.json({
         error: 'Unauthorized - User or business access required'
@@ -60,7 +60,7 @@ export async function DELETE(
     // Check which column name to use (id or notification_id)
     let idColumn = 'id';
     try {
-      const tableInfo = await query(`DESCRIBE notifications`) as any[];
+      const tableInfo = await query(`DESCRIBE notifications_unified_unified`) as any[];
       const hasNotificationId = tableInfo.some((col: any) => col.Field === 'notification_id');
       const hasId = tableInfo.some((col: any) => col.Field === 'id');
       
@@ -68,17 +68,17 @@ export async function DELETE(
         idColumn = 'notification_id';
       }
     } catch (describeError) {
-      console.warn('Could not describe notifications table:', describeError);
+      console.warn('Could not describe notifications_unified table:', describeError);
     }
 
     // Check if the notification exists and belongs to the user
     let selectQuery, deleteQuery;
     if (idColumn === 'notification_id') {
-      selectQuery = 'SELECT notification_id FROM notifications WHERE notification_id = ? AND user_id = ?';
-      deleteQuery = 'DELETE FROM notifications WHERE notification_id = ? AND user_id = ?';
+      selectQuery = 'SELECT notification_id FROM notifications_unified WHERE notification_id = ? AND user_id = ?';
+      deleteQuery = 'DELETE FROM notifications_unified_unified WHERE notification_id = ? AND user_id = ?';
     } else {
-      selectQuery = 'SELECT id FROM notifications WHERE id = ? AND user_id = ?';
-      deleteQuery = 'DELETE FROM notifications WHERE id = ? AND user_id = ?';
+      selectQuery = 'SELECT id FROM notifications_unified WHERE id = ? AND user_id = ?';
+      deleteQuery = 'DELETE FROM notifications_unified_unified WHERE id = ? AND user_id = ?';
     }
 
     const notificationResult = await query(selectQuery, [notificationId, parseInt(userId)]) as any[];

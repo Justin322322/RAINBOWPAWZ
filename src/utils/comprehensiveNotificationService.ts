@@ -49,7 +49,7 @@ if (typeof window === 'undefined') {
 }
 
 /**
- * Create booking lifecycle notifications
+ * Create booking lifecycle notifications_unified
  */
 export async function createBookingNotification(
   bookingId: number,
@@ -152,14 +152,14 @@ export async function createBookingNotification(
     // Broadcast instant notification via SSE if available
     if (broadcastToUser && user_id) {
       // Determine user account type (assume 'user' for most bookings, 'business' for providers)
-      const accountType = 'user'; // Most booking notifications go to fur parents
+      const accountType = 'user'; // Most booking notifications_unified go to fur parents
       
       broadcastToUser(user_id.toString(), accountType, {
         id: Date.now(), // Temporary ID for instant display
         title,
         message,
         type,
-        is_read: 0,
+        status: 0,
         link: null,
         created_at: new Date().toISOString()
       });
@@ -173,7 +173,7 @@ export async function createBookingNotification(
 }
 
 /**
- * Create payment notifications
+ * Create payment notifications_unified
  */
 export async function createPaymentNotification(
   bookingId: number,
@@ -235,14 +235,14 @@ export async function createPaymentNotification(
     // Broadcast instant notification via SSE if available
     if (broadcastToUser && user_id) {
       // Determine user account type (assume 'user' for most bookings, 'business' for providers)
-      const accountType = 'user'; // Most booking notifications go to fur parents
+      const accountType = 'user'; // Most booking notifications_unified go to fur parents
       
       broadcastToUser(user_id.toString(), accountType, {
         id: Date.now(), // Temporary ID for instant display
         title,
         message,
         type,
-        is_read: 0,
+        status: 0,
         link: null,
         created_at: new Date().toISOString()
       });
@@ -256,7 +256,7 @@ export async function createPaymentNotification(
 }
 
 /**
- * Create system maintenance notifications
+ * Create system maintenance notifications_unified
  */
 export async function createSystemNotification(
   notificationType: SystemNotificationType,
@@ -278,7 +278,7 @@ export async function createSystemNotification(
     const type = notificationType === 'system_maintenance' ? 'warning' : 'info';
     const link = '/user/furparent_dashboard';
 
-    // Create notifications for all target users
+    // Create notifications_unified for all target users
     const results = await Promise.allSettled(
       users.map(userId =>
         createNotification({
@@ -296,7 +296,7 @@ export async function createSystemNotification(
 
     return {
       success: successCount > 0,
-      error: successCount === 0 ? 'Failed to create any notifications' : undefined
+      error: successCount === 0 ? 'Failed to create any notifications_unified' : undefined
     };
   } catch (error) {
     console.error('Error creating system notification:', error);
@@ -360,7 +360,7 @@ async function getBookingDetails(bookingId: number): Promise<any> {
 }
 
 /**
- * Helper function to send booking email notifications
+ * Helper function to send booking email notifications_unified
  */
 async function sendBookingEmailNotification(
   bookingDetails: any,
@@ -433,7 +433,7 @@ async function sendBookingEmailNotification(
 }
 
 /**
- * Helper function to send payment SMS notifications
+ * Helper function to send payment SMS notifications_unified
  */
 async function sendPaymentSMSNotification(
   bookingDetails: any,
@@ -453,7 +453,7 @@ async function sendPaymentSMSNotification(
 
     const { phone, first_name, sms_notifications } = userResult[0];
 
-    // Check if user has SMS notifications enabled
+    // Check if user has SMS notifications_unified enabled
     if (!sms_notifications) {
       return;
     }
@@ -499,7 +499,7 @@ async function sendPaymentSMSNotification(
 }
 
 /**
- * Helper function to send booking SMS notifications
+ * Helper function to send booking SMS notifications_unified
  */
 async function sendBookingSMSNotification(
   bookingDetails: any,
@@ -518,7 +518,7 @@ async function sendBookingSMSNotification(
 
     const { phone, first_name, sms_notifications } = userResult[0];
 
-    // Check if user has SMS notifications enabled
+    // Check if user has SMS notifications_unified enabled
     if (!sms_notifications) {
       return;
     }
@@ -563,7 +563,7 @@ async function sendBookingSMSNotification(
 }
 
 /**
- * Helper function to create provider notifications
+ * Helper function to create provider notifications_unified
  */
 async function createProviderNotification(
   bookingDetails: any,
@@ -634,7 +634,7 @@ async function createProviderNotification(
         title,
         message,
         type: notificationType === 'booking_cancelled' ? 'warning' : 'info',
-        is_read: 0,
+        status: 0,
         link,
         created_at: new Date().toISOString()
       });
@@ -661,7 +661,7 @@ function formatDate(dateString: string): string {
 }
 
 /**
- * Schedule reminder notifications
+ * Schedule reminder notifications_unified
  */
 export async function scheduleBookingReminders(bookingId: number): Promise<{ success: boolean; error?: string }> {
   try {

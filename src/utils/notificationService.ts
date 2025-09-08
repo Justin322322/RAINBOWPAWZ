@@ -111,7 +111,7 @@ interface NotificationResult {
 interface UserEmailData {
   email: string;
   first_name: string;
-  email_notifications: number;
+  emailNotifications_unified: number;
 }
 
 // Type for INSERT query results that have insertId
@@ -135,7 +135,7 @@ export async function createNotificationFast({
 }): Promise<NotificationResult> {
   try {
     const result = await query(
-      `INSERT INTO notifications (user_id, title, message, type, link)
+      `INSERT INTO notifications_unified_unified (user_id, title, message, type, link)
        VALUES (?, ?, ?, ?, ?)`,
       [userId, title, message, type, link]
     ) as unknown as InsertResult;
@@ -206,7 +206,7 @@ async function insertNotificationWithRetry(
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
       return await query(
-        `INSERT INTO notifications (user_id, title, message, type, link)
+        `INSERT INTO notifications_unified_unified_unified (user_id, title, message, type, link)
          VALUES (?, ?, ?, ?, ?)`,
         [userId, title, message, type, link]
       ) as unknown as InsertResult;
@@ -232,7 +232,7 @@ async function insertNotificationWithRetry(
   throw lastError!;
 }
 /**
- * Send email notification if user has email notifications enabled
+ * Send email notification if user has email notifications_unified_unified enabled
  */
 async function sendEmailNotification(
   userId: number,
@@ -252,8 +252,8 @@ async function sendEmailNotification(
       return;
     }
 
-    const { email, first_name, email_notifications } = userData;
-    const emailNotificationsEnabled = email_notifications !== null ? Boolean(email_notifications) : true;
+    const { email, first_name, emailNotifications_unified } = userData;
+    const emailNotificationsEnabled = emailNotifications_unified !== null ? Boolean(emailNotifications_unified) : true;
 
     if (emailNotificationsEnabled && email) {
       await sendEmail({
@@ -271,7 +271,7 @@ async function sendEmailNotification(
 }
 
 /**
- * Get user email data with fallback for missing email_notifications column
+ * Get user email data with fallback for missing emailNotifications column
  */
 async function getUserEmailData(userId: number): Promise<UserEmailData | null> {
   try {
@@ -279,16 +279,16 @@ async function getUserEmailData(userId: number): Promise<UserEmailData | null> {
       SELECT 
         email, 
         first_name, 
-        COALESCE(email_notifications, 1) as email_notifications 
+        COALESCE(emailNotifications, 1) as emailNotifications 
       FROM users 
       WHERE user_id = ?
     `, [userId]) as UserEmailData[];
 
     return userResult.length > 0 ? userResult[0] : null;
   } catch (error) {
-    // Fallback query without email_notifications column
+    // Fallback query without emailNotifications_unified column
     if (process.env.NODE_ENV === 'development') {
-      console.warn('Error querying email_notifications, falling back to basic query:', error);
+      console.warn('Error querying emailNotifications, falling back to basic query:', error);
     }
     
     try {
@@ -296,7 +296,7 @@ async function getUserEmailData(userId: number): Promise<UserEmailData | null> {
         SELECT 
           email, 
           first_name, 
-          1 as email_notifications
+          1 as emailNotifications
         FROM users 
         WHERE user_id = ?
       `, [userId]) as UserEmailData[];
@@ -361,40 +361,40 @@ This is an automated message, please do not reply to this email.
 }
 
 // Cache for table existence check
-let notificationsTableExists: boolean | null = null;
+let notifications_unifiedTableExists: boolean | null = null;
 
 /**
- * Ensure the notifications table exists (with caching)
+ * Ensure the notifications_unified table exists (with caching)
  */
 async function ensureNotificationsTable(): Promise<void> {
   try {
-    if (notificationsTableExists === true) {
+    if (notifications_unifiedTableExists === true) {
       return;
     }
 
     const tableExists = await query(
       `SELECT COUNT(*) as count FROM information_schema.tables
-       WHERE table_schema = DATABASE() AND table_name = 'notifications'`
+       WHERE table_schema = DATABASE() AND table_name = 'notifications_unified'`
     ) as Array<{ count: number }>;
 
     if (tableExists[0].count === 0) {
       if (process.env.NODE_ENV === 'development') {
-        console.log('Creating notifications table...');
+        console.log('Creating notifications_unified_unified table...');
       }
       
       await query(`
-        CREATE TABLE IF NOT EXISTS notifications (
+        CREATE TABLE IF NOT EXISTS notifications_unified (
           id INT AUTO_INCREMENT PRIMARY KEY,
           user_id INT NOT NULL,
           title VARCHAR(255) NOT NULL,
           message TEXT NOT NULL,
           type ENUM('info', 'success', 'warning', 'error') NOT NULL DEFAULT 'info',
-          is_read TINYINT(1) NOT NULL DEFAULT 0,
+          status TINYINT(1) NOT NULL DEFAULT 0,
           link VARCHAR(255) NULL,
           created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
           updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
           INDEX idx_user_id (user_id),
-          INDEX idx_is_read (is_read),
+          INDEX idx_status (status),
           INDEX idx_created_at (created_at)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
       `);
@@ -404,12 +404,12 @@ async function ensureNotificationsTable(): Promise<void> {
       }
     }
 
-    notificationsTableExists = true;
+    notifications_unifiedTableExists = true;
   } catch (error) {
     if (process.env.NODE_ENV === 'development') {
-      console.error('Error ensuring notifications table exists:', error);
+      console.error('Error ensuring notifications_unified table exists:', error);
     }
-    notificationsTableExists = null;
+    notifications_unifiedTableExists = null;
     throw error;
   }
 }

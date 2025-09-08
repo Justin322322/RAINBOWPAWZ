@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid Provider ID' }, { status: 400 });
     }
 
-    // Ensure provider_time_slots and availability tables exist
+    // Ensure service_providers and availability tables exist
     await ensureAvailabilityTablesExist();
 
     let startDate, endDate;
@@ -85,7 +85,7 @@ export async function GET(request: NextRequest) {
           TIME_FORMAT(pts.end_time, '%H:%i') as end_time,
           pts.available_services,
           provider_id
-        FROM provider_time_slots pts
+        FROM service_providers pts
         WHERE provider_id = ?
         AND pts.date BETWEEN ? AND ?
         ORDER BY pts.date, pts.start_time
@@ -150,13 +150,13 @@ export async function GET(request: NextRequest) {
       // Also get availability data to mark days as available even without time slots
       const availabilityQuery = `
         SELECT date, is_available
-        FROM provider_availability
+        FROM service_providers
         WHERE provider_id = ? AND date BETWEEN ? AND ?
       `;
 
       const availabilityResult = await query(availabilityQuery, [providerId, formattedStartDate, formattedEndDate]) as any[];
 
-      // Update availability based on the provider_availability table
+      // Update availability based on the service_providers table
       for (const availDay of availabilityResult) {
 
         // Format the date consistently
@@ -299,9 +299,9 @@ export async function POST(request: NextRequest) {
 
     // **Use proper transaction management to prevent connection leaks**
     const result = await withTransaction(async (transaction) => {
-      // First, update the provider_availability record
+      // First, update the service_providers record
       const upsertAvailabilityQuery = `
-        INSERT INTO provider_availability (provider_id, date, is_available)
+        INSERT INTO service_providers (provider_id, date, is_available)
         VALUES (?, ?, ?)
         ON DUPLICATE KEY UPDATE is_available = VALUES(is_available)
       `;
@@ -309,12 +309,12 @@ export async function POST(request: NextRequest) {
 
       // If day is not available, remove all slots
       if (!isAvailable) {
-        await transaction.query('DELETE FROM provider_time_slots WHERE provider_id = ? AND date = ?', [providerId, normalizedDate]);
+        await transaction.query('DELETE FROM service_providers WHERE provider_id = ? AND date = ?', [providerId, normalizedDate]);
       } else if (sortedSlots && sortedSlots.length > 0) {
         // Fetch existing slots for diffing
         const existingRows = await transaction.query(
           `SELECT id, TIME_FORMAT(start_time, '%H:%i') as start_time, TIME_FORMAT(end_time, '%H:%i') as end_time
-           FROM provider_time_slots WHERE provider_id = ? AND date = ? ORDER BY start_time`,
+           FROM service_providers WHERE provider_id = ? AND date = ? ORDER BY start_time`,
           [providerId, normalizedDate]
         ) as any[];
 
@@ -341,12 +341,12 @@ export async function POST(request: NextRequest) {
           if (hasExisting) {
             incomingIds.add(idNum);
             await transaction.query(
-              `UPDATE provider_time_slots SET start_time = ?, end_time = ?, available_services = ? WHERE id = ? AND provider_id = ? AND date = ?`,
+              `UPDATE service_providers SET start_time = ?, end_time = ?, available_services = ? WHERE id = ? AND provider_id = ? AND date = ?`,
               [startTime, endTime, availableServicesJson, idNum, providerId, normalizedDate]
             );
           } else {
             await transaction.query(
-              `INSERT INTO provider_time_slots (provider_id, date, start_time, end_time, available_services) VALUES (?, ?, ?, ?, ?)`,
+              `INSERT INTO service_providers (provider_id, date, start_time, end_time, available_services) VALUES (?, ?, ?, ?, ?)`,
               [providerId, normalizedDate, startTime, endTime, availableServicesJson]
             );
           }
@@ -357,7 +357,7 @@ export async function POST(request: NextRequest) {
         if (idsToDelete.length > 0) {
           const placeholders = idsToDelete.map(() => '?').join(',');
           await transaction.query(
-            `DELETE FROM provider_time_slots WHERE provider_id = ? AND id IN (${placeholders})`,
+            `DELETE FROM service_providers WHERE provider_id = ? AND id IN (${placeholders})`,
             [providerId, ...idsToDelete]
           );
         }

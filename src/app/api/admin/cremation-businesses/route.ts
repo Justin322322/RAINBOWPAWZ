@@ -317,7 +317,7 @@ export async function GET(request: NextRequest) {
 
       if (businessIds.length > 0) {
         // First, let's get all appeals and see what we have
-        const allAppealsQuery = `SELECT * FROM user_appeals ORDER BY submitted_at DESC`;
+        const allAppealsQuery = `SELECT * FROM users ORDER BY submitted_at DESC`;
         const allAppeals = await query(allAppealsQuery) as any[];
         console.log('All appeals in database:', allAppeals);
 
@@ -331,7 +331,7 @@ export async function GET(request: NextRequest) {
             a.message,
             a.status,
             a.submitted_at
-          FROM user_appeals a
+          FROM users a
           WHERE a.business_id IN (${businessIds.map(() => '?').join(',')})
           ORDER BY a.submitted_at DESC
         `;

@@ -20,7 +20,7 @@ export function getCurrentPort(): string {
 
 
 /**
- * Get the application URL for server-side use (emails, notifications, etc.)
+ * Get the application URL for server-side use (emails, notifications_unified, etc.)
  * This ensures consistent URL generation across all server-side components
  * Priority: RAILWAY_STATIC_URL > NEXT_PUBLIC_APP_URL > dynamic port detection
  */

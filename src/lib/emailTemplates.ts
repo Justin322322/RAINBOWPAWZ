@@ -1,4 +1,4 @@
-// Email templates for various notifications
+// Email templates for various notifications_unified
 
 // Base email template with common styling
 const baseEmailTemplate = (content: string) => `

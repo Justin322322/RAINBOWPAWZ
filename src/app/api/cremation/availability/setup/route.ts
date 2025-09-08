@@ -13,7 +13,7 @@ export async function GET(_: NextRequest) {
       return NextResponse.json({
         success: true,
         mock: true,
-        tables: ['provider_availability', 'provider_time_slots'],
+        tables: ['service_providers', 'service_providers'],
         message: 'Using mock tables due to database connection issue'
       });
     }
@@ -26,7 +26,7 @@ export async function GET(_: NextRequest) {
       SELECT TABLE_NAME 
       FROM INFORMATION_SCHEMA.TABLES 
       WHERE TABLE_SCHEMA = DATABASE() 
-      AND TABLE_NAME IN ('provider_availability', 'provider_time_slots')
+      AND TABLE_NAME IN ('service_providers', 'service_providers')
     `;
     
     try {
@@ -35,13 +35,13 @@ export async function GET(_: NextRequest) {
       
       let tablesCreated = false;
       
-      // Create provider_availability table if needed
-      if (!existingTables.includes('provider_availability')) {
+      // Create service_providers table if needed
+      if (!existingTables.includes('service_providers')) {
         if (!allowDDL) {
-          return NextResponse.json({ success: false, error: 'DDL disabled in production', table: 'provider_availability' }, { status: 503 });
+          return NextResponse.json({ success: false, error: 'DDL disabled in production', table: 'service_providers' }, { status: 503 });
         }
         const createAvailabilityTableQuery = `
-          CREATE TABLE provider_availability (
+          CREATE TABLE service_providers (
             id INT AUTO_INCREMENT PRIMARY KEY,
             provider_id INT NOT NULL,
             date DATE NOT NULL,
@@ -55,13 +55,13 @@ export async function GET(_: NextRequest) {
         tablesCreated = true;
       }
       
-      // Create provider_time_slots table if needed
-      if (!existingTables.includes('provider_time_slots')) {
+      // Create service_providers table if needed
+      if (!existingTables.includes('service_providers')) {
         if (!allowDDL) {
-          return NextResponse.json({ success: false, error: 'DDL disabled in production', table: 'provider_time_slots' }, { status: 503 });
+          return NextResponse.json({ success: false, error: 'DDL disabled in production', table: 'service_providers' }, { status: 503 });
         }
         const createTimeSlotsTableQuery = `
-          CREATE TABLE provider_time_slots (
+          CREATE TABLE service_providers (
             id INT AUTO_INCREMENT PRIMARY KEY,
             provider_id INT NOT NULL,
             date DATE NOT NULL,
@@ -76,12 +76,12 @@ export async function GET(_: NextRequest) {
         await query(createTimeSlotsTableQuery);
         tablesCreated = true;
       } else {
-        // Check if available_services column exists in the provider_time_slots table
+        // Check if available_services column exists in the service_providers table
         const columnCheckQuery = `
           SELECT COLUMN_NAME 
           FROM INFORMATION_SCHEMA.COLUMNS 
           WHERE TABLE_SCHEMA = DATABASE() 
-          AND TABLE_NAME = 'provider_time_slots' 
+          AND TABLE_NAME = 'service_providers' 
           AND COLUMN_NAME = 'available_services'
         `;
         
@@ -90,10 +90,10 @@ export async function GET(_: NextRequest) {
         // If the column doesn't exist, add it
         if (columnResult.length === 0) {
           if (!allowDDL) {
-            return NextResponse.json({ success: false, error: 'DDL disabled in production', operation: 'ALTER TABLE provider_time_slots ADD available_services' }, { status: 503 });
+            return NextResponse.json({ success: false, error: 'DDL disabled in production', operation: 'ALTER TABLE service_providers ADD available_services' }, { status: 503 });
           }
           const addColumnQuery = `
-            ALTER TABLE provider_time_slots
+            ALTER TABLE service_providers
             ADD COLUMN available_services TEXT DEFAULT NULL
           `;
           

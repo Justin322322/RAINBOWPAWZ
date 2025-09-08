@@ -181,22 +181,22 @@ export async function POST(request: NextRequest) {
           `, [action === 'restrict' ? 'restricted' : 'active', userId]);
 
 
-          // Handle user_restrictions table if it exists
+          // Handle users table if it exists
           const restrictionsTableResult = await query(`
-            SHOW TABLES LIKE 'user_restrictions'
+            SHOW TABLES LIKE 'users'
           `) as any[];
 
           if (restrictionsTableResult && restrictionsTableResult.length > 0) {
             if (action === 'restrict') {
               // Add a new restriction record
               await query(`
-                INSERT INTO user_restrictions (user_id, reason, duration)
+                INSERT INTO users (user_id, reason, duration)
                 VALUES (?, ?, ?)
               `, [userId, body.reason || 'Restricted by admin', body.duration || 'indefinite']);
             } else {
               // Mark existing restrictions as inactive
               await query(`
-                UPDATE user_restrictions
+                UPDATE users
                 SET is_active = 0
                 WHERE user_id = ? AND is_active = 1
               `, [userId]);
@@ -271,7 +271,7 @@ export async function POST(request: NextRequest) {
       // Non-critical error, just log it
     }
 
-    // Send notifications asynchronously after successful database operations
+    // Send notifications_unified asynchronously after successful database operations
     if (action === 'restrict' && businessUserId) {
       // Don't await this to prevent blocking the response
       notifyUserOfRestriction(businessUserId, body.reason || 'Restricted by admin', body.duration, businessId)
@@ -280,7 +280,7 @@ export async function POST(request: NextRequest) {
           // Don't throw error as this is not critical for the main operation
         });
     } else if (action === 'restore' && businessUserId) {
-      // Send restoration notifications
+      // Send restoration notifications_unified
       notifyUserOfRestoration(businessUserId, businessId)
         .catch(error => {
           console.error('Failed to send restoration notification:', error);
@@ -306,7 +306,7 @@ export async function POST(request: NextRequest) {
 // Helper function to notify user of restriction
 async function notifyUserOfRestriction(userId: number, reason: string, duration?: string, businessId?: number) {
   try {
-    // Get user details for notifications with timeout
+    // Get user details for notifications_unified with timeout
     const userResult = await Promise.race([
       query(
         `SELECT user_id, first_name, last_name, email, phone, sms_notifications
@@ -349,14 +349,14 @@ async function notifyUserOfRestriction(userId: number, reason: string, duration?
           title,
           message,
           type: 'error',
-          is_read: 0,
+          status: 0,
           link: '/appeals',
           created_at: new Date().toISOString()
         });
       } catch {}
     } catch (notificationError) {
       console.error('Failed to create in-app notification:', notificationError);
-      // Continue with other notifications even if this fails
+      // Continue with other notifications_unified even if this fails
     }
 
     // Send custom email notification (independent of in-app notification)
@@ -389,7 +389,7 @@ async function notifyUserOfRestriction(userId: number, reason: string, duration?
       // Continue with SMS even if email fails
     }
 
-    // Send SMS notification (independent of other notifications)
+    // Send SMS notification (independent of other notifications_unified)
     if (user.phone && (user.sms_notifications === 1 || user.sms_notifications === true)) {
       try {
         const smsResult = await sendSMS({
@@ -416,7 +416,7 @@ async function notifyUserOfRestriction(userId: number, reason: string, duration?
 // Helper function to notify user of restoration
 async function notifyUserOfRestoration(userId: number, businessId: number) {
   try {
-    // Get user details for notifications with timeout
+    // Get user details for notifications_unified with timeout
     const userResult = await Promise.race([
       query(
         `SELECT user_id, first_name, last_name, email, phone, sms_notifications
@@ -460,14 +460,14 @@ async function notifyUserOfRestoration(userId: number, businessId: number) {
           title,
           message,
           type: 'success',
-          is_read: 0,
+          status: 0,
           link: null,
           created_at: new Date().toISOString()
         });
       } catch {}
     } catch (notificationError) {
       console.error('Failed to create in-app notification for restoration:', notificationError);
-      // Continue with other notifications even if this fails
+      // Continue with other notifications_unified even if this fails
     }
 
     // Send custom email notification (independent of in-app notification)
@@ -498,7 +498,7 @@ async function notifyUserOfRestoration(userId: number, businessId: number) {
       // Continue with SMS even if email fails
     }
 
-    // Send SMS notification (independent of other notifications)
+    // Send SMS notification (independent of other notifications_unified)
     if (user.phone && (user.sms_notifications === 1 || user.sms_notifications === true)) {
       try {
         const smsResult = await sendSMS({
@@ -522,7 +522,7 @@ async function notifyUserOfRestoration(userId: number, businessId: number) {
   }
 }
 
-// Email template for restriction notifications
+// Email template for restriction notifications_unified
 function createRestrictionNotificationEmail({
   userName,
   reason,
@@ -591,7 +591,7 @@ function createRestrictionNotificationEmail({
   return { subject, html };
 }
 
-// Email template for restoration notifications
+// Email template for restoration notifications_unified
 function createRestorationNotificationEmail({
   userName,
   userType = 'user'

@@ -5,7 +5,7 @@ import { query } from '@/lib/db';
 import { RateLimiter, createRateLimitHeaders, createStandardErrorResponse, createStandardSuccessResponse } from '@/utils/rateLimitUtils';
 import { createNotification } from '@/utils/notificationService';
 
-// GET endpoint to fetch notifications for the authenticated user
+// GET endpoint to fetch notifications_unified for the authenticated user
 export async function GET(request: NextRequest) {
   try {
     // Use secure authentication for consistency
@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
     if (!user) {
       return NextResponse.json(
         createStandardErrorResponse('Unauthorized', 401, {
-          notifications: [],
+          notifications_unified: [],
           unreadCount: 0
         }),
         {
@@ -26,11 +26,11 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Allow all authenticated users to access notifications
+    // Allow all authenticated users to access notifications_unified
     if (!user.userId) {
       return NextResponse.json(
         createStandardErrorResponse('Invalid user', 401, {
-          notifications: [],
+          notifications_unified: [],
           unreadCount: 0
         }),
         {
@@ -53,7 +53,7 @@ export async function GET(request: NextRequest) {
           'Rate limit exceeded for notification fetching',
           429,
           {
-            notifications: [],
+            notifications_unified: [],
             unreadCount: 0
           }
         ),
@@ -74,48 +74,48 @@ export async function GET(request: NextRequest) {
     const offset = Math.max(parseInt(searchParams.get('offset') || '0'), 0);
     const unreadOnly = searchParams.get('unread_only') === 'true';
 
-    // Ensure the notifications table exists
+    // Ensure the notifications_unified table exists
     await ensureNotificationsTable();
 
     try {
       // Build the query based on parameters
       let notificationsQuery = `
-        SELECT IFNULL(notification_id, id) as id, title, message, type, is_read, link, created_at
-        FROM notifications
+        SELECT IFNULL(notification_id, id) as id, title, message, type, status, link, created_at
+        FROM notifications_unified
         WHERE user_id = ?
       `;
 
       const queryParams: any[] = [user.userId];
 
       if (unreadOnly) {
-        notificationsQuery += ' AND is_read = 0';
+        notificationsQuery += ' AND status = 0';
       }
 
       notificationsQuery += ` ORDER BY created_at DESC LIMIT ${Number(limit)} OFFSET ${Number(offset)}`;
       // Execute the query
-      const notifications = await query(notificationsQuery, queryParams) as any[];
+      const notifications_unified = await query(notificationsQuery, queryParams) as any[];
 
-      // Get the total count of notifications for pagination
+      // Get the total count of notifications_unified for pagination
       const countQuery = `
         SELECT COUNT(*) as total
-        FROM notifications
+        FROM notifications_unified
         WHERE user_id = ?
-        ${unreadOnly ? 'AND is_read = 0' : ''}
+        ${unreadOnly ? 'AND status = 0' : ''}
       `;
 
       const countResult = await query(countQuery, [user.userId]) as any[];
       const total = countResult[0].total;
 
-      // Get the count of unread notifications
+      // Get the count of unread notifications_unified
       const unreadCountResult = await query(
-        'SELECT COUNT(*) as unread FROM notifications WHERE user_id = ? AND is_read = 0',
+        'SELECT COUNT(*) as unread FROM notifications_unified WHERE user_id = ? AND status = 0',
         [user.userId]
       ) as any[];
       const unreadCount = unreadCountResult[0].unread;
 
       return NextResponse.json(
         createStandardSuccessResponse({
-          notifications,
+          notifications_unified,
           pagination: {
             total,
             limit,
@@ -127,17 +127,17 @@ export async function GET(request: NextRequest) {
         {
           headers: {
             ...rateLimitHeaders,
-            'Cache-Control': 'private, max-age=30', // 30 second cache for notifications
+            'Cache-Control': 'private, max-age=30', // 30 second cache for notifications_unified
             'Pragma': 'no-cache'
           }
         }
       );
     } catch (dbError) {
       // Return proper error instead of empty results
-      console.error('Database error in notifications fetch:', dbError);
+      console.error('Database error in notifications_unified fetch:', dbError);
       return NextResponse.json(
         createStandardErrorResponse('Database query failed', 500, {
-          notifications: [],
+          notifications_unified: [],
           pagination: { total: 0, limit, offset, hasMore: false },
           unreadCount: 0,
           details: dbError instanceof Error ? dbError.message : 'Unknown database error'
@@ -154,10 +154,10 @@ export async function GET(request: NextRequest) {
     }
   } catch (error) {
     // Always return a standardized error response
-    console.error('Unexpected error in notifications fetch:', error);
+    console.error('Unexpected error in notifications_unified fetch:', error);
     return NextResponse.json(
-      createStandardErrorResponse('Failed to fetch notifications', 500, {
-        notifications: [],
+      createStandardErrorResponse('Failed to fetch notifications_unified', 500, {
+        notifications_unified: [],
         unreadCount: 0,
         details: error instanceof Error ? error.message : 'Unknown error'
       }),
@@ -244,7 +244,7 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// Helper function to ensure the notifications table exists
+// Helper function to ensure the notifications_unified table exists
 async function ensureNotificationsTable() {
   try {
 
@@ -260,7 +260,7 @@ async function ensureNotificationsTable() {
     // Check if the table exists
     const tableExists = await query(
       `SELECT COUNT(*) as count FROM information_schema.tables
-       WHERE table_schema = DATABASE() AND table_name = 'notifications'`
+       WHERE table_schema = DATABASE() AND table_name = 'notifications_unified'`
     ) as any[];
 
     if (!tableExists || !tableExists[0] || tableExists[0].count === 0) {
@@ -278,18 +278,18 @@ async function ensureNotificationsTable() {
       // Create the table if it doesn't exist
       try {
         await query(`
-          CREATE TABLE IF NOT EXISTS notifications (
+          CREATE TABLE IF NOT EXISTS notifications_unified_unified (
             id INT AUTO_INCREMENT PRIMARY KEY,
             user_id INT NOT NULL,
             title VARCHAR(255) NOT NULL,
             message TEXT NOT NULL,
             type ENUM('info', 'success', 'warning', 'error') NOT NULL DEFAULT 'info',
-            is_read TINYINT(1) NOT NULL DEFAULT 0,
+            status TINYINT(1) NOT NULL DEFAULT 0,
             link VARCHAR(255) NULL,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
             INDEX idx_user_id (user_id),
-            INDEX idx_is_read (is_read),
+            INDEX idx_status (status),
             INDEX idx_created_at (created_at),
             FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
           ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4

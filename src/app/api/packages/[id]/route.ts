@@ -39,30 +39,30 @@ export async function GET(
 
     const pkg = rows[0];
     const inclusions = (await query(
-      `SELECT description FROM service_packages sp, JSON_TABLE(sp.inclusions, '$[*]' COLUMNS (name VARCHAR(255) PATH '$.name', description TEXT PATH '$.description', is_included BOOLEAN PATH '$.is_included')) as inclusions WHERE package_id = ?`,
+      `SELECT description FROM service_packages sp, service_packages PATH '$.name', description TEXT PATH '$.description', is_included BOOLEAN PATH '$.is_included')) as inclusions WHERE package_id = ?`,
       [packageId]
     )) as any[];
 
     const addOns = (await query(
-      `SELECT addon_id as id, description, price FROM service_packages sp, JSON_TABLE(sp.addons, '$[*]' COLUMNS (name VARCHAR(255) PATH '$.name', description TEXT PATH '$.description', price DECIMAL(10,2) PATH '$.price')) as addons WHERE package_id = ?`,
+      `SELECT addon_id as id, description, price FROM service_packages sp, service_packages PATH '$.name', description TEXT PATH '$.description', price DECIMAL(10,2) PATH '$.price')) as addons WHERE package_id = ?`,
       [packageId]
     )) as any[];
 
     const images = (await query(
-      `SELECT image_path, image_data FROM service_packages sp, JSON_TABLE(sp.images, '$[*]' COLUMNS (url VARCHAR(500) PATH '$.url', alt_text VARCHAR(255) PATH '$.alt_text', is_primary BOOLEAN PATH '$.is_primary')) as images WHERE package_id = ? ORDER BY display_order`,
+      `SELECT image_path, image_data FROM service_packages sp, service_packages PATH '$.url', alt_text VARCHAR(255) PATH '$.alt_text', is_primary BOOLEAN PATH '$.is_primary')) as images WHERE package_id = ? ORDER BY display_order`,
       [packageId]
     )) as any[];
 
     // Get size pricing if available
     const sizePricing = (await query(
       `SELECT size_category, weight_range_min, weight_range_max, price
-       FROM service_packages sp, JSON_TABLE(sp.size_pricing, '$[*]' COLUMNS (pet_size VARCHAR(50) PATH '$.pet_size', price DECIMAL(10,2) PATH '$.price', weight_range VARCHAR(50) PATH '$.weight_range')) as pricing WHERE package_id = ? ORDER BY weight_range_min`,
+       FROM service_packages sp, service_packages PATH '$.pet_size', price DECIMAL(10,2) PATH '$.price', weight_range VARCHAR(50) PATH '$.weight_range')) as pricing WHERE package_id = ? ORDER BY weight_range_min`,
       [packageId]
     )) as any[];
 
     // Get supported pet types
     const petTypes = (await query(
-      `SELECT pet_type FROM business_pet_types
+      `SELECT pet_type FROM service_types
        WHERE provider_id = ? AND is_active = 1`,
       [pkg.provider_id]
     )) as any[];
@@ -250,7 +250,7 @@ export async function PATCH(
         ) as any;
         // Replace size pricing
         await transaction.query(
-          'DELETE FROM service_packages sp, JSON_TABLE(sp.size_pricing, '$[*]' COLUMNS (pet_size VARCHAR(50) PATH '$.pet_size', price DECIMAL(10,2) PATH '$.price', weight_range VARCHAR(50) PATH '$.weight_range')) as pricing WHERE package_id = ?',
+          'UPDATE service_packages SET size_pricing = NULL WHERE package_id = ?',
           [packageId]
         );
 
@@ -271,7 +271,7 @@ export async function PATCH(
             const p = Number(sp.price);
             if (!sizeCategory || isNaN(min) || isNaN(p)) continue;
             await transaction.query(
-              `INSERT INTO package_size_pricing
+              `INSERT INTO service_packages
                  (package_id, size_category, weight_range_min, weight_range_max, price)
                VALUES (?, ?, ?, ?, ?)`,
               [packageId, sizeCategory, min, max, p]
@@ -287,7 +287,7 @@ export async function PATCH(
         if (Array.isArray(body.supportedPetTypes)) {
           // Deactivate all existing pet types
           await transaction.query(
-            'UPDATE business_pet_types SET is_active = 0 WHERE provider_id = ?',
+            'UPDATE service_types SET is_active = 0 WHERE provider_id = ?',
             [providerId]
           );
 
@@ -295,12 +295,12 @@ export async function PATCH(
             if (!petType || typeof petType !== 'string') continue;
             try {
               await transaction.query(
-                'INSERT INTO business_pet_types (provider_id, pet_type, is_active) VALUES (?, ?, 1)',
+                'INSERT INTO service_types (provider_id, pet_type, is_active) VALUES (?, ?, 1)',
                 [providerId, petType]
               );
             } catch {
               await transaction.query(
-                'UPDATE business_pet_types SET is_active = 1 WHERE provider_id = ? AND pet_type = ?',
+                'UPDATE service_types SET is_active = 1 WHERE provider_id = ? AND pet_type = ?',
                 [providerId, petType]
               );
             }
@@ -309,7 +309,7 @@ export async function PATCH(
 
         // delete old inclusions
         await transaction.query(
-          'DELETE FROM service_packages sp, JSON_TABLE(sp.inclusions, '$[*]' COLUMNS (name VARCHAR(255) PATH '$.name', description TEXT PATH '$.description', is_included BOOLEAN PATH '$.is_included')) as inclusions WHERE package_id = ?',
+          'UPDATE service_packages SET inclusions = NULL WHERE package_id = ?',
           [packageId]
         );
 
@@ -327,7 +327,7 @@ export async function PATCH(
 
         // delete old add-ons
         await transaction.query(
-          'DELETE FROM service_packages sp, JSON_TABLE(sp.addons, '$[*]' COLUMNS (name VARCHAR(255) PATH '$.name', description TEXT PATH '$.description', price DECIMAL(10,2) PATH '$.price')) as addons WHERE package_id = ?',
+          'UPDATE service_packages SET addons = NULL WHERE package_id = ?',
           [packageId]
         );
 
@@ -365,7 +365,7 @@ export async function PATCH(
           };
           // Get current images from database
           const currentImages = await transaction.query(
-            'SELECT image_path FROM service_packages sp, JSON_TABLE(sp.images, '$[*]' COLUMNS (url VARCHAR(500) PATH '$.url', alt_text VARCHAR(255) PATH '$.alt_text', is_primary BOOLEAN PATH '$.is_primary')) as images WHERE package_id = ?',
+            'SELECT images FROM service_packages WHERE package_id = ?',
             [packageId]
           ) as any[];
           
@@ -381,7 +381,7 @@ export async function PATCH(
           // Remove image records from database only
           for (const imagePath of imagesToRemove) {
             await transaction.query(
-              'DELETE FROM service_packages sp, JSON_TABLE(sp.images, '$[*]' COLUMNS (url VARCHAR(500) PATH '$.url', alt_text VARCHAR(255) PATH '$.alt_text', is_primary BOOLEAN PATH '$.is_primary')) as images WHERE package_id = ? AND image_path = ?',
+              'UPDATE service_packages SET images = JSON_REMOVE(images, JSON_UNQUOTE(JSON_SEARCH(images, "one", ?))) WHERE package_id = ?',
               [packageId, imagePath]
             );
           }
@@ -392,7 +392,7 @@ export async function PATCH(
           if (imagesToAdd.length > 0) {
             // Find the maximum display_order among remaining images to avoid duplicates
             const maxOrderResult = await transaction.query(
-              'SELECT COALESCE(MAX(display_order), 0) as max_order FROM service_packages sp, JSON_TABLE(sp.images, '$[*]' COLUMNS (url VARCHAR(500) PATH '$.url', alt_text VARCHAR(255) PATH '$.alt_text', is_primary BOOLEAN PATH '$.is_primary')) as images WHERE package_id = ?',
+              'SELECT COALESCE(JSON_LENGTH(images), 0) as max_order FROM service_packages WHERE package_id = ?',
               [packageId]
             ) as any[];
             

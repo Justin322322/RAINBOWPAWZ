@@ -48,20 +48,20 @@ export async function POST(request: NextRequest) {
       SELECT TABLE_NAME
       FROM INFORMATION_SCHEMA.TABLES
       WHERE TABLE_SCHEMA = DATABASE()
-      AND TABLE_NAME IN ('provider_availability', 'provider_time_slots', 'availability_time_slots', 'time_slot_services')
+      AND TABLE_NAME IN ('service_providers', 'service_providers', 'availability_time_slots', 'time_slot_services')
     `;
     
     const tablesResult = await query(tableCheckQuery) as any[];
     const existingTables = tablesResult.map((row: any) => row.TABLE_NAME.toLowerCase());
     
     // Determine which table structure to use
-    const useProviderTimeSlots = existingTables.includes('provider_time_slots');
+    const useProviderTimeSlots = existingTables.includes('service_providers');
     const useAvailabilityTimeSlots = existingTables.includes('availability_time_slots');
-    const useProviderAvailability = existingTables.includes('provider_availability');
+    const useProviderAvailability = existingTables.includes('service_providers');
     
     if (!useProviderAvailability && !useProviderTimeSlots) {
       return NextResponse.json(
-        { error: 'Database tables not properly configured. Missing provider_availability or provider_time_slots table.' },
+        { error: 'Database tables not properly configured. Missing service_providers or service_providers table.' },
         { status: 500 }
       );
     }
@@ -91,11 +91,11 @@ export async function POST(request: NextRequest) {
           }
 
           if (useProviderTimeSlots) {
-            // Use the provider_time_slots table structure (simpler approach)
+            // Use the service_providers table structure (simpler approach)
             
             // Delete existing time slots for this date first
             await transaction.query(
-              'DELETE FROM provider_time_slots WHERE provider_id = ? AND date = ?',
+              'DELETE FROM service_providers WHERE provider_id = ? AND date = ?',
               [providerId, date]
             );
 
@@ -131,20 +131,20 @@ export async function POST(request: NextRequest) {
                   : null;
 
                 await transaction.query(
-                  'INSERT INTO provider_time_slots (provider_id, date, start_time, end_time, available_services) VALUES (?, ?, ?, ?, ?)',
+                  'INSERT INTO service_providers (provider_id, date, start_time, end_time, available_services) VALUES (?, ?, ?, ?, ?)',
                   [providerId, date, slot.start, slot.end, availableServicesJson]
                 );
               }
             }
             
           } else if (useProviderAvailability) {
-            // Use the provider_availability + availability_time_slots structure
+            // Use the service_providers + availability_time_slots structure
             
             let dayId;
             
             // Check if day already exists
             const existingDay = await transaction.query(
-              'SELECT id FROM provider_availability WHERE provider_id = ? AND availability_date = ?',
+              'SELECT id FROM service_providers WHERE provider_id = ? AND availability_date = ?',
               [providerId, date]
             ) as any[];
 
@@ -152,7 +152,7 @@ export async function POST(request: NextRequest) {
               // Update existing day
               dayId = existingDay[0].id;
               await transaction.query(
-                'UPDATE provider_availability SET is_available = ?, updated_at = NOW() WHERE id = ?',
+                'UPDATE service_providers SET is_available = ?, updated_at = NOW() WHERE id = ?',
                 [isAvailable, dayId]
               );
 
@@ -166,7 +166,7 @@ export async function POST(request: NextRequest) {
             } else {
               // Insert new day
               const dayResult = await transaction.query(
-                'INSERT INTO provider_availability (provider_id, availability_date, is_available, created_at, updated_at) VALUES (?, ?, ?, NOW(), NOW())',
+                'INSERT INTO service_providers (provider_id, availability_date, is_available, created_at, updated_at) VALUES (?, ?, ?, NOW(), NOW())',
                 [providerId, date, isAvailable]
               ) as any;
               dayId = dayResult.insertId;

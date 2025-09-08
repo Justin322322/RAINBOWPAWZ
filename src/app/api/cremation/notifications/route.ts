@@ -3,7 +3,7 @@ import { verifySecureAuth } from '@/lib/secureAuth';
 import { query } from '@/lib/db';
 
 /**
- * GET - Fetch cremation provider notifications
+ * GET - Fetch cremation provider notifications_unified
  */
 export async function GET(request: NextRequest) {
   try {
@@ -27,7 +27,7 @@ export async function GET(request: NextRequest) {
     // Check which column name to use (id or notification_id)
     let idColumn = 'id';
     try {
-      const tableInfo = await query(`DESCRIBE notifications`) as any[];
+      const tableInfo = await query(`DESCRIBE notifications_unified_unified`) as any[];
       const hasNotificationId = tableInfo.some((col: any) => col.Field === 'notification_id');
       const hasId = tableInfo.some((col: any) => col.Field === 'id');
       
@@ -35,20 +35,20 @@ export async function GET(request: NextRequest) {
         idColumn = 'notification_id';
       }
     } catch (describeError) {
-      console.warn('Could not describe notifications table:', describeError);
+      console.warn('Could not describe notifications_unified table:', describeError);
     }
 
-    // Fetch notifications for this cremation provider
-    const notifications = await query(`
+    // Fetch notifications_unified for this cremation provider
+    const notifications_unified = await query(`
       SELECT 
         ${idColumn} as id,
         title,
         message,
         type,
         link,
-        is_read,
+        status,
         created_at
-      FROM notifications 
+      FROM notifications_unified_unified 
       WHERE user_id = ? 
       ORDER BY created_at DESC 
       LIMIT ${Number(limit)} OFFSET ${Number(offset)}
@@ -57,7 +57,7 @@ export async function GET(request: NextRequest) {
     // Get total count
     const countResult = await query(`
       SELECT COUNT(*) as total 
-      FROM notifications 
+      FROM notifications_unified_unified 
       WHERE user_id = ?
     `, [parseInt(user.userId)]) as any[];
 
@@ -66,13 +66,13 @@ export async function GET(request: NextRequest) {
     // Get unread count - ensure proper boolean handling
     const unreadResult = await query(`
       SELECT COUNT(*) as unread 
-      FROM notifications 
-      WHERE user_id = ? AND (is_read = 0 OR is_read = false OR is_read IS NULL)
+      FROM notifications_unified_unified 
+      WHERE user_id = ? AND (status = 0 OR status = false OR status IS NULL)
     `, [parseInt(user.userId)]) as any[];
 
     const unreadCount = unreadResult[0]?.unread || 0;
 
-    // Also check for pending bookings that should create notifications
+    // Also check for pending bookings that should create notifications_unified
     let pendingBookingsCount = 0;
     try {
       // Get provider ID for this business user
@@ -101,7 +101,7 @@ export async function GET(request: NextRequest) {
     const totalUnreadCount = unreadCount + pendingBookingsCount;
 
     console.log('Notification counts:', {
-      notifications: notifications.length,
+      notifications_unified_unified: notifications_unified.length,
       total,
       unread: unreadCount,
       pendingBookings: pendingBookingsCount,
@@ -110,7 +110,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      notifications,
+      notifications_unified,
       pagination: {
         total,
         limit,
@@ -119,13 +119,13 @@ export async function GET(request: NextRequest) {
       },
       unreadCount: totalUnreadCount,
       breakdown: {
-        notifications: unreadCount,
+        notifications_unified: unreadCount,
         pendingBookings: pendingBookingsCount
       }
     });
 
   } catch (error) {
-    console.error('Fetch cremation provider notifications error:', error);
+    console.error('Fetch cremation provider notifications_unified error:', error);
     return NextResponse.json({
       error: 'Internal server error',
       details: error instanceof Error ? error.message : 'Unknown error'
@@ -134,7 +134,7 @@ export async function GET(request: NextRequest) {
 }
 
 /**
- * PATCH - Mark cremation provider notifications as read
+ * PATCH - Mark cremation provider notifications_unified as read
  */
 export async function PATCH(request: NextRequest) {
   try {
@@ -154,16 +154,16 @@ export async function PATCH(request: NextRequest) {
     const { notificationId, markAll } = body;
 
     if (markAll) {
-      // Mark all notifications as read
+      // Mark all notifications_unified as read
       await query(`
-        UPDATE notifications 
-        SET is_read = 1 
+        UPDATE notifications_unified_unified 
+        SET status = 1 
         WHERE user_id = ?
       `, [parseInt(user.userId)]);
 
       return NextResponse.json({
         success: true,
-        message: 'All notifications marked as read'
+        message: 'All notifications_unified_unified marked as read'
       });
     }
 
@@ -175,8 +175,8 @@ export async function PATCH(request: NextRequest) {
 
     // Mark specific notification as read
     const result = await query(`
-      UPDATE notifications 
-      SET is_read = 1 
+      UPDATE notifications_unified_unified 
+      SET status = 1 
       WHERE id = ? AND user_id = ?
     `, [notificationId, parseInt(user.userId)]) as any;
 
@@ -201,7 +201,7 @@ export async function PATCH(request: NextRequest) {
 }
 
 /**
- * DELETE - Delete cremation provider notifications
+ * DELETE - Delete cremation provider notifications_unified_unified
  */
 export async function DELETE(request: NextRequest) {
   try {
@@ -223,7 +223,7 @@ export async function DELETE(request: NextRequest) {
     // Check which column name to use (id or notification_id)
     let idColumn = 'id';
     try {
-      const tableInfo = await query(`DESCRIBE notifications`) as any[];
+      const tableInfo = await query(`DESCRIBE notifications_unified`) as any[];
       const hasNotificationId = tableInfo.some((col: any) => col.Field === 'notification_id');
       const hasId = tableInfo.some((col: any) => col.Field === 'id');
       
@@ -231,24 +231,24 @@ export async function DELETE(request: NextRequest) {
         idColumn = 'notification_id';
       }
     } catch (describeError) {
-      console.warn('Could not describe notifications table:', describeError);
+      console.warn('Could not describe notifications_unified_unified table:', describeError);
     }
 
     let deleteQuery;
     let queryParams;
 
     if (deleteAll) {
-      // Delete all notifications for this cremation provider
-      deleteQuery = 'DELETE FROM notifications WHERE user_id = ?';
+      // Delete all notifications_unified for this cremation provider
+      deleteQuery = 'DELETE FROM notifications_unified_unified WHERE user_id = ?';
       queryParams = [parseInt(user.userId)];
     } else if (notificationIds && Array.isArray(notificationIds) && notificationIds.length > 0) {
-      // Delete specific notifications
+      // Delete specific notifications_unified
       // SECURITY FIX: Build safe parameterized query without template literals
       const placeholders = notificationIds.map(() => '?').join(',');
       if (idColumn === 'notification_id') {
-        deleteQuery = `DELETE FROM notifications WHERE notification_id IN (${placeholders}) AND user_id = ?`;
+        deleteQuery = `DELETE FROM notifications_unified_unified WHERE notification_id IN (${placeholders}) AND user_id = ?`;
       } else {
-        deleteQuery = `DELETE FROM notifications WHERE id IN (${placeholders}) AND user_id = ?`;
+        deleteQuery = `DELETE FROM notifications_unified_unified_unified WHERE id IN (${placeholders}) AND user_id = ?`;
       }
       queryParams = [...notificationIds, parseInt(user.userId)];
     } else {
@@ -262,13 +262,13 @@ export async function DELETE(request: NextRequest) {
     return NextResponse.json({
       success: true,
       message: deleteAll 
-        ? 'All notifications deleted' 
+        ? 'All notifications_unified deleted' 
         : `${result.affectedRows} notification(s) deleted`,
       deletedCount: result.affectedRows
     });
 
   } catch (error) {
-    console.error('Delete cremation provider notifications error:', error);
+    console.error('Delete cremation provider notifications_unified error:', error);
     return NextResponse.json({
       error: 'Internal server error',
       details: error instanceof Error ? error.message : 'Unknown error'

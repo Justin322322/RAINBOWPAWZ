@@ -3,8 +3,8 @@ import { query } from '@/lib/db';
 import { verifySecureAuth } from '@/lib/secureAuth';
 
 /**
- * API endpoint to check for pending bookings and create notifications
- * GET /api/cremation/notifications/check-pending
+ * API endpoint to check for pending bookings and create notifications_unified
+ * GET /api/cremation/notifications_unified/check-pending
  */
 export async function GET(request: NextRequest) {
   try {

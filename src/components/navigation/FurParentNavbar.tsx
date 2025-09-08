@@ -281,7 +281,7 @@ export default function FurParentNavbar({ activePage: propActivePage, userName =
     // We're not using this global click handler anymore
     // The CartDropdown component handles its own click outside events
     // The NotificationBell component handles its own click outside events
-    // This was causing the cart and notifications to close when clicking inside them
+    // This was causing the cart and notifications_unified to close when clicking inside them
 
     // We'll keep the user dropdown and mobile menu functionality
     const handleClickOutside = (event: MouseEvent) => {

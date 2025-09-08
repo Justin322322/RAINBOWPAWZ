@@ -9,17 +9,17 @@ export interface Notification {
   title: string;
   message: string;
   type: 'info' | 'success' | 'warning' | 'error';
-  is_read: number;
+  status: number;
   link: string | null;
   created_at: string;
 }
 
 interface NotificationContextType {
-  notifications: Notification[];
+  notifications_unified: Notification[];
   unreadCount: number;
   loading: boolean;
   error: string | null;
-  fetchNotifications: (unreadOnly?: boolean) => Promise<{ notifications: Notification[]; unreadCount: number }>;
+  fetchNotifications: (unreadOnly?: boolean) => Promise<{ notifications_unified: Notification[]; unreadCount: number }>;
   markAsRead: (notificationId: number) => Promise<void>;
   markAllAsRead: () => Promise<void>;
   removeNotification: (notificationId: number) => Promise<void>;
@@ -40,7 +40,7 @@ interface NotificationProviderProps {
 }
 
 export function NotificationProvider({ children }: NotificationProviderProps) {
-  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [notifications_unified, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState<number>(0);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
@@ -80,7 +80,7 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
   const fetchNotifications = useCallback(async (unreadOnly = false) => {
     // Check if user has auth token or if logout is in progress
     if (typeof window !== 'undefined' && (!hasAuthToken() || sessionStorage.getItem('is_logging_out') === 'true')) {
-      return { notifications: [], unreadCount: 0 };
+      return { notifications_unified: [], unreadCount: 0 };
     }
 
     try {
@@ -100,17 +100,17 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
         // This makes the application more resilient to authentication edge cases
         setNotifications([]);
         setUnreadCount(0);
-        return { notifications: [], unreadCount: 0 };
+        return { notifications_unified: [], unreadCount: 0 };
       }
 
       // Use the appropriate API endpoint based on user type
       let apiUrl = '';
       if (isAdmin) {
-        apiUrl = '/api/admin/notifications';
+        apiUrl = '/api/admin/notifications_unified';
       } else if (isBusiness) {
-        apiUrl = `/api/cremation/notifications`;
+        apiUrl = `/api/cremation/notifications_unified`;
       } else {
-        apiUrl = '/api/user/notifications';
+        apiUrl = '/api/user/notifications_unified';
       }
 
       // Add query parameters properly
@@ -177,7 +177,7 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
 
         setNotifications([]);
         setUnreadCount(0);
-        return { notifications: [], unreadCount: 0 };
+        return { notifications_unified: [], unreadCount: 0 };
       }
 
       // Check the content type to ensure it's JSON
@@ -186,34 +186,34 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
         const _text = await response.text();
         setNotifications([]);
         setUnreadCount(0);
-        return { notifications: [], unreadCount: 0 };
+        return { notifications_unified: [], unreadCount: 0 };
       }
 
       const data = await response.json();
-      const notifications = data.notifications || [];
+      const notifications_unified = data.notifications_unified || [];
       const unreadCount = data.unread_count || 0;
 
       if (process.env.NODE_ENV === 'development') {
-        console.log('Fetched notifications:', notifications);
+        console.log('Fetched notifications_unified:', notifications_unified);
         console.log('Unread count from API:', unreadCount);
-        console.log('Calculated unread count:', notifications.filter((n: Notification) => n.is_read === 0).length);
+        console.log('Calculated unread count:', notifications_unified.filter((n: Notification) => n.status === 0).length);
       }
 
-      // Ensure unread count is consistent with actual notifications
-      const calculatedUnreadCount = notifications.filter((n: Notification) => n.is_read === 0).length;
+      // Ensure unread count is consistent with actual notifications_unified
+      const calculatedUnreadCount = notifications_unified.filter((n: Notification) => n.status === 0).length;
       const finalUnreadCount = Math.max(unreadCount, calculatedUnreadCount);
 
-      setNotifications(notifications);
+      setNotifications(notifications_unified);
       setUnreadCount(finalUnreadCount);
       setError(null);
 
-      return { notifications, unreadCount: finalUnreadCount };
+      return { notifications_unified, unreadCount: finalUnreadCount };
     } catch (error) {
-      console.error('Error fetching notifications:', error);
-      setError('Failed to fetch notifications');
+      console.error('Error fetching notifications_unified:', error);
+      setError('Failed to fetch notifications_unified');
       setNotifications([]);
       setUnreadCount(0);
-      return { notifications: [], unreadCount: 0 };
+      return { notifications_unified: [], unreadCount: 0 };
     } finally {
       setLoading(false);
     }
@@ -234,8 +234,8 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
       // Determine the correct endpoint based on user type using async function
       const userAccountType = await getAccountTypeAsync();
       const endpoint = userAccountType === 'admin'
-        ? '/api/admin/notifications'
-        : '/api/user/notifications';
+        ? '/api/admin/notifications_unified'
+        : '/api/user/notifications_unified';
 
       const response = await fetch(endpoint, {
         method: 'PATCH',
@@ -259,12 +259,12 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
       setNotifications(prev => {
         const updated = prev.map(notification =>
           notification.id === notificationId
-            ? { ...notification, is_read: 1 }
+            ? { ...notification, status: 1 }
             : notification
         );
 
-        // Recalculate unread count from the updated notifications
-        const newUnreadCount = updated.filter(n => n.is_read === 0).length;
+        // Recalculate unread count from the updated notifications_unified
+        const newUnreadCount = updated.filter(n => n.status === 0).length;
         if (process.env.NODE_ENV === 'development') {
           console.log('Updated unread count:', newUnreadCount, 'for notification:', notificationId);
         }
@@ -280,7 +280,7 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
     }
   }, [showToast]);
 
-  // Mark all notifications as read
+  // Mark all notifications_unified as read
   const markAllAsRead = useCallback(async () => {
     // Check if user has auth token
     if (typeof window !== 'undefined' && !hasAuthToken()) {
@@ -291,8 +291,8 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
       // Determine the correct endpoint based on user type using async function
       const userAccountType = await getAccountTypeAsync();
       const endpoint = userAccountType === 'admin'
-        ? '/api/admin/notifications'
-        : '/api/user/notifications';
+        ? '/api/admin/notifications_unified'
+        : '/api/user/notifications_unified';
 
       const response = await fetch(endpoint, {
         method: 'PATCH',
@@ -307,14 +307,14 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
       if (!response.ok) {
         // If any error occurs, just log it and continue without throwing
         if (process.env.NODE_ENV === 'development') {
-          console.warn('Failed to mark all notifications as read:', response.status);
+          console.warn('Failed to mark all notifications_unified as read:', response.status);
         }
         return;
       }
 
       // Update local state
       setNotifications(prev =>
-        prev.map(notification => ({ ...notification, is_read: 1 }))
+        prev.map(notification => ({ ...notification, status: 1 }))
       );
 
       setUnreadCount(0);
@@ -351,8 +351,8 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
       // Determine the correct endpoint based on user type using async function
       const userAccountType = await getAccountTypeAsync();
       const endpoint = userAccountType === 'admin'
-        ? `/api/admin/notifications/${notificationId}`
-        : `/api/user/notifications/${notificationId}`;
+        ? `/api/admin/notifications_unified/${notificationId}`
+        : `/api/user/notifications_unified/${notificationId}`;
 
       const response = await fetch(endpoint, {
         method: 'DELETE',
@@ -373,8 +373,8 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
 
       // Update unread count if the removed notification was unread
       setUnreadCount(prev => {
-        const removedNotification = notifications.find(n => n.id === notificationId);
-        if (removedNotification && removedNotification.is_read === 0) {
+        const removedNotification = notifications_unified.find(n => n.id === notificationId);
+        if (removedNotification && removedNotification.status === 0) {
           return Math.max(0, prev - 1);
         }
         return prev;
@@ -386,9 +386,9 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
       const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred';
       showToast(errorMessage, 'error');
     }
-  }, [showToast, notifications]);
+  }, [showToast, notifications_unified]);
 
-  // Initial fetch of notifications and setup SSE for real-time updates
+  // Initial fetch of notifications_unified and setup SSE for real-time updates
   useEffect(() => {
     let eventSource: EventSource | null = null;
     let reconnectTimeout: NodeJS.Timeout | null = null;
@@ -402,23 +402,23 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
     // Capture ref value at the beginning of the effect to avoid ref warnings
     const timeoutIds = timeoutIdsRef.current;
 
-    // Setup Server-Sent Events for instant notifications
+    // Setup Server-Sent Events for instant notifications_unified
     const setupSSE = () => {
       // Check if user has auth token before setting up SSE
       if (typeof window !== 'undefined' && hasAuthToken()) {
         try {
-          // Initial fetch of existing notifications
+          // Initial fetch of existing notifications_unified
           fetchNotifications().catch(_err => {
             // Don't show error toast for initial load
           });
 
-          // Setup SSE connection for real-time notifications
-          eventSource = new EventSource('/api/notifications/sse', {
+          // Setup SSE connection for real-time notifications_unified
+          eventSource = new EventSource('/api/notifications_unified/sse', {
             withCredentials: true
           });
 
           eventSource.onopen = () => {
-            console.log('Real-time notifications connected');
+            console.log('Real-time notifications_unified connected');
             reconnectAttempts = 0; // Reset reconnect attempts on successful connection
           };
 
@@ -453,8 +453,8 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
                       }
                     });
 
-                    // Update unread count only for new unread notifications
-                    if (isNewNotification && newNotification.is_read === 0) {
+                    // Update unread count only for new unread notifications_unified
+                    if (isNewNotification && newNotification.status === 0) {
                       setUnreadCount(prev => prev + 1);
                     }
 
@@ -477,7 +477,7 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
                         return updated;
                       } else {
                         // Add new notification and update unread count
-                        if (sysNotification.is_read === 0) {
+                        if (sysNotification.status === 0) {
                           setUnreadCount(prevCount => prevCount + 1);
                         }
                         return [sysNotification, ...prev];
@@ -588,7 +588,7 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
   return (
     <NotificationContext.Provider
       value={{
-        notifications,
+        notifications_unified,
         unreadCount,
         loading,
         error,

@@ -13,11 +13,11 @@ export default function NotificationBell() {
   const [clickingNotificationId, setClickingNotificationId] = useState<number | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
-  const { notifications, unreadCount, loading, markAsRead, markAllAsRead, removeNotification, fetchNotifications } = useNotifications();
+  const { notifications_unified, unreadCount, loading, markAsRead, markAllAsRead, removeNotification, fetchNotifications } = useNotifications();
 
   // Debug logging (only in development)
   if (process.env.NODE_ENV === 'development') {
-    console.log('NotificationBell render - unreadCount:', unreadCount, 'notifications:', notifications);
+    console.log('NotificationBell render - unreadCount:', unreadCount, 'notifications_unified:', notifications_unified);
   }
 
   // Calculate dropdown position to prevent overflow
@@ -66,7 +66,7 @@ export default function NotificationBell() {
   const handleNotificationClick = async (notification: Notification) => {
     try {
       if (process.env.NODE_ENV === 'development') {
-        console.log('Notification clicked:', notification.id, 'is_read:', notification.is_read);
+        console.log('Notification clicked:', notification.id, 'status:', notification.status);
       }
 
       // Prevent multiple rapid clicks on the same notification
@@ -76,7 +76,7 @@ export default function NotificationBell() {
       }
 
       // Mark as read if unread
-      if (notification.is_read === 0) {
+      if (notification.status === 0) {
         if (process.env.NODE_ENV === 'development') {
           console.log('Marking notification as read:', notification.id);
         }
@@ -159,7 +159,7 @@ export default function NotificationBell() {
       );
     }
 
-    // Check for appeal notifications
+    // Check for appeal notifications_unified
     if (type === 'new_appeal' || type === 'appeal_submitted') {
       return (
         <div className="flex-shrink-0 w-8 h-8 rounded-full bg-red-100 flex items-center justify-center">
@@ -170,7 +170,7 @@ export default function NotificationBell() {
       );
     }
 
-    // Check for pending booking notifications
+    // Check for pending booking notifications_unified
     if (type === 'warning' || type === 'pending_booking') {
       return (
         <div className="flex-shrink-0 w-8 h-8 rounded-full bg-orange-100 flex items-center justify-center">
@@ -226,7 +226,7 @@ export default function NotificationBell() {
           e.stopPropagation();
           setIsOpen(!isOpen);
           if (!isOpen) {
-            // Refresh notifications when opening the dropdown
+            // Refresh notifications_unified when opening the dropdown
             fetchNotifications();
           }
         }}
@@ -272,7 +272,7 @@ export default function NotificationBell() {
                 <button
                   onClick={() => fetchNotifications()}
                   className="text-xs text-[var(--primary-green)] hover:text-[var(--primary-green-dark)] font-medium px-2 py-1 rounded-md hover:bg-white/50 transition-all duration-200"
-                  title="Refresh notifications"
+                  title="Refresh notifications_unified"
                   disabled={loading}
                 >
                   <svg 
@@ -304,23 +304,23 @@ export default function NotificationBell() {
             </div>
           )}
 
-            {!loading && notifications.length === 0 && (
+            {!loading && notifications_unified.length === 0 && (
               <div className="px-4 py-8 text-center">
                 <div className="mx-auto w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center mb-3">
                   <BellIcon className="h-6 w-6 text-gray-400" />
                 </div>
-                <p className="text-sm text-gray-500">No notifications yet</p>
+                <p className="text-sm text-gray-500">No notifications_unified yet</p>
                 <p className="text-xs text-gray-400 mt-1">We&apos;ll notify you when something important happens</p>
               </div>
             )}
 
-            {!loading && notifications.length > 0 && (
+            {!loading && notifications_unified.length > 0 && (
               <div className="divide-y divide-gray-100">
-                {notifications.filter(notification => notification && notification.id).map((notification, index) => (
+                {notifications_unified.filter(notification => notification && notification.id).map((notification, index) => (
                   <div
                     key={`notification-${notification.id}-${index}`}
                     className={`px-4 py-3 hover:bg-gray-50 transition-colors ${
-                      notification.is_read === 0 ? 'bg-blue-50/70' : ''
+                      notification.status === 0 ? 'bg-blue-50/70' : ''
                     }`}
                   >
                   {notification.link ? (
@@ -338,7 +338,7 @@ export default function NotificationBell() {
                             {formatNotificationDate(notification.created_at)}
                           </p>
                         </div>
-                        {notification.is_read === 0 && (
+                        {notification.status === 0 && (
                           <span className="ml-2 flex-shrink-0 h-2 w-2 rounded-full bg-blue-600"></span>
                         )}
                       </Link>
@@ -366,7 +366,7 @@ export default function NotificationBell() {
                             {formatNotificationDate(notification.created_at)}
                           </p>
                         </div>
-                        {notification.is_read === 0 && (
+                        {notification.status === 0 && (
                           <span className="ml-2 flex-shrink-0 h-2 w-2 rounded-full bg-blue-600"></span>
                         )}
                       </div>
