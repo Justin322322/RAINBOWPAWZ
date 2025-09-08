@@ -225,8 +225,28 @@ export async function GET(request: NextRequest) {
       
       try {
         if (p.inclusions) {
-          inclusions = typeof p.inclusions === 'string' ? JSON.parse(p.inclusions) : p.inclusions;
+          if (typeof p.inclusions === 'string') {
+            // Handle corrupted [object Object] data
+            if (p.inclusions.includes('[object Object]')) {
+              console.warn(`Corrupted inclusions data for package ${p.id}, defaulting to empty array`);
+              inclusions = [];
+            } else {
+              inclusions = JSON.parse(p.inclusions);
+            }
+          } else {
+            inclusions = p.inclusions;
+          }
+          
           if (!Array.isArray(inclusions)) inclusions = [];
+          
+          // Ensure all inclusions are strings, not objects
+          inclusions = inclusions.map((inc: any) => {
+            if (typeof inc === 'string') return inc;
+            if (inc && typeof inc === 'object') {
+              return inc.description || inc.name || String(inc);
+            }
+            return String(inc);
+          }).filter(Boolean);
         }
       } catch (e) {
         console.warn(`Failed to parse inclusions for package ${p.id}:`, e);
@@ -235,8 +255,34 @@ export async function GET(request: NextRequest) {
       
       try {
         if (p.addons) {
-          addOns = typeof p.addons === 'string' ? JSON.parse(p.addons) : p.addons;
+          if (typeof p.addons === 'string') {
+            // Handle corrupted [object Object] data
+            if (p.addons.includes('[object Object]')) {
+              console.warn(`Corrupted addons data for package ${p.id}, defaulting to empty array`);
+              addOns = [];
+            } else {
+              addOns = JSON.parse(p.addons);
+            }
+          } else {
+            addOns = p.addons;
+          }
+          
           if (!Array.isArray(addOns)) addOns = [];
+          
+          // Ensure all addOns have proper structure
+          addOns = addOns.map((addon: any) => {
+            if (typeof addon === 'string') {
+              return { name: addon, price: 0, description: addon };
+            }
+            if (addon && typeof addon === 'object') {
+              return {
+                name: addon.name || addon.description || String(addon),
+                price: Number(addon.price || 0),
+                description: addon.description || addon.name || String(addon)
+              };
+            }
+            return { name: String(addon), price: 0, description: String(addon) };
+          }).filter((addon: any) => addon.name);
         }
       } catch (e) {
         console.warn(`Failed to parse addons for package ${p.id}:`, e);

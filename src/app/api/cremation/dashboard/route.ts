@@ -231,18 +231,27 @@ export async function GET(request: NextRequest) {
       let inclusions: string[] = [];
       if (packageData.length > 0 && packageData[0].inclusions) {
         try {
-          const inclusionsData = typeof packageData[0].inclusions === 'string' 
-            ? JSON.parse(packageData[0].inclusions) 
-            : packageData[0].inclusions;
+          let inclusionsData;
+          if (typeof packageData[0].inclusions === 'string') {
+            // Handle corrupted [object Object] data
+            if (packageData[0].inclusions.includes('[object Object]')) {
+              console.warn(`Corrupted inclusions data for package ${pkg.id}, defaulting to empty array`);
+              inclusionsData = [];
+            } else {
+              inclusionsData = JSON.parse(packageData[0].inclusions);
+            }
+          } else {
+            inclusionsData = packageData[0].inclusions;
+          }
           
           if (Array.isArray(inclusionsData)) {
             inclusions = inclusionsData.map((inc: any) => {
               if (typeof inc === 'string') return inc;
               if (inc && typeof inc === 'object') {
-                return inc.description || inc.name || inc.toString();
+                return inc.description || inc.name || String(inc);
               }
               return String(inc);
-            });
+            }).filter(Boolean);
           }
         } catch (e) {
           console.warn(`Failed to parse inclusions for package ${pkg.id}:`, e);

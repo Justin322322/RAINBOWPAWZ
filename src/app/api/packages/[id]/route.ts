@@ -47,8 +47,30 @@ export async function GET(
     try {
       // Extract inclusions from JSON column
       if (pkg.inclusions) {
-        const inclusionsData = typeof pkg.inclusions === 'string' ? JSON.parse(pkg.inclusions) : pkg.inclusions;
-        inclusions = Array.isArray(inclusionsData) ? inclusionsData : [];
+        let inclusionsData;
+        if (typeof pkg.inclusions === 'string') {
+          // Handle corrupted [object Object] data
+          if (pkg.inclusions.includes('[object Object]')) {
+            console.warn(`Corrupted inclusions data for package ${packageId}, defaulting to empty array`);
+            inclusionsData = [];
+          } else {
+            inclusionsData = JSON.parse(pkg.inclusions);
+          }
+        } else {
+          inclusionsData = pkg.inclusions;
+        }
+        
+        if (Array.isArray(inclusionsData)) {
+          inclusions = inclusionsData.map((inc: any) => {
+            if (typeof inc === 'string') return inc;
+            if (inc && typeof inc === 'object') {
+              return inc.description || inc.name || String(inc);
+            }
+            return String(inc);
+          }).filter(Boolean);
+        } else {
+          inclusions = [];
+        }
       }
 
       // Extract addons from JSON column
