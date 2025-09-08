@@ -206,7 +206,7 @@ async function insertNotificationWithRetry(
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
       return await query(
-        `INSERT INTO notifications_unified_unified (user_id, title, message, type, link)
+        `INSERT INTO notifications_unified (user_id, title, message, type, link)
          VALUES (?, ?, ?, ?, ?)`,
         [userId, title, message, type, link]
       ) as unknown as InsertResult;

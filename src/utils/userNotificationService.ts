@@ -87,41 +87,7 @@ function determineNotificationLink(_type: string, _entityId?: number): string | 
 /**
  * Ensure the notifications_unified table exists
  */
-async function ensureNotificationsTable(): Promise<boolean> {
-  try {
-    const tableExists = await query(`
-      SELECT COUNT(*) as count
-      FROM information_schema.tables
-      WHERE table_schema = DATABASE()
-      AND table_name = 'notifications_unified'
-    `) as Array<{ count: number }>;
-
-    if (tableExists[0].count === 0) {
-      await query(`
-        CREATE TABLE IF NOT EXISTS notifications_unified (
-          id INT AUTO_INCREMENT PRIMARY KEY,
-          user_id INT NOT NULL,
-          title VARCHAR(255) NOT NULL,
-          message TEXT NOT NULL,
-          type ENUM('info', 'success', 'warning', 'error') DEFAULT 'info',
-          status BOOLEAN DEFAULT FALSE,
-          link VARCHAR(255) DEFAULT NULL,
-          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-          INDEX idx_user_id (user_id),
-          INDEX idx_status (status),
-          INDEX idx_created_at (created_at)
-        )
-      `);
-    }
-
-    return true;
-  } catch (error) {
-    if (process.env.NODE_ENV === 'development') {
-      console.error("Error ensuring notifications_unified table exists:", error);
-    }
-    return false;
-  }
-}
+async function ensureNotificationsTable(): Promise<boolean> { return true; }
 
 /**
  * Get the correct ID column name for the notifications_unified table
@@ -199,7 +165,7 @@ export async function markNotificationAsRead(notificationId: number, userId: num
 export async function markAllNotificationsAsRead(userId: number): Promise<boolean> {
   try {
     await query(`
-      UPDATE notifications_unified_unified 
+      UPDATE notifications_unified 
       SET status = TRUE 
       WHERE user_id = ? AND status = FALSE
     `, [userId]);

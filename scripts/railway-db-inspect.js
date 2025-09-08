@@ -32,6 +32,7 @@ async function q(conn, sql, params){
   await showCols('provider_availability');
   await showCols('availability_time_slots');
   await showCols('bookings');
+  await showCols('refunds');
 
   const pa = await q(conn, `SELECT * FROM provider_availability ORDER BY availability_date DESC LIMIT 10`);
   console.log(`\n[inspect] provider_availability sample:`);
@@ -44,6 +45,10 @@ async function q(conn, sql, params){
   const b = await q(conn, `SELECT id, user_id, provider_id, package_id, booking_date, booking_time, status, total_price FROM bookings ORDER BY id DESC LIMIT 10`);
   console.log(`\n[inspect] bookings sample:`);
   console.log(b);
+
+  const r = await q(conn, `SELECT id, booking_id, user_id, provider_id, amount, status, refund_type, payment_method, created_at FROM refunds ORDER BY id DESC LIMIT 10`);
+  console.log(`\n[inspect] refunds sample:`);
+  console.log(r);
 
   await conn.end();
   console.log('\n[inspect] Done');

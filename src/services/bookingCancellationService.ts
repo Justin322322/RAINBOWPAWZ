@@ -159,6 +159,57 @@ export async function cancelBookingWithRefund(
 
     const refundResult = await processRefund(refundRequest);
 
+    // Ensure a refund record exists in refunds table and write audit
+    try {
+      const refundStatus = refundResult.success
+        ? (refundResult.refundType === 'automatic' ? 'completed' : 'pending')
+        : 'failed';
+
+      // Insert refund record
+      const insertRefundRes = await query(
+        `INSERT INTO refunds (booking_id, user_id, amount, reason, status, refund_type, payment_method, initiated_at, processed_at, completed_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), ${refundStatus !== 'pending' ? 'NOW()' : 'NULL'}, ${refundStatus === 'completed' ? 'NOW()' : 'NULL'})`,
+        [
+          request.bookingId,
+          bookingInfo.userId,
+          refundAmount,
+          refundRequest.reason,
+          refundStatus,
+          refundResult.refundType || 'manual',
+          bookingInfo.payment_method || 'cash'
+        ]
+      ) as any;
+
+      const createdRefundId: number | undefined = insertRefundRes?.insertId || refundResult.refundId;
+
+      // Write audit log (non-fatal if table missing)
+      if (createdRefundId) {
+        try {
+          await query(
+            `INSERT INTO refund_audit_logs (refund_id, action, previous_status, new_status, performed_by, performed_by_type, details, ip_address)
+             VALUES (?, 'created', NULL, ?, ?, ?, ?, ?)`,
+            [
+              createdRefundId,
+              refundStatus,
+              request.cancelledBy,
+              request.cancelledByType === 'admin' ? 'admin' : request.cancelledByType === 'customer' ? 'system' : 'staff',
+              `Refund created via cancellation for booking ${request.bookingId}`,
+              request.ipAddress || null
+            ]
+          );
+        } catch (auditError) {
+          const msg = auditError instanceof Error ? auditError.message : String(auditError);
+          if (!msg.includes("refund_audit_logs") || !msg.includes("doesn't exist")) {
+            console.warn('Cancellation: audit write warning:', auditError);
+          } else {
+            console.warn('Cancellation: audit table missing; skipping audit write (non-fatal).');
+          }
+        }
+      }
+    } catch (refundInsertError) {
+      console.warn('Cancellation: failed to insert refund record (non-fatal):', refundInsertError);
+    }
+
     // Send refund notifications_unified
     if (refundResult.success && refundResult.refundId) {
       try {
@@ -221,7 +272,7 @@ async function getBookingInfo(bookingId: number): Promise<any | null> {
         sb.user_id as userId,
         sb.provider_id as providerId,
         sb.status,
-        sb.total_price as price,
+        COALESCE(sb.total_price, sb.base_price, 0) as price,
         sb.booking_time,
         sb.payment_status,
         sb.payment_method,
@@ -245,7 +296,7 @@ async function getBookingInfo(bookingId: number): Promise<any | null> {
           b.user_id as userId,
           b.provider_id as providerId,
           b.status,
-          COALESCE(b.total_price, b.total_amount, b.amount, 0) as price,
+          COALESCE(b.total_price, b.base_price, 0) as price,
           b.booking_time,
           COALESCE(b.payment_status, 'not_paid') as payment_status,
           COALESCE(b.payment_method, 'cash') as payment_method,

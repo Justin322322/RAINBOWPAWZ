@@ -45,120 +45,12 @@ export interface RefundAuditLog {
 /**
  * Ensure refunds table exists with all necessary fields
  */
-export async function ensureRefundsTable(): Promise<void> {
-  const allowDDL = process.env.ALLOW_DDL === 'true';
-  
-  // Check if refunds table exists
-  try {
-    const tables = await query(`
-      SELECT table_name
-      FROM information_schema.tables
-      WHERE table_schema = DATABASE()
-      AND table_name = 'refunds'
-    `) as any[];
-
-    if (tables.length === 0) {
-      if (!allowDDL) {
-        console.warn('DDL disabled in this environment. Skipping CREATE TABLE refunds. Set ALLOW_DDL=true to enable table creation.');
-        return;
-      }
-      
-      const createRefundsTableQuery = `
-        CREATE TABLE IF NOT EXISTS refunds (
-          id INT AUTO_INCREMENT PRIMARY KEY,
-          booking_id INT NOT NULL,
-          user_id INT NOT NULL,
-          amount DECIMAL(10,2) NOT NULL,
-          reason TEXT NOT NULL,
-          status ENUM('pending', 'processing', 'completed', 'failed', 'cancelled') DEFAULT 'pending',
-          refund_type ENUM('automatic', 'manual') NOT NULL,
-          payment_method ENUM('gcash', 'card', 'paymaya', 'cash', 'qr_code') NOT NULL,
-          transaction_id VARCHAR(255) NULL,
-          paymongo_refund_id VARCHAR(255) NULL,
-          processed_by INT NULL,
-          receipt_path VARCHAR(500) NULL,
-          receipt_verified BOOLEAN DEFAULT FALSE,
-          receipt_verified_by INT NULL,
-          notes TEXT NULL,
-          metadata JSON NULL,
-          initiated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-          processed_at TIMESTAMP NULL,
-          completed_at TIMESTAMP NULL,
-          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-          
-          INDEX idx_booking_id (booking_id),
-          INDEX idx_user_id (user_id),
-          INDEX idx_status (status),
-          INDEX idx_refund_type (refund_type),
-          INDEX idx_payment_method (payment_method),
-          INDEX idx_processed_by (processed_by),
-          INDEX idx_initiated_at (initiated_at),
-          INDEX idx_status_type (status, refund_type)
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-      `;
-
-      await query(createRefundsTableQuery);
-      console.log('Refunds table created successfully');
-    }
-  } catch (error) {
-    console.error('Error creating refunds table:', error);
-    throw new Error('Failed to create refunds table');
-  }
-}
+export async function ensureRefundsTable(): Promise<void> { /* no-op: DDL removed */ }
 
 /**
  * Ensure refund audit logs table exists
  */
-export async function ensureRefundAuditTable(): Promise<void> {
-  const allowDDL = process.env.ALLOW_DDL === 'true';
-  
-  // Check if refund_audit_logs table exists
-  try {
-    const tables = await query(`
-      SELECT table_name
-      FROM information_schema.tables
-      WHERE table_schema = DATABASE()
-      AND table_name = 'refund_audit_logs'
-    `) as any[];
-
-    if (tables.length === 0) {
-      if (!allowDDL) {
-        console.warn('DDL disabled in this environment. Skipping CREATE TABLE refund_audit_logs. Set ALLOW_DDL=true to enable table creation.');
-        return;
-      }
-      
-      const createAuditTableQuery = `
-        CREATE TABLE IF NOT EXISTS refund_audit_logs (
-          id INT AUTO_INCREMENT PRIMARY KEY,
-          refund_id INT NOT NULL,
-          action VARCHAR(100) NOT NULL,
-          previous_status VARCHAR(50) NULL,
-          new_status VARCHAR(50) NOT NULL,
-          performed_by INT NULL,
-          performed_by_type ENUM('system', 'admin', 'staff') NOT NULL,
-          details TEXT NULL,
-          ip_address VARCHAR(45) NULL,
-          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-          
-          INDEX idx_refund_id (refund_id),
-          INDEX idx_action (action),
-          INDEX idx_performed_by (performed_by),
-          INDEX idx_performed_by_type (performed_by_type),
-          INDEX idx_created_at (created_at),
-          
-          FOREIGN KEY (refund_id) REFERENCES refunds(id) ON DELETE CASCADE
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-      `;
-
-      await query(createAuditTableQuery);
-      console.log('Refund audit logs table created successfully');
-    }
-  } catch (error) {
-    console.error('Error creating refund audit logs table:', error);
-    throw new Error('Failed to create refund audit logs table');
-  }
-}
+export async function ensureRefundAuditTable(): Promise<void> { /* no-op: DDL removed */ }
 
 /**
  * Initialize refund-related database tables
@@ -230,23 +122,36 @@ export async function updateRefundRecord(
  * Log refund audit trail
  */
 export async function logRefundAudit(auditLog: Omit<RefundAuditLog, 'id' | 'created_at'>): Promise<void> {
-  await ensureRefundAuditTable();
-  
-  await query(`
-    INSERT INTO refund_audit_logs (
-      refund_id, action, previous_status, new_status, 
-      performed_by, performed_by_type, details, ip_address
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-  `, [
-    auditLog.refund_id,
-    auditLog.action,
-    auditLog.previous_status || null,
-    auditLog.new_status,
-    auditLog.performed_by || null,
-    auditLog.performed_by_type,
-    auditLog.details || null,
-    auditLog.ip_address || null
-  ]);
+  const allowDDL = process.env.ALLOW_DDL === 'true';
+  if (allowDDL) {
+    await ensureRefundAuditTable();
+  }
+
+  try {
+    await query(`
+      INSERT INTO refund_audit_logs (
+        refund_id, action, previous_status, new_status, 
+        performed_by, performed_by_type, details, ip_address
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `, [
+      auditLog.refund_id,
+      auditLog.action,
+      auditLog.previous_status || null,
+      auditLog.new_status,
+      auditLog.performed_by || null,
+      auditLog.performed_by_type,
+      auditLog.details || null,
+      auditLog.ip_address || null
+    ]);
+  } catch (error: any) {
+    // If the audit table doesn't exist in prod (DDL disabled), skip non-fatal
+    const message = (error && error.message) || '';
+    if (message.includes('ER_NO_SUCH_TABLE') || message.includes('doesn\'t exist')) {
+      console.warn('refund_audit_logs table missing; skipping audit write (non-fatal).');
+      return;
+    }
+    throw error;
+  }
 }
 
 /**

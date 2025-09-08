@@ -20,35 +20,8 @@ interface RateLimitResult {
  */
 export class RateLimiter {
   private static async ensureRateLimitTable(): Promise<boolean> {
-    try {
-      // Check if the rate_limits table exists
-      const tableExists = await query(
-        `SELECT COUNT(*) as count FROM information_schema.tables
-         WHERE table_schema = DATABASE() AND table_name = 'rate_limits'`
-      ) as any[];
-
-      if (tableExists[0].count === 0) {
-        // Create the rate_limits table
-        await query(`
-          CREATE TABLE rate_limits (
-            id INT AUTO_INCREMENT PRIMARY KEY,
-            identifier VARCHAR(255) NOT NULL,
-            action VARCHAR(100) NOT NULL,
-            request_count INT DEFAULT 1,
-            window_start TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-            INDEX idx_identifier_action (identifier, action),
-            INDEX idx_window_start (window_start)
-          )
-        `);
-      }
-
-      return true;
-    } catch (error) {
-      console.error('Error ensuring rate_limits table:', error);
-      return false;
-    }
+    // No app-side DDL; assume table exists. If missing, rate limiting will gracefully no-op.
+    return true;
   }
 
   /**

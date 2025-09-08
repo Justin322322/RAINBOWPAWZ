@@ -56,7 +56,7 @@ export async function POST(request: NextRequest) {
         id, 
         status, 
         COALESCE(payment_status, 'not_paid') as payment_status, 
-        COALESCE(total_price, total_amount, amount, 0) as price, 
+        COALESCE(total_price, base_price, 0) as price, 
         pet_name
       FROM bookings
       WHERE id = ? AND user_id = ?

@@ -190,8 +190,9 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
       }
 
       const data = await response.json();
-      const notifications_unified = data.notifications_unified || [];
-      const unreadCount = data.unread_count || 0;
+      // Support both legacy and unified response shapes
+      const notifications_unified = (data.notifications_unified || data.notifications || data.data?.notifications || []) as Notification[];
+      const unreadCount = (data.unread_count ?? data.unreadCount ?? data.data?.unreadCount ?? 0) as number;
 
       if (process.env.NODE_ENV === 'development') {
         console.log('Fetched notifications_unified:', notifications_unified);
