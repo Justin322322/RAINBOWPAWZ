@@ -245,7 +245,7 @@ async function getBookingInfo(bookingId: number): Promise<any | null> {
           b.user_id as userId,
           b.provider_id as providerId,
           b.status,
-          COALESCE(b.price, b.total_price, b.total_amount, b.amount) as price,
+          COALESCE(b.total_price, b.total_amount, b.amount, 0) as price,
           b.booking_time,
           COALESCE(b.payment_status, 'not_paid') as payment_status,
           COALESCE(b.payment_method, 'cash') as payment_method,
