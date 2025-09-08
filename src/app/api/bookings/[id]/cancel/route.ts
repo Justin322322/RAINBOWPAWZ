@@ -52,7 +52,12 @@ export async function POST(request: NextRequest) {
 
     // First, validate that the booking exists and belongs to the user
     const bookingExistsQuery = `
-      SELECT id, status, payment_status, price, pet_name
+      SELECT 
+        id, 
+        status, 
+        COALESCE(payment_status, 'not_paid') as payment_status, 
+        COALESCE(total_price, price, total_amount, amount, 0) as price, 
+        pet_name
       FROM bookings
       WHERE id = ? AND user_id = ?
     `;

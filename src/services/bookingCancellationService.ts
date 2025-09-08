@@ -81,7 +81,7 @@ export async function cancelBookingWithRefund(
 
     // Restore availability: re-open the booked slot and mark day available
     try {
-      const providerId: number | undefined = bookingInfo.providerId;
+      const providerId: number | undefined = bookingInfo.providerId || bookingInfo.provider_id;
       const bookingDate: string | undefined = bookingInfo.booking_date;
       const bookingTime: string | undefined = bookingInfo.booking_time;
       if (providerId && bookingDate && bookingTime) {
@@ -219,8 +219,10 @@ async function getBookingInfo(bookingId: number): Promise<any | null> {
       SELECT 
         sb.id,
         sb.user_id as userId,
+        sb.provider_id as providerId,
         sb.status,
         sb.total_price as price,
+        sb.booking_time,
         sb.payment_status,
         sb.payment_method,
         sb.booking_date,
@@ -241,8 +243,10 @@ async function getBookingInfo(bookingId: number): Promise<any | null> {
         SELECT 
           b.id,
           b.user_id as userId,
+          b.provider_id as providerId,
           b.status,
           COALESCE(b.price, b.total_price, b.total_amount, b.amount) as price,
+          b.booking_time,
           COALESCE(b.payment_status, 'not_paid') as payment_status,
           COALESCE(b.payment_method, 'cash') as payment_method,
           b.booking_date,
