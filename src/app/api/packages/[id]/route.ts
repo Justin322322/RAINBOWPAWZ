@@ -326,12 +326,8 @@ export async function PATCH(
         }
 
         // Update inclusions as JSON
-        const inclusionsData = body.inclusions && Array.isArray(body.inclusions) 
-          ? body.inclusions.filter((inc: any) => inc && inc.trim()).map((inc: any) => ({
-              name: inc.trim(),
-              description: inc.trim(),
-              is_included: true
-            }))
+        const inclusionsData = body.inclusions && Array.isArray(body.inclusions)
+          ? body.inclusions.filter((inc: any) => inc && inc.trim()).map((inc: any) => inc.trim())
           : [];
 
         // Update add-ons as JSON
