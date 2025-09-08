@@ -592,8 +592,11 @@ export async function POST(request: NextRequest) {
     const columnsResult = await query(columnsQuery) as any[];
     const columns = columnsResult.map((col: any) => col.COLUMN_NAME.toLowerCase());
 
+    // Determine price column (price vs total_price)
+    const priceColumn = columns.includes('price') ? 'price' : (columns.includes('total_price') ? 'total_price' : null);
     // Check for required columns
-    const requiredColumns = ['user_id', 'provider_id', 'package_id', 'booking_date', 'booking_time', 'price'];
+    const requiredColumns = ['user_id', 'provider_id', 'package_id', 'booking_date', 'booking_time'];
+    if (priceColumn) requiredColumns.push(priceColumn);
     const missingColumns = requiredColumns.filter(col => !columns.includes(col.toLowerCase()));
 
     if (missingColumns.length > 0) {
@@ -609,8 +612,8 @@ export async function POST(request: NextRequest) {
     const values: any[] = [];
 
     // Always include these required fields - using consistent table structure
-    availableColumns.push('user_id', 'provider_id', 'package_id', 'booking_date', 'booking_time', 'price');
-    placeholders.push('?', '?', '?', '?', '?', '?');
+    availableColumns.push('user_id', 'provider_id', 'package_id', 'booking_date', 'booking_time');
+    placeholders.push('?', '?', '?', '?', '?');
 
     // Convert userId to number if it's a string and can be parsed as a number
     let userIdValue = userId;
@@ -623,9 +626,15 @@ export async function POST(request: NextRequest) {
       providerId,
       packageId,
       bookingDate || null,
-      bookingTime || null,
-      price
+      bookingTime || null
     );
+
+    // Push price/total_price value
+    if (priceColumn) {
+      availableColumns.push(priceColumn);
+      placeholders.push('?');
+      values.push(price);
+    }
 
     // Add optional fields if they exist in the schema
     if (columns.includes('pet_id') && petId) {
