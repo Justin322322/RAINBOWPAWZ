@@ -33,15 +33,15 @@ export async function GET(request: NextRequest) {
     const queryParams: any[] = [providerId];
 
     if (period === 'last7days') {
-      dateCondition = 'AND sb.booking_date >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)';
+      dateCondition = 'AND b.booking_date >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)';
     } else if (period === 'last30days') {
-      dateCondition = 'AND sb.booking_date >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)';
+      dateCondition = 'AND b.booking_date >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)';
     } else if (period === 'last90days') {
-      dateCondition = 'AND sb.booking_date >= DATE_SUB(CURDATE(), INTERVAL 90 DAY)';
+      dateCondition = 'AND b.booking_date >= DATE_SUB(CURDATE(), INTERVAL 90 DAY)';
     } else if (period === 'last6months') {
-      dateCondition = 'AND sb.booking_date >= DATE_SUB(CURDATE(), INTERVAL 6 MONTH)';
+      dateCondition = 'AND b.booking_date >= DATE_SUB(CURDATE(), INTERVAL 6 MONTH)';
     } else if (period === 'thisyear') {
-      dateCondition = 'AND YEAR(sb.booking_date) = YEAR(CURDATE())';
+      dateCondition = 'AND YEAR(b.booking_date) = YEAR(CURDATE())';
     }
 
     // Check if bookings table exists
@@ -65,7 +65,7 @@ export async function GET(request: NextRequest) {
       FROM refunds r
       ${useBookings ? `
         JOIN bookings b ON r.booking_id = b.id
-        WHERE b.provider_id = ? ${dateCondition.replace('sb.booking_date', 'r.initiated_at')}
+        WHERE b.provider_id = ? ${dateCondition.replace('b.booking_date', 'r.initiated_at')}
       ` : `
         WHERE 1=0
       `}
@@ -89,27 +89,27 @@ export async function GET(request: NextRequest) {
       // Use bookings table - change 'sb' to 'b' to match database structure
       const totalBookingsQuery = `
         SELECT COUNT(*) as count FROM bookings b
-        WHERE b.provider_id = ? ${dateCondition.replace('sb.', 'b.')}
+        WHERE b.provider_id = ? ${dateCondition}
       `;
 
       const completedBookingsQuery = `
         SELECT COUNT(*) as count FROM bookings b
-        WHERE b.provider_id = ? AND b.status = 'completed' ${dateCondition.replace('sb.', 'b.')}
+        WHERE b.provider_id = ? AND b.status = 'completed' ${dateCondition}
       `;
 
       const cancelledBookingsQuery = `
         SELECT COUNT(*) as count FROM bookings b
-        WHERE b.provider_id = ? AND b.status = 'cancelled' ${dateCondition.replace('sb.', 'b.')}
+        WHERE b.provider_id = ? AND b.status = 'cancelled' ${dateCondition}
       `;
 
       const pendingBookingsQuery = `
         SELECT COUNT(*) as count FROM bookings b
-        WHERE b.provider_id = ? AND b.status IN ('pending', 'confirmed', 'in_progress') ${dateCondition.replace('sb.', 'b.')}
+        WHERE b.provider_id = ? AND b.status IN ('pending', 'confirmed', 'in_progress') ${dateCondition}
       `;
 
       const totalRevenueQuery = `
         SELECT COALESCE(SUM(IFNULL(b.total_price, b.base_price) + IFNULL(b.delivery_fee, 0)), 0) as total FROM bookings b
-        WHERE b.provider_id = ? AND b.status = 'completed' ${dateCondition.replace('sb.', 'b.')}
+        WHERE b.provider_id = ? AND b.status = 'completed' ${dateCondition}
       `;
 
       const topServicesQuery = `
@@ -119,7 +119,7 @@ export async function GET(request: NextRequest) {
           COALESCE(SUM(CASE WHEN b.status = 'completed' THEN IFNULL(b.total_price, b.base_price) + IFNULL(b.delivery_fee, 0) ELSE 0 END), 0) as revenue
         FROM bookings b
         LEFT JOIN service_packages p ON b.package_id = p.package_id
-        WHERE b.provider_id = ? ${dateCondition.replace('sb.', 'b.')}
+        WHERE b.provider_id = ? ${dateCondition}
         GROUP BY p.package_id, p.name
         ORDER BY bookings DESC, revenue DESC
         LIMIT 5
@@ -163,7 +163,7 @@ export async function GET(request: NextRequest) {
       // Fallback to bookings table or return empty data
       try {
         // Try to use bookings table with different date column
-        const bookingsDateCondition = dateCondition.replace('sb.booking_date', 'b.created_at');
+        const bookingsDateCondition = dateCondition.replace('b.booking_date', 'b.created_at');
         const bookingsQueryParams = queryParams.slice();
 
         const totalBookingsQuery = `
