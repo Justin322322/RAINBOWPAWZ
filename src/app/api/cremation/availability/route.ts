@@ -5,7 +5,7 @@ import { verifySecureAuth } from '@/lib/secureAuth';
 export async function GET(request: NextRequest) {
   try {
     const url = new URL(request.url);
-    const providerIdParam = url.searchParams.get('providerId');
+    const providerIdParam = url.searchParams.get('providerId') || url.searchParams.get('provider');
     const month = url.searchParams.get('month'); // Format: YYYY-MM
     const startDateParam = url.searchParams.get('startDate'); // Format: YYYY-MM-DD
     const endDateParam = url.searchParams.get('endDate'); // Format: YYYY-MM-DD
@@ -84,14 +84,14 @@ export async function GET(request: NextRequest) {
       if (hasDays && hasSlots) {
         // Load from normalized tables
         const daysRows = await query(
-          `SELECT availability_date AS d, is_available AS ia
+          `SELECT DATE_FORMAT(availability_date, '%Y-%m-%d') AS d, is_available AS ia
            FROM provider_availability
            WHERE provider_id = ? AND availability_date BETWEEN ? AND ?`,
           [providerId, formatDateToString(startDate), formatDateToString(endDate)]
         ) as any[];
 
         const slotsRows = await query(
-          `SELECT availability_date AS d,
+          `SELECT DATE_FORMAT(availability_date, '%Y-%m-%d') AS d,
                   TIME_FORMAT(start_time,'%H:%i') AS start,
                   TIME_FORMAT(end_time,'%H:%i')   AS end
            FROM availability_time_slots
@@ -102,11 +102,11 @@ export async function GET(request: NextRequest) {
 
         const dateToAvail = new Map<string, boolean>();
         for (const r of daysRows) {
-          if (r.d) dateToAvail.set(String(r.d).slice(0,10), Boolean(r.ia));
+          if (r.d) dateToAvail.set(r.d, Boolean(r.ia));
         }
         const dateToSlots = new Map<string, {start: string; end: string;}[]>();
         for (const r of slotsRows) {
-          const key = String(r.d).slice(0,10);
+          const key = r.d;
           if (!dateToSlots.has(key)) dateToSlots.set(key, []);
           dateToSlots.get(key)!.push({ start: r.start, end: r.end });
         }
