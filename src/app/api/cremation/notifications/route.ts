@@ -45,9 +45,11 @@ export async function GET(request: NextRequest) {
         title,
         message,
         type,
-        link,
+        category,
         status,
-        created_at
+        priority,
+        created_at,
+        read_at
       FROM notifications_unified 
       WHERE user_id = ? 
       ORDER BY created_at DESC 
@@ -63,11 +65,11 @@ export async function GET(request: NextRequest) {
 
     const total = countResult[0]?.total || 0;
 
-    // Get unread count - ensure proper boolean handling
+    // Get unread count - check for 'pending' status or NULL read_at
     const unreadResult = await query(`
       SELECT COUNT(*) as unread 
       FROM notifications_unified 
-      WHERE user_id = ? AND (status = 0 OR status = false OR status IS NULL)
+      WHERE user_id = ? AND (status = 'pending' OR read_at IS NULL)
     `, [parseInt(user.userId)]) as any[];
 
     const unreadCount = unreadResult[0]?.unread || 0;
@@ -157,7 +159,7 @@ export async function PATCH(request: NextRequest) {
       // Mark all notifications_unified as read
       await query(`
         UPDATE notifications_unified 
-        SET status = 1 
+        SET status = 'read', read_at = NOW() 
         WHERE user_id = ?
       `, [parseInt(user.userId)]);
 
@@ -176,7 +178,7 @@ export async function PATCH(request: NextRequest) {
     // Mark specific notification as read
     const result = await query(`
       UPDATE notifications_unified 
-      SET status = 1 
+      SET status = 'read', read_at = NOW() 
       WHERE id = ? AND user_id = ?
     `, [notificationId, parseInt(user.userId)]) as any;
 
@@ -248,7 +250,7 @@ export async function DELETE(request: NextRequest) {
       if (idColumn === 'notification_id') {
         deleteQuery = `DELETE FROM notifications_unified WHERE notification_id IN (${placeholders}) AND user_id = ?`;
       } else {
-        deleteQuery = `DELETE FROM notifications_unified_unified WHERE id IN (${placeholders}) AND user_id = ?`;
+        deleteQuery = `DELETE FROM notifications_unified WHERE id IN (${placeholders}) AND user_id = ?`;
       }
       queryParams = [...notificationIds, parseInt(user.userId)];
     } else {

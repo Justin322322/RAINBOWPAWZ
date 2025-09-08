@@ -15,11 +15,11 @@ import {
   ExclamationCircleIcon,
   TruckIcon,
   PlusCircleIcon,
-  TrashIcon,
-  DevicePhoneMobileIcon
+  TrashIcon
 } from '@heroicons/react/24/outline';
 
 import FurParentPageSkeleton from '@/components/ui/FurParentPageSkeleton';
+import GCashIcon from '@/components/ui/GCashIcon';
 import { useCart } from '@/contexts/CartContext';
 import TimeSlotSelector from '@/components/booking/TimeSlotSelector';
 import AddOnSelector, { AddOn } from '@/components/booking/AddOnSelector';
@@ -1498,7 +1498,7 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
                             className="h-4 w-4 text-[var(--primary-green)] focus:ring-[var(--primary-green)]"
                           />
                           <div className="h-6 w-6 flex-shrink-0 ml-2">
-                            <DevicePhoneMobileIcon className="h-6 w-6 text-blue-600" />
+                            <GCashIcon className="h-6 w-6" />
                           </div>
                           <div className="ml-3">
                             <span className="font-medium text-gray-800">GCash</span>

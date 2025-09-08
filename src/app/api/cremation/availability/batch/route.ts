@@ -43,25 +43,19 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check if required tables exist and use the correct table names
+    // Check if service_providers table exists
     const tableCheckQuery = `
       SELECT TABLE_NAME
       FROM INFORMATION_SCHEMA.TABLES
       WHERE TABLE_SCHEMA = DATABASE()
-      AND TABLE_NAME IN ('service_providers', 'service_providers', 'availability_time_slots', 'time_slot_services')
+      AND TABLE_NAME = 'service_providers'
     `;
     
     const tablesResult = await query(tableCheckQuery) as any[];
-    const existingTables = tablesResult.map((row: any) => row.TABLE_NAME.toLowerCase());
     
-    // Determine which table structure to use
-    const useProviderTimeSlots = existingTables.includes('service_providers');
-    const useAvailabilityTimeSlots = existingTables.includes('availability_time_slots');
-    const useProviderAvailability = existingTables.includes('service_providers');
-    
-    if (!useProviderAvailability && !useProviderTimeSlots) {
+    if (!tablesResult || tablesResult.length === 0) {
       return NextResponse.json(
-        { error: 'Database tables not properly configured. Missing service_providers or service_providers table.' },
+        { error: 'Database tables not properly configured. Missing service_providers table.' },
         { status: 500 }
       );
     }
@@ -90,135 +84,77 @@ export async function POST(request: NextRequest) {
             throw new Error('Cannot set availability for past dates');
           }
 
-          if (useProviderTimeSlots) {
-            // Use the service_providers table structure (simpler approach)
-            
-            // Delete existing time slots for this date first
-            await transaction.query(
-              'DELETE FROM service_providers WHERE provider_id = ? AND date = ?',
-              [providerId, date]
-            );
+          // Use the service_providers table with availability_data JSON column
+          
+          // Get current availability data
+          const currentData = await transaction.query(
+            'SELECT availability_data FROM service_providers WHERE provider_id = ?',
+            [providerId]
+          ) as any[];
 
-            // Insert new time slots if any
-            if (isAvailable && timeSlots && timeSlots.length > 0) {
-              // Sort and reject overlaps for each day
-              const sorted = [...timeSlots].sort((a:any,b:any) => a.start.localeCompare(b.start));
-              for (let i=1;i<sorted.length;i++) {
-                if (sorted[i].start < sorted[i-1].end) {
-                  throw new Error('Overlapping time slots are not allowed');
-                }
-              }
-              for (const slot of sorted) {
-                // Validate time slot format
-                if (!slot.start || !slot.end) {
-                  throw new Error('Invalid time slot format: start and end times required');
-                }
-
-                // Validate time format (HH:MM)
-                const timeRegex = /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/;
-                if (!timeRegex.test(slot.start) || !timeRegex.test(slot.end)) {
-                  throw new Error('Invalid time format. Use HH:MM format');
-                }
-
-                // Validate start time is before end time
-                if (slot.start >= slot.end) {
-                  throw new Error('Start time must be before end time');
-                }
-
-                // Format available services as JSON
-                const availableServicesJson = Array.isArray(slot.availableServices) && slot.availableServices.length > 0
-                  ? JSON.stringify(slot.availableServices.filter((id: number) => id !== 0))
-                  : null;
-
-                await transaction.query(
-                  'INSERT INTO service_providers (provider_id, date, start_time, end_time, available_services) VALUES (?, ?, ?, ?, ?)',
-                  [providerId, date, slot.start, slot.end, availableServicesJson]
-                );
-              }
-            }
-            
-          } else if (useProviderAvailability) {
-            // Use the service_providers + availability_time_slots structure
-            
-            let dayId;
-            
-            // Check if day already exists
-            const existingDay = await transaction.query(
-              'SELECT id FROM service_providers WHERE provider_id = ? AND availability_date = ?',
-              [providerId, date]
-            ) as any[];
-
-            if (existingDay.length > 0) {
-              // Update existing day
-              dayId = existingDay[0].id;
-              await transaction.query(
-                'UPDATE service_providers SET is_available = ?, updated_at = NOW() WHERE id = ?',
-                [isAvailable, dayId]
-              );
-
-              // Delete existing time slots for this day
-              if (useAvailabilityTimeSlots) {
-                await transaction.query(
-                  'DELETE FROM availability_time_slots WHERE availability_id = ?',
-                  [dayId]
-                );
-              }
-            } else {
-              // Insert new day
-              const dayResult = await transaction.query(
-                'INSERT INTO service_providers (provider_id, availability_date, is_available, created_at, updated_at) VALUES (?, ?, ?, NOW(), NOW())',
-                [providerId, date, isAvailable]
-              ) as any;
-              dayId = dayResult.insertId;
-            }
-
-            // Insert time slots if any and table exists
-            if (useAvailabilityTimeSlots && isAvailable && timeSlots && timeSlots.length > 0) {
-              for (const slot of timeSlots) {
-                // Validate time slot format
-                if (!slot.start || !slot.end) {
-                  throw new Error('Invalid time slot format: start and end times required');
-                }
-
-                // Validate time format (HH:MM)
-                const timeRegex = /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/;
-                if (!timeRegex.test(slot.start) || !timeRegex.test(slot.end)) {
-                  throw new Error('Invalid time format. Use HH:MM format');
-                }
-
-                // Validate start time is before end time
-                if (slot.start >= slot.end) {
-                  throw new Error('Start time must be before end time');
-                }
-
-                const slotResult = await transaction.query(
-                  'INSERT INTO availability_time_slots (availability_id, start_time, end_time, created_at) VALUES (?, ?, ?, NOW())',
-                  [dayId, slot.start, slot.end]
-                ) as any;
-
-                // Insert available services for this time slot if table exists
-                if (existingTables.includes('time_slot_services') && slot.availableServices && slot.availableServices.length > 0) {
-                  for (const serviceId of slot.availableServices) {
-                    // Validate serviceId is a number
-                    if (isNaN(Number(serviceId))) {
-                      console.warn(`Invalid service ID: ${serviceId}, skipping`);
-                      continue;
-                    }
-
-                    try {
-                      await transaction.query(
-                        'INSERT INTO time_slot_services (time_slot_id, service_id) VALUES (?, ?)',
-                        [slotResult.insertId, serviceId]
-                      );
-                    } catch (serviceError) {
-                      // If foreign key constraint fails, log but don't fail entire operation
-                      console.warn(`Failed to link service ${serviceId} to time slot ${slotResult.insertId}:`, serviceError);
-                    }
-                  }
-                }
-              }
+          let availabilityData: Record<string, any> = {};
+          if (currentData.length > 0 && currentData[0].availability_data) {
+            try {
+              availabilityData = JSON.parse(currentData[0].availability_data);
+            } catch {
+              console.warn('Failed to parse existing availability_data, starting fresh');
+              availabilityData = {};
             }
           }
+
+          // Validate and process time slots if available
+          if (isAvailable && timeSlots && timeSlots.length > 0) {
+            // Sort and reject overlaps for each day
+            const sorted = [...timeSlots].sort((a: any, b: any) => a.start.localeCompare(b.start));
+            for (let i = 1; i < sorted.length; i++) {
+              if (sorted[i].start < sorted[i - 1].end) {
+                throw new Error('Overlapping time slots are not allowed');
+              }
+            }
+
+            // Validate each time slot
+            for (const slot of sorted) {
+              // Validate time slot format
+              if (!slot.start || !slot.end) {
+                throw new Error('Invalid time slot format: start and end times required');
+              }
+
+              // Validate time format (HH:MM)
+              const timeRegex = /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/;
+              if (!timeRegex.test(slot.start) || !timeRegex.test(slot.end)) {
+                throw new Error('Invalid time format. Use HH:MM format');
+              }
+
+              // Validate start time is before end time
+              if (slot.start >= slot.end) {
+                throw new Error('Start time must be before end time');
+              }
+            }
+
+            // Store the processed time slots
+            availabilityData[date] = {
+              isAvailable,
+              timeSlots: sorted.map(slot => ({
+                start: slot.start,
+                end: slot.end,
+                availableServices: Array.isArray(slot.availableServices) 
+                  ? slot.availableServices.filter((id: number) => id !== 0)
+                  : []
+              }))
+            };
+          } else {
+            // Mark date as unavailable
+            availabilityData[date] = {
+              isAvailable: false,
+              timeSlots: []
+            };
+          }
+
+          // Update the availability_data JSON column
+          await transaction.query(
+            'UPDATE service_providers SET availability_data = ?, updated_at = NOW() WHERE provider_id = ?',
+            [JSON.stringify(availabilityData), providerId]
+          );
 
           successCount++;
 

@@ -142,15 +142,73 @@ export async function GET(request: NextRequest) {
         packageIds
       )) as any[];
 
-      // Optimized image processing with pre-computed path mappings
-      const pathMappings = {
-        '/api/image/': (path: string) => path,
-        '/uploads/': (path: string) => `/api/image/${path.substring('/uploads/'.length)}`,
-        'uploads/': (path: string) => `/api/image/${path.substring('uploads/'.length)}`,
-        'packages/': (path: string) => {
-          const parts = path.split('packages/');
-          return parts.length > 1 ? `/api/image/packages/${parts[1]}` : path;
+      // Helper function to validate and process images
+      const validateAndProcessImage = (img: any, packageId: number): string | null => {
+        // Skip null/undefined
+        if (!img) return null;
+        
+        let imagePath: string | null = null;
+        
+        if (typeof img === 'string') {
+          // Skip corrupted data
+          if (img.includes('[object') || img.trim() === '' || img === 'null' || img === 'undefined' || img.length < 3) {
+            console.warn(`Package ${packageId} has corrupted image string: ${img.substring(0, 50)}...`);
+            return null;
+          }
+          
+          // Skip extremely long base64 strings that break Next.js optimization
+          if (img.startsWith('data:image/') && img.length > 100000) {
+            console.warn(`Package ${packageId} has oversized base64 image (${img.length} chars), skipping`);
+            return null;
+          }
+          
+          imagePath = img;
+        } else if (typeof img === 'object') {
+          const rawPath = img.url || img.path || img.src || null;
+          const dataUrl = img.data || null;
+          
+          if (dataUrl && typeof dataUrl === 'string' && dataUrl.startsWith('data:image/')) {
+            // Skip extremely long base64 strings
+            if (dataUrl.length > 100000) {
+              console.warn(`Package ${packageId} has oversized base64 image (${dataUrl.length} chars), skipping`);
+              return null;
+            }
+            imagePath = dataUrl;
+          } else if (rawPath && typeof rawPath === 'string') {
+            // Skip corrupted data
+            if (rawPath.includes('[object') || rawPath.trim() === '' || rawPath === 'null' || rawPath === 'undefined' || rawPath.length < 3) {
+              console.warn(`Package ${packageId} has corrupted image path: ${rawPath.substring(0, 50)}...`);
+              return null;
+            }
+            imagePath = rawPath;
+          }
         }
+        
+        if (!imagePath) return null;
+        
+        // Convert to proper API path
+        if (imagePath.startsWith('data:image/') || imagePath.startsWith('http')) {
+          return imagePath;
+        }
+        
+        if (imagePath.startsWith('/api/image/')) {
+          return imagePath;
+        }
+        
+        if (imagePath.includes('packages/')) {
+          const parts = imagePath.split('packages/');
+          return parts.length > 1 ? `/api/image/packages/${parts[1]}` : null;
+        }
+        
+        if (imagePath.startsWith('/uploads/')) {
+          return `/api/image/${imagePath.substring('/uploads/'.length)}`;
+        }
+        
+        if (imagePath.startsWith('uploads/')) {
+          return `/api/image/${imagePath.substring('uploads/'.length)}`;
+        }
+        
+        return null;
       };
 
       imagesByPackage = imagesRows.reduce((acc: Record<number, string[]>, row: any) => {
@@ -190,51 +248,9 @@ export async function GET(request: NextRequest) {
         const resolvedImages: string[] = [];
         
         for (const img of images) {
-          let resolved: string | null = null;
-          
-          if (typeof img === 'string') {
-            // Skip corrupted string data
-            if (img.includes('[object Object]') || img === '[object Object]') {
-              console.warn(`Package ${id} has corrupted image string: ${img}`);
-              continue;
-            }
-            // Direct image path/URL
-            resolved = img;
-          } else if (img && typeof img === 'object') {
-            // Image object with url/path property
-            const rawPath = img.url || img.path || img.src || null;
-            const dataUrl = img.data || null;
-            
-            // Fast path for base64 data URLs
-            if (dataUrl && typeof dataUrl === 'string' && dataUrl.startsWith('data:image/')) {
-              resolved = dataUrl;
-            } else if (rawPath && typeof rawPath === 'string') {
-              // Skip corrupted path data
-              if (rawPath.includes('[object Object]') || rawPath === '[object Object]') {
-                console.warn(`Package ${id} has corrupted image path: ${rawPath}`);
-                continue;
-              }
-              resolved = rawPath;
-            }
-          }
-          
-          if (resolved && resolved !== '[object Object]') {
-            // Apply path mappings
-            for (const [prefix, mapper] of Object.entries(pathMappings)) {
-              if (resolved.startsWith(prefix)) {
-                resolved = mapper(resolved);
-                break;
-              }
-            }
-            
-            // Fallback for paths that don't match known patterns
-            if (resolved && !resolved.startsWith('http') && !resolved.startsWith('data:') && !resolved.startsWith('/api/')) {
-              if (resolved.includes('packages/')) {
-                resolved = pathMappings['packages/'](resolved);
-              }
-            }
-            
-            resolvedImages.push(resolved);
+          const validImage = validateAndProcessImage(img, id);
+          if (validImage) {
+            resolvedImages.push(validImage);
           }
         }
 
