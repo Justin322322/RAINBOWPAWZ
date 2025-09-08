@@ -52,8 +52,7 @@ export async function GET(request: NextRequest) {
       return `${year}-${month}-${day}`;
     };
 
-    const formattedStartDate = formatDateToString(startDate);
-    const formattedEndDate = formatDateToString(endDate);
+    // Date range is used for generating the month view, but actual data comes from JSON columns
 
 
     // First, get all dates in the month range
