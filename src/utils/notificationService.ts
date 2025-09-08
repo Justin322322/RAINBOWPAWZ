@@ -151,10 +151,14 @@ export async function createNotificationFast({
 }): Promise<NotificationResult> {
   try {
     const { dbType, dbCategory, dbStatus } = normalizeDbNotification(type, category);
+
+    // Best-effort link inference if not provided
+    const link = _link ?? inferNotificationLink(title, message);
+
     const result = await query(
-      `INSERT INTO notifications_unified (user_id, title, message, type, category, status, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, NOW())`,
-      [userId, title, message, dbType, dbCategory, dbStatus]
+      `INSERT INTO notifications_unified (user_id, title, message, type, category, status, link, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, NOW())`,
+      [userId, title, message, dbType, dbCategory, dbStatus, link]
     ) as unknown as InsertResult;
 
     return {
@@ -170,6 +174,18 @@ export async function createNotificationFast({
       error: error instanceof Error ? error.message : 'Unknown error'
     };
   }
+}
+
+// Infer a reasonable link destination from title/message when not explicitly provided
+function inferNotificationLink(title: string, message: string): string | null {
+  const text = `${title} ${message}`.toLowerCase();
+  if (text.includes('booking')) return '/user/furparent_dashboard/bookings';
+  if (text.includes('payment') || text.includes('refund')) return '/user/furparent_dashboard/bookings';
+  if (text.includes('profile')) return '/user/profile';
+  if (text.includes('appeal')) return '/appeals';
+  if (text.includes('business') || text.includes('provider') || text.includes('cremation')) return '/cremation/dashboard';
+  if (text.includes('admin')) return '/admin/dashboard';
+  return null;
 }
 
 /**

@@ -27,100 +27,43 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
     const body = await request.json().catch(() => ({}));
     const { notes } = body;
 
-    // Check which table exists: service_providers or service_providers
-    const tableCheckResult = await query(`
-      SELECT table_name
-      FROM information_schema.tables
-      WHERE table_schema = DATABASE()
-      AND table_name IN ('service_providers', 'service_providers')
-    `) as any[];
-
-    // Determine which table to use
-    const tableNames = tableCheckResult.map(row => row.TABLE_NAME || row.table_name);
-
-    const useServiceProvidersTable = tableNames.includes('service_providers');
-    const useBusinessProfilesTable = tableNames.includes('service_providers');
-
-    if (!useServiceProvidersTable && !useBusinessProfilesTable) {
-      return NextResponse.json({
-        message: 'Database schema error: Required tables do not exist'
-      }, { status: 500 });
-    }
+    // We now use the unified table name
+    const tableName = 'service_providers';
 
     // SECURITY FIX: Use validated table names instead of template literals
-    let updateResult;
-    if (useServiceProvidersTable) {
-      updateResult = await query(
-        `UPDATE service_providers
-         SET application_status = 'approved',
-             verification_date = NOW(),
-             verification_notes = ?,
-             updated_at = NOW()
-         WHERE provider_id = ?`,
-        [notes || 'Application approved', businessId]
-      ) as unknown as mysql.ResultSetHeader;
-    } else {
-      updateResult = await query(
-        `UPDATE service_providers
-         SET application_status = 'approved',
-             verification_date = NOW(),
-             verification_notes = ?,
-             updated_at = NOW()
-         WHERE provider_id = ?`,
-        [notes || 'Application approved', businessId]
-      ) as unknown as mysql.ResultSetHeader;
-    }
+    const updateResult = await query(
+      `UPDATE ${tableName}
+       SET application_status = 'approved',
+           verification_date = NOW(),
+           verification_notes = ?,
+           updated_at = NOW()
+       WHERE provider_id = ?`,
+      [notes || 'Application approved', businessId]
+    ) as unknown as mysql.ResultSetHeader;
 
     if (updateResult.affectedRows === 0) {
       return NextResponse.json({ message: 'Business profile not found' }, { status: 404 });
     }
 
     // Get business details for email notification
-    let businessResult;
-
-    if (useServiceProvidersTable) {
-      businessResult = await query(
-        `SELECT
-          sp.*,
-          u.email,
-          u.first_name,
-          u.last_name,
-          sp.name as business_name
-         FROM service_providers bp
-         JOIN users u ON sp.user_id = u.user_id
-         WHERE sp.provider_id = ?`,
-        [businessId]
-      ) as any[];
-    } else {
-      businessResult = await query(
-        `SELECT sp.*, u.email, u.first_name, u.last_name
-         FROM service_providers bp
-         JOIN users u ON sp.user_id = u.user_id
-         WHERE sp.id = ?`,
-        [businessId]
-      ) as any[];
-    }
+    const businessResult = await query(
+      `SELECT sp.*, u.email, u.first_name, u.last_name, sp.name AS business_name
+       FROM ${tableName} sp
+       JOIN users u ON sp.user_id = u.user_id
+       WHERE sp.provider_id = ?`,
+      [businessId]
+    ) as any[];
 
     const business = businessResult[0];
 
     // Update the user's verification status as well
-    if (useServiceProvidersTable) {
-      await query(
-        `UPDATE users u
-         JOIN service_providers bp ON u.user_id = sp.user_id
-         SET u.is_verified = 1
-         WHERE sp.provider_id = ?`,
-        [businessId]
-      );
-    } else {
-      await query(
-        `UPDATE users u
-         JOIN service_providers bp ON u.user_id = sp.user_id
-         SET u.is_verified = 1
-         WHERE sp.provider_id = ?`,
-        [businessId]
-      );
-    }
+    await query(
+      `UPDATE users u
+       JOIN ${tableName} sp ON u.user_id = sp.user_id
+       SET u.is_verified = 1
+       WHERE sp.provider_id = ?`,
+      [businessId]
+    );
 
     // Create a notification for the business owner with email support
     try {
@@ -141,7 +84,6 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
     // Log the admin action using the utility function
     try {
       const ipAddress = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip');
-      const tableName = useServiceProvidersTable ? 'service_providers' : 'service_providers';
       await logAdminAction(
         adminId,
         'approve_business',

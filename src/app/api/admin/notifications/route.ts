@@ -65,7 +65,8 @@ export async function GET(request: NextRequest) {
     const notifications_unified = (rows as any[]).map((n: any) => ({
       ...n,
       status: String(n.status).toLowerCase() === 'read' || n.read_at ? 1 : 0,
-      data: n.data ? (typeof n.data === 'string' ? JSON.parse(n.data) : n.data) : null
+      data: n.data ? (typeof n.data === 'string' ? JSON.parse(n.data) : n.data) : null,
+      link: n.link ?? null
     }));
 
       // Get pending applications count
@@ -154,18 +155,19 @@ export async function PATCH(request: NextRequest) {
 
     try {
       if (markAll) {
-        // Mark all notifications_unified as read
+        // Mark all admin notifications as read in unified table
         await query(`
-          UPDATE admin_notifications
-          SET status = 1
-        `);
+          UPDATE notifications_unified
+          SET status = 'read', read_at = NOW()
+          WHERE user_id = ? AND category = 'admin' AND (status != 'read' OR status IS NULL OR read_at IS NULL)
+        `, [user.userId]);
       } else if (notificationId) {
-        // Mark specific notification as read
+        // Mark specific notification as read in unified table
         await query(`
-          UPDATE admin_notifications
-          SET status = 1
-          WHERE id = ?
-        `, [notificationId]);
+          UPDATE notifications_unified
+          SET status = 'read', read_at = NOW()
+          WHERE id = ? AND user_id = ? AND category = 'admin'
+        `, [notificationId, user.userId]);
       } else {
         return NextResponse.json({
           error: 'Invalid request',
@@ -262,28 +264,29 @@ export async function POST(request: NextRequest) {
       if (markAll) {
         // Mark all notifications_unified as read
         if (type) {
-          // Mark all notifications_unified of a specific type as read
+          // Mark all admin notifications of a specific type as read in unified table
           await query(`
-            UPDATE admin_notifications
-            SET status = 1
-            WHERE type = ?
-          `, [type]);
+            UPDATE notifications_unified
+            SET status = 'read', read_at = NOW()
+            WHERE user_id = ? AND category = 'admin' AND type = ? AND (status != 'read' OR status IS NULL OR read_at IS NULL)
+          `, [user.userId, type]);
         } else {
-          // Mark all notifications_unified as read
+          // Mark all admin notifications as read in unified table
           await query(`
-            UPDATE admin_notifications
-            SET status = 1
-          `);
+            UPDATE notifications_unified
+            SET status = 'read', read_at = NOW()
+            WHERE user_id = ? AND category = 'admin' AND (status != 'read' OR status IS NULL OR read_at IS NULL)
+          `, [user.userId]);
         }
       } else if (notificationIds && Array.isArray(notificationIds) && notificationIds.length > 0) {
         // Mark specific notifications_unified as read
         // Use a safer approach with multiple parameters
         const placeholders = notificationIds.map(() => '?').join(',');
         await query(`
-          UPDATE admin_notifications
-          SET status = 1
-          WHERE id IN (${placeholders})
-        `, [...notificationIds]);
+          UPDATE notifications_unified
+          SET status = 'read', read_at = NOW()
+          WHERE id IN (${placeholders}) AND user_id = ? AND category = 'admin'
+        `, [...notificationIds, user.userId]);
       } else {
         return NextResponse.json({
           error: 'Invalid request',

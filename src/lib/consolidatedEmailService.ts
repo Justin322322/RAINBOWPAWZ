@@ -22,7 +22,8 @@ interface EmailData {
   subject: string;
   html: string;
   text?: string;
-  from?: string;
+  from?: string; // Used as Reply-To when SMTP_USER is set
+  replyTo?: string;
   cc?: string;
   bcc?: string;
   attachments?: any[];
@@ -130,21 +131,12 @@ export async function sendEmail(emailData: EmailData): Promise<{ success: boolea
   try {
     console.log(`Attempting to send email to: ${emailData.to}, subject: ${emailData.subject}`);
     
-    // Check if SMTP credentials are set
-    if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
-      console.error('Email service not properly configured: Missing SMTP credentials');
-      console.error('Required: SMTP_USER, SMTP_PASS');
-      console.error('Current environment:', process.env.NODE_ENV);
-      
-      // In development, pretend the email was sent successfully
-      if (process.env.NODE_ENV === 'development') {
-        console.log('Development mode: Pretending email was sent successfully');
-        return { success: true, messageId: 'dev-mode-no-email-sent' };
-      }
-      
-      // In production, return error
-      return { 
-        success: false, 
+    // If SMTP credentials are missing and we're not in production, fall back to local test SMTP (localhost:1025)
+    const missingSmtpCreds = !process.env.SMTP_USER || !process.env.SMTP_PASS;
+    if (missingSmtpCreds && process.env.NODE_ENV === 'production') {
+      console.error('Email service not properly configured in production: Missing SMTP credentials');
+      return {
+        success: false,
         error: 'Email service not configured. Please contact administrator.',
         code: 'SMTP_NOT_CONFIGURED'
       };
@@ -154,7 +146,7 @@ export async function sendEmail(emailData: EmailData): Promise<{ success: boolea
     const recipientDomain = emailData.to.split('@')[1]?.toLowerCase();
     console.log(`Recipient domain: ${recipientDomain}`);
 
-    // Create a transporter with domain-specific optimizations
+    // Create a transporter with domain-specific optimizations (will use localhost:1025 when creds are missing)
     const transporter = createTransporter(recipientDomain);
 
     // Add domain-specific headers for better deliverability
@@ -174,9 +166,12 @@ export async function sendEmail(emailData: EmailData): Promise<{ success: boolea
         console.log(`Email attempt ${retries + 1}/${maxRetries}`);
         
         // Create mail options with default values where needed
+        // Always send using the authenticated SMTP user to satisfy DMARC/SPF
+        const fromEnvelope = process.env.SMTP_FROM || (process.env.SMTP_USER ? `"Rainbow Paws" <${process.env.SMTP_USER}>` : 'Rainbow Paws <no-reply@localhost>');
         const mailOptions = {
-          from: emailData.from || `"Rainbow Paws" <${process.env.SMTP_USER}>`,
+          from: fromEnvelope,
           to: emailData.to,
+          replyTo: emailData.replyTo || emailData.from || undefined,
           cc: emailData.cc,
           bcc: emailData.bcc,
           subject: emailData.subject,
@@ -191,11 +186,17 @@ export async function sendEmail(emailData: EmailData): Promise<{ success: boolea
         // Send the email
         const info = await transporter.sendMail(mailOptions);
 
-        console.log(`Email sent successfully! Message ID: ${info.messageId}`);
+        console.log(`Email send attempt complete. Message ID: ${info.messageId}`);
+        console.log('Accepted:', (info as any).accepted);
+        console.log('Rejected:', (info as any).rejected);
+        console.log('Response:', (info as any).response);
 
-        // Check for rejected recipients
-        if (info.rejected && info.rejected.length > 0) {
-          throw new Error(`Email rejected for recipients: ${info.rejected.join(', ')}`);
+        // Strict success checks: ensure recipient was accepted and none rejected
+        const accepted = (info as any).accepted as string[] | undefined;
+        const rejected = (info as any).rejected as string[] | undefined;
+        if ((rejected && rejected.length > 0) || !accepted || accepted.length === 0) {
+          const rejectedList = rejected && rejected.length ? rejected.join(', ') : 'none';
+          throw new Error(`Email not accepted by SMTP server. accepted=${accepted?.length ?? 0}, rejected=${rejectedList}`);
         }
 
         // Record the successful email in the database (best-effort)
@@ -205,7 +206,7 @@ export async function sendEmail(emailData: EmailData): Promise<{ success: boolea
           info.messageId,
           emailData.html,
           emailData.text || stripHtml(emailData.html),
-          emailData.from || process.env.SMTP_USER || null
+          fromEnvelope
         );
         if (recorded) {
           console.log('Email recorded in database successfully');

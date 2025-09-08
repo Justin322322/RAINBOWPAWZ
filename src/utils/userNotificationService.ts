@@ -173,8 +173,8 @@ export async function markNotificationAsRead(notificationId: number, userId: num
     const idColumn = await getNotificationIdColumn();
     
     const updateQuery = idColumn === 'notification_id'
-      ? 'UPDATE notifications_unified SET status = TRUE WHERE notification_id = ? AND user_id = ?'
-      : 'UPDATE notifications_unified SET status = TRUE WHERE id = ? AND user_id = ?';
+      ? "UPDATE notifications_unified SET status = 'read', read_at = NOW() WHERE notification_id = ? AND user_id = ?"
+      : "UPDATE notifications_unified SET status = 'read', read_at = NOW() WHERE id = ? AND user_id = ?";
     
     await query(updateQuery, [notificationId, userId]);
     return true;
@@ -193,8 +193,8 @@ export async function markAllNotificationsAsRead(userId: number): Promise<boolea
   try {
     await query(`
       UPDATE notifications_unified 
-      SET status = TRUE 
-      WHERE user_id = ? AND status = FALSE
+      SET status = 'read', read_at = NOW()
+      WHERE user_id = ? AND (status != 'read' OR status IS NULL OR read_at IS NULL)
     `, [userId]);
     return true;
   } catch (error) {
