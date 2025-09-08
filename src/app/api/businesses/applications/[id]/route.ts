@@ -44,11 +44,13 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
           sp.provider_type as business_type,
           sp.hours as business_hours,
           sp.description as service_description,
+          sp.contact_first_name,
+          sp.contact_last_name,
           sp.application_status,
           sp.application_status as verification_status, /* For backward compatibility */
           u.status as account_status
         FROM
-          service_providers bp
+          service_providers sp
         JOIN
           users u ON sp.user_id = u.user_id
         WHERE
@@ -68,11 +70,13 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
           sp.provider_type as business_type,
           sp.hours as business_hours,
           sp.description as service_description,
+          sp.contact_first_name,
+          sp.contact_last_name,
           'pending' as application_status, /* Default fallback status */
           'pending' as verification_status, /* For backward compatibility */
           u.status as account_status
         FROM
-          service_providers bp
+          service_providers sp
         JOIN
           users u ON sp.user_id = u.user_id
         WHERE
@@ -144,8 +148,8 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
     const applicationData = {
       id: `APP${business.provider_id.toString().padStart(3, '0')}`,
       businessId: business.provider_id,
-      businessName: business.business_name,
-      owner: `${business.contact_first_name} ${business.contact_last_name}`,
+      businessName: business.business_name || business.name,
+      owner: `${business.contact_first_name || business.first_name || ''} ${business.contact_last_name || business.last_name || ''}`.trim(),
       email: business.email,
       phone: business.business_phone || 'Not provided',
       address: business.business_address || 'Not provided',
