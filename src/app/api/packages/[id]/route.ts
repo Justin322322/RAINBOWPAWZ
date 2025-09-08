@@ -96,8 +96,24 @@ export async function GET(
 
       // Extract images from JSON column
       if (pkg.images) {
-        const imagesData = typeof pkg.images === 'string' ? JSON.parse(pkg.images) : pkg.images;
-        images = Array.isArray(imagesData) ? imagesData : [];
+        try {
+          let imagesData;
+          if (typeof pkg.images === 'string') {
+            // Handle corrupted [object Object] data
+            if (pkg.images.includes('[object Object]')) {
+              console.warn(`Package ${packageId} has corrupted images data with [object Object]`);
+              imagesData = [];
+            } else {
+              imagesData = JSON.parse(pkg.images);
+            }
+          } else {
+            imagesData = pkg.images;
+          }
+          images = Array.isArray(imagesData) ? imagesData : [];
+        } catch (parseError) {
+          console.warn(`Failed to parse images JSON for package ${packageId}:`, parseError);
+          images = [];
+        }
       }
 
       // Extract size pricing from JSON column
@@ -123,6 +139,91 @@ export async function GET(
       petTypes = [];
     }
 
+    // Process images with corrupted data handling
+    let processedImages = images
+      .map((entry) => {
+        // Direct base64 string
+        if (typeof entry === 'string') {
+          // Skip corrupted string data
+          if (entry.includes('[object Object]') || entry === '[object Object]') {
+            console.warn(`Package ${packageId} has corrupted image string: ${entry}`);
+            return null;
+          }
+          if (entry.startsWith('data:image/')) return entry;
+          const path = entry;
+          if (!path || path.startsWith('blob:')) return null;
+          if (path.startsWith('http')) return path;
+          if (path.startsWith('/api/image/')) return path;
+          if (path.startsWith('/uploads/packages/')) return `/api/image/packages/${path.substring('/uploads/packages/'.length)}`;
+          if (path.startsWith('uploads/packages/')) return `/api/image/packages/${path.substring('uploads/packages/'.length)}`;
+          if (path.includes('packages/')) {
+            const parts = path.split('packages/');
+            if (parts.length > 1) return `/api/image/packages/${parts[1]}`;
+          }
+          return getImagePath(path);
+        }
+
+        // Object forms
+        if (entry && typeof entry === 'object') {
+          const dataUrl: string | undefined = (entry as any).image_data || (entry as any).data;
+          if (dataUrl && dataUrl.startsWith('data:image/')) return dataUrl;
+          const rawPath: string | undefined = (entry as any).image_path || (entry as any).url || (entry as any).path || (entry as any).src || (entry as any).filename;
+          if (!rawPath) return null;
+          const path = String(rawPath);
+          // Skip corrupted path data
+          if (path.includes('[object Object]') || path === '[object Object]') {
+            console.warn(`Package ${packageId} has corrupted image path: ${path}`);
+            return null;
+          }
+          if (path.startsWith('http')) return path;
+          if (path.startsWith('/api/image/')) return path;
+          if (path.startsWith('/uploads/packages/')) return `/api/image/packages/${path.substring('/uploads/packages/'.length)}`;
+          if (path.startsWith('uploads/packages/')) return `/api/image/packages/${path.substring('uploads/packages/'.length)}`;
+          if (path.includes('packages/')) {
+            const parts = path.split('packages/');
+            if (parts.length > 1) return `/api/image/packages/${parts[1]}`;
+          }
+          return getImagePath(path);
+        }
+
+        return null;
+      })
+      .filter(Boolean);
+
+    // Filesystem fallback if no valid images found
+    if (processedImages.length === 0) {
+      try {
+        const fs = await import('fs');
+        const path = await import('path');
+        
+        const packagesDir = path.join(process.cwd(), 'public', 'uploads', 'packages');
+        
+        if (fs.existsSync(packagesDir)) {
+          const files = fs.readdirSync(packagesDir, { recursive: true });
+          const packageFiles = files.filter((file: any) => 
+            typeof file === 'string' && 
+            file.includes(`package_${packageId}_`) && 
+            file.match(/\.(jpg|jpeg|png|gif|webp)$/i)
+          ) as string[];
+          
+          if (packageFiles.length > 0) {
+            processedImages = packageFiles.map((file: string) => 
+              `/api/image/packages/${file}`
+            );
+            console.log(`Package ${packageId} using filesystem fallback images:`, processedImages);
+          }
+        }
+      } catch (fsError) {
+        console.warn('Filesystem fallback failed:', fsError);
+      }
+    }
+
+    // Ultimate fallback
+    if (processedImages.length === 0) {
+      processedImages = ['/placeholder-pet.png'];
+      console.log(`Package ${packageId} using ultimate fallback image: placeholder-pet.png`);
+    }
+
     return NextResponse.json({
       package: {
         id: pkg.package_id,
@@ -141,45 +242,7 @@ export async function GET(
         providerName: pkg.providerName,
         inclusions: inclusions.map((i) => i.description || i.name || i),
         addOns: addOns,
-        images: images
-          .map((entry) => {
-            // Direct base64 string
-            if (typeof entry === 'string') {
-              if (entry.startsWith('data:image/')) return entry;
-              const path = entry;
-              if (!path || path.startsWith('blob:')) return null;
-              if (path.startsWith('http')) return path;
-              if (path.startsWith('/api/image/')) return path;
-              if (path.startsWith('/uploads/packages/')) return `/api/image/packages/${path.substring('/uploads/packages/'.length)}`;
-              if (path.startsWith('uploads/packages/')) return `/api/image/packages/${path.substring('uploads/packages/'.length)}`;
-              if (path.includes('packages/')) {
-                const parts = path.split('packages/');
-                if (parts.length > 1) return `/api/image/packages/${parts[1]}`;
-              }
-              return getImagePath(path);
-            }
-
-            // Object forms
-            if (entry && typeof entry === 'object') {
-              const dataUrl: string | undefined = (entry as any).image_data || (entry as any).data;
-              if (dataUrl && dataUrl.startsWith('data:image/')) return dataUrl;
-              const rawPath: string | undefined = (entry as any).image_path || (entry as any).url || (entry as any).path || (entry as any).src || (entry as any).filename;
-              if (!rawPath) return null;
-              const path = String(rawPath);
-              if (path.startsWith('http')) return path;
-              if (path.startsWith('/api/image/')) return path;
-              if (path.startsWith('/uploads/packages/')) return `/api/image/packages/${path.substring('/uploads/packages/'.length)}`;
-              if (path.startsWith('uploads/packages/')) return `/api/image/packages/${path.substring('uploads/packages/'.length)}`;
-              if (path.includes('packages/')) {
-                const parts = path.split('packages/');
-                if (parts.length > 1) return `/api/image/packages/${parts[1]}`;
-              }
-              return getImagePath(path);
-            }
-
-            return null;
-          })
-          .filter(Boolean),
+        images: processedImages,
         // New enhanced features
         sizePricing: sizePricing.map((sp) => ({
           sizeCategory: sp.pet_size || sp.size_category,

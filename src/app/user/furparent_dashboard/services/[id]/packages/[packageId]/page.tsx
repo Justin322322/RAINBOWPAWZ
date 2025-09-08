@@ -47,9 +47,11 @@ function PackageDetailPage({ userData: _userData }: PackageDetailPageProps) {
       try {
 
         // Fetch provider details
+        console.log(`Fetching provider details for ID: ${providerId}`);
         const providerResponse = await fetch(`/api/service-providers/${providerId}`);
 
         if (!providerResponse.ok) {
+          console.error('Provider API error:', providerResponse.status, providerResponse.statusText);
           throw new Error(`Failed to fetch provider details (${providerResponse.status})`);
         }
 
@@ -61,20 +63,26 @@ function PackageDetailPage({ userData: _userData }: PackageDetailPageProps) {
         setProvider(providerData.provider);
 
         // Fetch specific package details
+        console.log(`Fetching package details for ID: ${packageId}`);
         const packageResponse = await fetch(`/api/packages/${packageId}`);
 
         if (!packageResponse.ok) {
+          console.error('Package API error:', packageResponse.status, packageResponse.statusText);
           throw new Error(`Failed to fetch package details (${packageResponse.status})`);
         }
 
         const packageData = await packageResponse.json();
+        console.log('Package data received:', packageData);
+        
         if (!packageData.package) {
           throw new Error('Package data is invalid or empty');
         }
 
         // Images are already included in the package data from the API
+        console.log('Package images:', packageData.package.images);
         setPackageData(packageData.package);
       } catch (err: any) {
+        console.error('Error fetching package details:', err);
         setError(err.message || 'Failed to load package details');
       } finally {
         setLoading(false);

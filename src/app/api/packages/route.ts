@@ -166,8 +166,13 @@ export async function GET(request: NextRequest) {
                 console.warn(`Package ${id} has corrupted images data: ${row.images.substring(0, 50)}...`);
                 images = [];
               } else {
-                images = JSON.parse(row.images);
-                if (!Array.isArray(images)) {
+                try {
+                  images = JSON.parse(row.images);
+                  if (!Array.isArray(images)) {
+                    images = [];
+                  }
+                } catch (parseError) {
+                  console.warn(`Failed to parse images JSON for package ${id}:`, parseError);
                   images = [];
                 }
               }
@@ -188,6 +193,11 @@ export async function GET(request: NextRequest) {
           let resolved: string | null = null;
           
           if (typeof img === 'string') {
+            // Skip corrupted string data
+            if (img.includes('[object Object]') || img === '[object Object]') {
+              console.warn(`Package ${id} has corrupted image string: ${img}`);
+              continue;
+            }
             // Direct image path/URL
             resolved = img;
           } else if (img && typeof img === 'object') {
@@ -199,11 +209,16 @@ export async function GET(request: NextRequest) {
             if (dataUrl && typeof dataUrl === 'string' && dataUrl.startsWith('data:image/')) {
               resolved = dataUrl;
             } else if (rawPath && typeof rawPath === 'string') {
+              // Skip corrupted path data
+              if (rawPath.includes('[object Object]') || rawPath === '[object Object]') {
+                console.warn(`Package ${id} has corrupted image path: ${rawPath}`);
+                continue;
+              }
               resolved = rawPath;
             }
           }
           
-          if (resolved) {
+          if (resolved && resolved !== '[object Object]') {
             // Apply path mappings
             for (const [prefix, mapper] of Object.entries(pathMappings)) {
               if (resolved.startsWith(prefix)) {
@@ -225,9 +240,43 @@ export async function GET(request: NextRequest) {
 
         if (resolvedImages.length > 0) {
           acc[id] = resolvedImages;
+        } else {
+          // If no valid images found, try to find filesystem images as fallback
+          console.log(`Package ${id} has no valid images, checking filesystem fallback...`);
         }
         return acc;
       }, {});
+    }
+
+    // Filesystem fallback for packages with no valid images
+    try {
+      const fs = await import('fs');
+      const path = await import('path');
+      
+      for (const pkg of rows) {
+        if (!imagesByPackage[pkg.id] || imagesByPackage[pkg.id].length === 0) {
+          const packagesDir = path.join(process.cwd(), 'public', 'uploads', 'packages');
+          
+          if (fs.existsSync(packagesDir)) {
+            const files = fs.readdirSync(packagesDir, { recursive: true });
+            const packageFiles = files.filter((file: any) => 
+              typeof file === 'string' && 
+              file.includes(`package_${pkg.id}_`) && 
+              file.match(/\.(jpg|jpeg|png|gif|webp)$/i)
+            ) as string[];
+            
+            if (packageFiles.length > 0) {
+              const fallbackImages = packageFiles.map((file: string) => 
+                `/api/image/packages/${file}`
+              );
+              imagesByPackage[pkg.id] = fallbackImages;
+              console.log(`Package ${pkg.id} using filesystem fallback images:`, fallbackImages);
+            }
+          }
+        }
+      }
+    } catch (fsError) {
+      console.warn('Filesystem fallback failed:', fsError);
     }
 
     // Return packages with enriched images and parsed JSON fields
@@ -302,11 +351,18 @@ export async function GET(request: NextRequest) {
         addOns = [];
       }
       
+      // Use fallback image if no images found
+      let finalImages = imagesByPackage[p.id] || [];
+      if (finalImages.length === 0) {
+        finalImages = ['/placeholder-pet.png'];
+        console.log(`Package ${p.id} using ultimate fallback image: placeholder-pet.png`);
+      }
+
       return {
         ...p,
         inclusions,
         addOns,
-        images: imagesByPackage[p.id] || [],
+        images: finalImages,
         supportedPetTypes: []
       };
     });
