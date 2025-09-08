@@ -45,7 +45,7 @@ export async function GET(request: NextRequest) {
     if (hasServiceBookings) {
       // Get total revenue from completed bookings
       const totalRevenueResult = await query(`
-        SELECT COALESCE(SUM(price + IFNULL(delivery_fee, 0)), 0) as total 
+        SELECT COALESCE(SUM(total_price + IFNULL(delivery_fee, 0)), 0) as total 
         FROM bookings
         WHERE provider_id = ? AND status = 'completed'`,
         [providerId]
@@ -55,7 +55,7 @@ export async function GET(request: NextRequest) {
 
       // Get monthly revenue (current month)
       const monthlyRevenueResult = await query(`
-        SELECT COALESCE(SUM(price + IFNULL(delivery_fee, 0)), 0) as monthly 
+        SELECT COALESCE(SUM(total_price + IFNULL(delivery_fee, 0)), 0) as monthly 
         FROM bookings
         WHERE provider_id = ? AND status = 'completed'
         AND MONTH(booking_date) = MONTH(CURDATE()) 
@@ -67,7 +67,7 @@ export async function GET(request: NextRequest) {
 
       // Get previous month revenue for comparison
       const previousMonthRevenueResult = await query(`
-        SELECT COALESCE(SUM(price + IFNULL(delivery_fee, 0)), 0) as previous 
+        SELECT COALESCE(SUM(total_price + IFNULL(delivery_fee, 0)), 0) as previous 
         FROM bookings
         WHERE provider_id = ? AND status = 'completed'
         AND MONTH(booking_date) = MONTH(DATE_SUB(CURDATE(), INTERVAL 1 MONTH))

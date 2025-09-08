@@ -162,14 +162,14 @@ async function calculateFromServiceBookings(providerId?: string | number) {
 
   // Total revenue
   const totalResult = await query(`
-    SELECT COALESCE(SUM(price), 0) as total
+    SELECT COALESCE(SUM(total_price), 0) as total
     FROM bookings
     WHERE status = 'completed' ${providerFilter}
   `, params) as any[];
 
   // Current month revenue
   const monthlyResult = await query(`
-    SELECT COALESCE(SUM(price), 0) as total
+    SELECT COALESCE(SUM(total_price), 0) as total
     FROM bookings
     WHERE status = 'completed'
     AND MONTH(created_at) = MONTH(CURRENT_DATE())
@@ -179,7 +179,7 @@ async function calculateFromServiceBookings(providerId?: string | number) {
 
   // Previous month revenue
   const previousResult = await query(`
-    SELECT COALESCE(SUM(price), 0) as total
+    SELECT COALESCE(SUM(total_price), 0) as total
     FROM bookings
     WHERE status = 'completed'
     AND MONTH(created_at) = MONTH(DATE_SUB(CURRENT_DATE(), INTERVAL 1 MONTH))

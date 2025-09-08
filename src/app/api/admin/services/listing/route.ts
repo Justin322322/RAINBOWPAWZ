@@ -207,7 +207,7 @@ async function fetchRelatedData(packageIds: number[]) {
   // Fetch images (optimized - minimal logging)
   if (await checkTableExists('service_packages')) {
     const images = await safeQuery(
-      `SELECT package_id, image_path, image_data FROM service_packages sp, JSON_TABLE(sp.images, '$[*]' COLUMNS (url VARCHAR(500) PATH '$.url', alt_text VARCHAR(255) PATH '$.alt_text', is_primary BOOLEAN PATH '$.is_primary')) as images WHERE package_id ${clause} ORDER BY display_order, package_id`,
+      `SELECT package_id, url as image_path, NULL as image_data FROM service_packages sp, JSON_TABLE(sp.images, '$[*]' COLUMNS (url VARCHAR(500) PATH '$.url', alt_text VARCHAR(255) PATH '$.alt_text', is_primary BOOLEAN PATH '$.is_primary')) as images WHERE package_id ${clause} ORDER BY package_id`,
       params
     );
 
