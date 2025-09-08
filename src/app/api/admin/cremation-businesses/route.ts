@@ -503,7 +503,7 @@ export async function GET(request: NextRequest) {
           const bookingResult = await query(`
             SELECT
               COUNT(sb.id) as count,
-              COALESCE(SUM(sb.price), 0) as revenue
+              COALESCE(SUM(sb.total_price), 0) as revenue
             FROM bookings sb
             WHERE sb.provider_id = ?
           `, [business.id]);
@@ -745,7 +745,7 @@ export async function POST(request: NextRequest) {
           SUM(CASE WHEN sb.status = 'completed' THEN 1 ELSE 0 END) as completed_bookings,
           SUM(CASE WHEN sb.status = 'pending' THEN 1 ELSE 0 END) as pending_bookings,
           SUM(CASE WHEN sb.status = 'cancelled' THEN 1 ELSE 0 END) as cancelled_bookings,
-          COALESCE(SUM(sb.price), 0) as total_revenue
+          COALESCE(SUM(sb.total_price), 0) as total_revenue
         FROM bookings sb
         WHERE sb.provider_id = ?
       `, [businessId]);

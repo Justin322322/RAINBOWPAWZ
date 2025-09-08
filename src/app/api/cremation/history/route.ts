@@ -76,7 +76,7 @@ export async function GET(request: NextRequest) {
         const cancelledBookings = bookingsResult.filter(b => b.status === 'cancelled').length;
         const totalRevenue = bookingsResult
           .filter(b => b.status === 'completed')
-          .reduce((sum, b) => sum + parseFloat(b.price || 0), 0);
+          .reduce((sum, b) => sum + parseFloat(b.total_price || b.price || 0), 0);
 
         const formattedBookings = bookingsResult.map((booking: any) => ({
           id: booking.id,
@@ -120,7 +120,7 @@ export async function GET(request: NextRequest) {
 
     // Query to get bookings - include ALL statuses, not just completed or cancelled
     const bookingsQuery = `
-      SELECT sb.id, sb.status, sb.booking_date, sb.price,
+      SELECT sb.id, sb.status, sb.booking_date, sb.total_price as price,
              sb.delivery_fee, sb.pet_name, sb.pet_type,
              u.first_name, u.last_name,
              p.name as package_name
@@ -151,7 +151,7 @@ export async function GET(request: NextRequest) {
     `;
 
     const totalRevenueQuery = `
-      SELECT COALESCE(SUM(sb.price + IFNULL(sb.delivery_fee, 0)), 0) as total FROM bookings sb
+      SELECT COALESCE(SUM(sb.total_price + IFNULL(sb.delivery_fee, 0)), 0) as total FROM bookings sb
       WHERE sb.provider_id = ? AND sb.status = 'completed' ${dateCondition}
     `;
 

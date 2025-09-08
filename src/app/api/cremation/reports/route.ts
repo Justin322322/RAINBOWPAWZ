@@ -107,7 +107,7 @@ export async function GET(request: NextRequest) {
       `;
 
       const totalRevenueQuery = `
-        SELECT COALESCE(SUM(sb.price + IFNULL(sb.delivery_fee, 0)), 0) as total FROM bookings sb
+        SELECT COALESCE(SUM(sb.total_price + IFNULL(sb.delivery_fee, 0)), 0) as total FROM bookings sb
         WHERE sb.provider_id = ? AND sb.status = 'completed' ${dateCondition}
       `;
 
@@ -115,7 +115,7 @@ export async function GET(request: NextRequest) {
         SELECT 
           p.name,
           COUNT(sb.id) as bookings,
-          COALESCE(SUM(CASE WHEN sb.status = 'completed' THEN sb.price + IFNULL(sb.delivery_fee, 0) ELSE 0 END), 0) as revenue
+          COALESCE(SUM(CASE WHEN sb.status = 'completed' THEN sb.total_price + IFNULL(sb.delivery_fee, 0) ELSE 0 END), 0) as revenue
         FROM bookings sb
         LEFT JOIN service_packages p ON sb.package_id = p.package_id
         WHERE sb.provider_id = ? ${dateCondition}

@@ -38,27 +38,45 @@ export async function GET(
     }
 
     const pkg = rows[0];
-    const inclusions = (await query(
-      `SELECT description FROM service_packages sp, service_packages PATH '$.name', description TEXT PATH '$.description', is_included BOOLEAN PATH '$.is_included')) as inclusions WHERE package_id = ?`,
-      [packageId]
-    )) as any[];
+    // Get inclusions from JSON column
+    let inclusions: any[] = [];
+    let addOns: any[] = [];
+    let images: any[] = [];
+    let sizePricing: any[] = [];
 
-    const addOns = (await query(
-      `SELECT addon_id as id, description, price FROM service_packages sp, service_packages PATH '$.name', description TEXT PATH '$.description', price DECIMAL(10,2) PATH '$.price')) as addons WHERE package_id = ?`,
-      [packageId]
-    )) as any[];
+    try {
+      // Extract inclusions from JSON column
+      if (pkg.inclusions) {
+        const inclusionsData = typeof pkg.inclusions === 'string' ? JSON.parse(pkg.inclusions) : pkg.inclusions;
+        inclusions = Array.isArray(inclusionsData) ? inclusionsData : [];
+      }
 
-    const images = (await query(
-      `SELECT image_path, image_data FROM service_packages sp, service_packages PATH '$.url', alt_text VARCHAR(255) PATH '$.alt_text', is_primary BOOLEAN PATH '$.is_primary')) as images WHERE package_id = ? ORDER BY display_order`,
-      [packageId]
-    )) as any[];
+      // Extract addons from JSON column
+      if (pkg.addons) {
+        const addonsData = typeof pkg.addons === 'string' ? JSON.parse(pkg.addons) : pkg.addons;
+        addOns = Array.isArray(addonsData) ? addonsData.map((addon: any, index: number) => ({
+          id: index + 1,
+          name: addon.name || addon.description,
+          description: addon.description || addon.name,
+          price: Number(addon.price || 0)
+        })) : [];
+      }
 
-    // Get size pricing if available
-    const sizePricing = (await query(
-      `SELECT size_category, weight_range_min, weight_range_max, price
-       FROM service_packages sp, service_packages PATH '$.pet_size', price DECIMAL(10,2) PATH '$.price', weight_range VARCHAR(50) PATH '$.weight_range')) as pricing WHERE package_id = ? ORDER BY weight_range_min`,
-      [packageId]
-    )) as any[];
+      // Extract images from JSON column
+      if (pkg.images) {
+        const imagesData = typeof pkg.images === 'string' ? JSON.parse(pkg.images) : pkg.images;
+        images = Array.isArray(imagesData) ? imagesData : [];
+      }
+
+      // Extract size pricing from JSON column
+      if (pkg.size_pricing) {
+        const sizePricingData = typeof pkg.size_pricing === 'string' ? JSON.parse(pkg.size_pricing) : pkg.size_pricing;
+        sizePricing = Array.isArray(sizePricingData) ? sizePricingData : [];
+      }
+    } catch (error) {
+      console.error('Error parsing JSON data for package:', packageId, error);
+      // Default to empty arrays if JSON parsing fails
+    }
 
     // Get supported pet types
     const petTypes = (await query(
@@ -83,8 +101,8 @@ export async function GET(
         isActive: Boolean(pkg.is_active),
         providerId: Number(pkg.provider_id),
         providerName: pkg.providerName,
-        inclusions: inclusions.map((i) => i.description),
-        addOns: addOns.map((a) => ({ id: a.id, name: a.description, price: Number(a.price) })),
+        inclusions: inclusions.map((i) => i.description || i.name || i),
+        addOns: addOns,
         images: images
           .map((i) => {
             // If we have base64 image data, use it directly
@@ -119,10 +137,10 @@ export async function GET(
           .filter(Boolean),
         // New enhanced features
         sizePricing: sizePricing.map((sp) => ({
-          sizeCategory: sp.size_category,
-          weightRangeMin: Number(sp.weight_range_min),
-          weightRangeMax: Number(sp.weight_range_max),
-          price: Number(sp.price)
+          sizeCategory: sp.pet_size || sp.size_category,
+          weightRangeMin: sp.weight_range_min || 0,
+          weightRangeMax: sp.weight_range_max || 999,
+          price: Number(sp.price || 0)
         })),
         supportedPetTypes: petTypes.map((pt) => pt.pet_type)
       }
@@ -307,41 +325,29 @@ export async function PATCH(
           }
         }
 
-        // delete old inclusions
+        // Update inclusions as JSON
+        const inclusionsData = body.inclusions && Array.isArray(body.inclusions) 
+          ? body.inclusions.filter((inc: any) => inc && inc.trim()).map((inc: any) => ({
+              name: inc.trim(),
+              description: inc.trim(),
+              is_included: true
+            }))
+          : [];
+
+        // Update add-ons as JSON
+        const addonsData = body.addOns && Array.isArray(body.addOns)
+          ? body.addOns.filter((addon: any) => addon && addon.name && addon.name.trim()).map((addon: any) => ({
+              name: addon.name.trim(),
+              description: addon.name.trim(),
+              price: Number(addon.price) || 0
+            }))
+          : [];
+
+        // Update JSON columns
         await transaction.query(
-          'UPDATE service_packages SET inclusions = NULL WHERE package_id = ?',
-          [packageId]
+          'UPDATE service_packages SET inclusions = ?, addons = ? WHERE package_id = ?',
+          [JSON.stringify(inclusionsData), JSON.stringify(addonsData), packageId]
         );
-
-        // insert new inclusions
-        if (body.inclusions && Array.isArray(body.inclusions)) {
-          for (const inc of body.inclusions) {
-            if (inc && inc.trim()) {
-              await transaction.query(
-                'INSERT INTO package_data (package_id, description) VALUES (?, ?)',
-                [packageId, inc.trim()]
-              );
-            }
-          }
-        }
-
-        // delete old add-ons
-        await transaction.query(
-          'UPDATE service_packages SET addons = NULL WHERE package_id = ?',
-          [packageId]
-        );
-
-        // insert new add-ons
-        if (body.addOns && Array.isArray(body.addOns)) {
-          for (const addon of body.addOns) {
-            if (addon && addon.name && addon.name.trim()) {
-              await transaction.query(
-                'INSERT INTO package_data (package_id, description, price) VALUES (?, ?, ?)',
-                [packageId, addon.name.trim(), Number(addon.price) || 0]
-              );
-            }
-          }
-        }
 
         // Handle image updates
         let filesToDelete: string[] = [];

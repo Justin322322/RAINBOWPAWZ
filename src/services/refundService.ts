@@ -331,7 +331,7 @@ async function getBookingPaymentInfo(bookingId: number): Promise<BookingPaymentI
       SELECT 
         sb.id as booking_id,
         sb.user_id,
-        sb.price as amount,
+        sb.total_price as amount,
         sb.payment_method,
         sb.payment_status,
         pt.source_id,

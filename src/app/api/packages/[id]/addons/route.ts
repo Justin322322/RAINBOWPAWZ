@@ -33,40 +33,37 @@ export async function GET(
       });
     }
 
-    // Check which id column exists
-    const idColumnExists = await query(`
-      SELECT COUNT(*) as count
-      FROM information_schema.columns
-      WHERE table_schema = DATABASE()
-      AND table_name = 'service_packages'
-      AND column_name = 'id'
-    `) as any[];
+    // Using JSON data structure - no need for legacy column checking
 
-    const addonIdColumnExists = await query(`
-      SELECT COUNT(*) as count
-      FROM information_schema.columns
-      WHERE table_schema = DATABASE()
-      AND table_name = 'service_packages'
-      AND column_name = 'addon_id'
-    `) as any[];
-
-    // Use appropriate id column
-    let idColumn = 'addon_id';
-    if (idColumnExists[0].count > 0) {
-      idColumn = 'id';
-    } else if (addonIdColumnExists[0].count > 0) {
-      idColumn = 'addon_id';
-    }
-
-    // Fetch add-ons for the package
-    const addOnsQuery = `
-      SELECT ${idColumn} as id, description, price
-      FROM service_packages sp, JSON_TABLE(sp.addons, '$[*]' COLUMNS (name VARCHAR(255) PATH '$.name', description TEXT PATH '$.description', price DECIMAL(10,2) PATH '$.price')) as addons
+    // Fetch add-ons from JSON column
+    const packageQuery = `
+      SELECT addons
+      FROM service_packages
       WHERE package_id = ?
-      ORDER BY ${idColumn} ASC
     `;
 
-    const addOns = await query(addOnsQuery, [packageId]) as any[];
+    const packageResult = await query(packageQuery, [packageId]) as any[];
+    
+    let addOns: any[] = [];
+    
+    if (packageResult.length > 0 && packageResult[0].addons) {
+      try {
+        const addonsData = typeof packageResult[0].addons === 'string' 
+          ? JSON.parse(packageResult[0].addons) 
+          : packageResult[0].addons;
+        
+        if (Array.isArray(addonsData)) {
+          addOns = addonsData.map((addon: any, index: number) => ({
+            id: index + 1,
+            name: addon.name || addon.description,
+            description: addon.description || addon.name,
+            price: Number(addon.price || 0)
+          }));
+        }
+      } catch (error) {
+        console.error('Error parsing addons JSON:', error);
+      }
+    }
 
     return NextResponse.json({
       success: true,

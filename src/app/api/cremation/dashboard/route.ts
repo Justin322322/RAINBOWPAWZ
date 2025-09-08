@@ -187,7 +187,7 @@ export async function GET(request: NextRequest) {
         SELECT sb.id, sb.status, sb.booking_date, sb.booking_time, sb.special_requests as notes,
                sb.created_at, sb.pet_name, sb.pet_type, sb.cause_of_death,
                sb.pet_image_url, sb.payment_method, sb.delivery_option, sb.delivery_distance,
-               sb.delivery_fee, sb.price,
+               sb.delivery_fee, sb.total_price as price,
                u.user_id as user_id, u.first_name, u.last_name, u.email, u.phone as phone,
                sp.package_id as package_id, sp.name as service_name, sp.processing_time
         FROM bookings sb

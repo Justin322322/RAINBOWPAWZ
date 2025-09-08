@@ -133,7 +133,7 @@ export async function GET(request: NextRequest) {
         SELECT sb.id, sb.status, sb.booking_date, sb.booking_time, sb.special_requests as notes,
                sb.created_at, sb.pet_name, sb.pet_type, sb.cause_of_death,
                sb.pet_image_url, sb.payment_method, ${hasPaymentStatusColumn ? 'sb.payment_status,' : "'not_paid' as payment_status,"} sb.delivery_option, sb.delivery_distance,
-               sb.delivery_fee, sb.price,
+               sb.delivery_fee, sb.total_price as price,
                u.user_id as user_id, u.first_name, u.last_name, u.email, u.phone as phone,
                sp.package_id as package_id, sp.name as service_name, sp.processing_time
         FROM bookings sb
@@ -237,7 +237,7 @@ export async function GET(request: NextRequest) {
         inProgress: `SELECT COUNT(*) as count FROM bookings WHERE (package_id IN (${packagePlaceholders}) OR provider_id = ?) AND status = 'in_progress'`,
         completed: `SELECT COUNT(*) as count FROM bookings WHERE (package_id IN (${packagePlaceholders}) OR provider_id = ?) AND status = 'completed'`,
         cancelled: `SELECT COUNT(*) as count FROM bookings WHERE (package_id IN (${packagePlaceholders}) OR provider_id = ?) AND status = 'cancelled'`,
-        totalRevenue: `SELECT COALESCE(SUM(price + IFNULL(delivery_fee, 0)), 0) as revenue FROM bookings WHERE (package_id IN (${packagePlaceholders}) OR provider_id = ?) AND status = 'completed'`
+        totalRevenue: `SELECT COALESCE(SUM(total_price + IFNULL(delivery_fee, 0)), 0) as revenue FROM bookings WHERE (package_id IN (${packagePlaceholders}) OR provider_id = ?) AND status = 'completed'`
       };
     } else {
       statsQueries = {

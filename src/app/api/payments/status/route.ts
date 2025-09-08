@@ -26,7 +26,7 @@ export async function GET(request: NextRequest) {
         sb.pet_name,
         sb.payment_method as booking_payment_method,
         sb.payment_status as booking_payment_status,
-        sb.price as booking_amount,
+        sb.total_price as booking_amount,
         sp.name as service_name,
         sp.name as provider_name
       FROM payment_transactions pt

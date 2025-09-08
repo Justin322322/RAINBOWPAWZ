@@ -359,21 +359,9 @@ export async function POST(request: NextRequest) {
       if (Array.isArray(addOns) && addOns.length > 0) {
         for (const addon of addOns) {
           if (addon && addon.name && addon.name.trim()) {
-            try {
-              await transaction.query(
-                'INSERT INTO package_data (package_id, description, price) VALUES (?, ?, ?)',
-                [packageId, addon.name.trim(), Number(addon.price) || 0]
-              );
-            } catch (e: any) {
-              if (e?.message?.includes('ER_BAD_FIELD_ERROR')) {
-                await transaction.query(
-                  'INSERT INTO package_data (package_id, description) VALUES (?, ?)',
-                  [packageId, addon.name.trim()]
-                );
-              } else {
-                throw e;
-              }
-            }
+            // Note: Add-ons should now be stored as JSON in service_packages table
+            // This legacy code needs to be replaced with JSON storage approach
+            console.warn('Legacy add-on storage method - should use JSON columns instead');
           }
         }
       }

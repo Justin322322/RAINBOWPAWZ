@@ -24,7 +24,7 @@ export async function GET(
         sb.booking_time,
         sb.special_requests as notes,
         sb.created_at,
-        sb.price,
+        sb.total_price as price,
         sb.payment_method,
         COALESCE(sb.payment_status, 'not_paid') as payment_status,
         sb.delivery_option,

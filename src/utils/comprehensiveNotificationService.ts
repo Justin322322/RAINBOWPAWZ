@@ -318,7 +318,7 @@ async function getBookingDetails(bookingId: number): Promise<any> {
         sb.pet_name,
         sb.booking_date,
         sb.booking_time,
-        sb.price as total_amount,
+        sb.total_price as total_amount,
         sp.name as service_name,
         COALESCE(spr.name, CONCAT(u.first_name, ' ', u.last_name)) as provider_name
       FROM bookings sb

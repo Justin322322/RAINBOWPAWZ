@@ -185,7 +185,7 @@ async function getBookingInfo(bookingId: number): Promise<any | null> {
         sb.id,
         sb.user_id as userId,
         sb.status,
-        sb.price,
+        sb.total_price as price,
         sb.payment_status,
         sb.payment_method,
         sb.booking_date,

@@ -264,7 +264,7 @@ export async function GET(request: NextRequest) {
             SELECT sb.*,
                    st.name as service_name,
                    st.description as service_description,
-                   sb.price as service_price,
+                   sb.total_price as service_price,
                    sb.pet_name as pet_name,
                    sb.pet_type as pet_type,
                    CONCAT('Service Provider #', sb.provider_id) as provider_name,
