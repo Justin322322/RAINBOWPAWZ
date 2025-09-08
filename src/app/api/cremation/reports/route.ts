@@ -7,7 +7,7 @@ async function safeQuery<T>(sql: string, params: unknown[], fallback: T): Promis
   try {
     const result = (await query(sql, params)) as T;
     return result;
-  } catch (_err) {
+  } catch {
     return fallback;
   }
 }
