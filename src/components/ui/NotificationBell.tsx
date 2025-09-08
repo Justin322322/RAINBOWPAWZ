@@ -101,6 +101,22 @@ export default function NotificationBell() {
     }
   };
 
+  // Normalize notification link to avoid cross-origin auth issues
+  const getSafeHref = (link: string | null): { href?: string; external: boolean } => {
+    if (!link) return { external: false };
+    try {
+      const url = new URL(link, typeof window !== 'undefined' ? window.location.origin : 'http://localhost');
+      const sameOrigin = typeof window !== 'undefined' && url.origin === window.location.origin;
+      if (sameOrigin) {
+        return { href: `${url.pathname}${url.search}${url.hash}`, external: false };
+      }
+      return { href: url.toString(), external: true };
+    } catch {
+      // Fallback: treat as relative path
+      return { href: link.startsWith('/') ? link : `/${link}`, external: false };
+    }
+  };
+
   // Handle removing a notification
   const handleRemoveNotification = async (e: React.MouseEvent, notificationId: number) => {
     e.preventDefault();
@@ -325,23 +341,30 @@ export default function NotificationBell() {
                   >
                   {notification.link ? (
                     <div className="relative group">
-                      <Link
-                        href={notification.link}
-                        className="flex items-start pr-8"
-                        onClick={() => handleNotificationClick(notification)}
-                      >
-                        {getNotificationIcon(notification.type)}
-                        <div className="ml-3 w-0 flex-1">
-                          <p className="text-sm font-medium text-gray-900">{notification.title}</p>
-                          <p className="mt-1 text-sm text-gray-600">{notification.message}</p>
-                          <p className="mt-1 text-xs text-gray-400">
-                            {formatNotificationDate(notification.created_at)}
-                          </p>
-                        </div>
-                        {notification.status === 0 && (
-                          <span className="ml-2 flex-shrink-0 h-2 w-2 rounded-full bg-blue-600"></span>
-                        )}
-                      </Link>
+                      {(() => {
+                        const { href, external } = getSafeHref(notification.link);
+                        return (
+                          <Link
+                            href={href || '#'}
+                            className="flex items-start pr-8"
+                            onClick={() => handleNotificationClick(notification)}
+                            target={external ? '_blank' : undefined}
+                            rel={external ? 'noopener noreferrer' : undefined}
+                          >
+                            {getNotificationIcon(notification.type)}
+                            <div className="ml-3 w-0 flex-1">
+                              <p className="text-sm font-medium text-gray-900">{notification.title}</p>
+                              <p className="mt-1 text-sm text-gray-600">{notification.message}</p>
+                              <p className="mt-1 text-xs text-gray-400">
+                                {formatNotificationDate(notification.created_at)}
+                              </p>
+                            </div>
+                            {notification.status === 0 && (
+                              <span className="ml-2 flex-shrink-0 h-2 w-2 rounded-full bg-blue-600"></span>
+                            )}
+                          </Link>
+                        );
+                      })()}
                       {notification.id && (
                         <button
                           onClick={(e) => handleRemoveNotification(e, notification.id)}
