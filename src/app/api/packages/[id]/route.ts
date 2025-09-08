@@ -9,6 +9,16 @@ import { getImagePath } from '@/utils/imageUtils';
 
 export const dynamic = 'force-dynamic'; // ensure requests aren't cached
 
+async function hasServiceTypesProviderSchema(): Promise<boolean> {
+  try {
+    const cols = (await query('SHOW COLUMNS FROM service_types')) as Array<{ Field: string }>;
+    const names = (cols || []).map(c => c.Field);
+    return names.includes('provider_id') && names.includes('pet_type');
+  } catch {
+    return false;
+  }
+}
+
 /** GET a specific package by ID */
 export async function GET(
   request: NextRequest,
@@ -100,12 +110,18 @@ export async function GET(
       // Default to empty arrays if JSON parsing fails
     }
 
-    // Get supported pet types
-    const petTypes = (await query(
-      `SELECT pet_type FROM service_types
-       WHERE provider_id = ? AND is_active = 1`,
-      [pkg.provider_id]
-    )) as any[];
+    // Get supported pet types only if legacy schema exists; otherwise fallback to []
+    let petTypes: any[] = [];
+    try {
+      if (await hasServiceTypesProviderSchema()) {
+        petTypes = (await query(
+          `SELECT pet_type FROM service_types WHERE provider_id = ? AND is_active = 1`,
+          [pkg.provider_id]
+        )) as any[];
+      }
+    } catch {
+      petTypes = [];
+    }
 
     return NextResponse.json({
       package: {
@@ -126,35 +142,42 @@ export async function GET(
         inclusions: inclusions.map((i) => i.description || i.name || i),
         addOns: addOns,
         images: images
-          .map((i) => {
-            // If we have base64 image data, use it directly
-            if (i.image_data && i.image_data.startsWith('data:image/')) {
-              return i.image_data;
-            }
-            
-            // Fallback to file path processing for backward compatibility
-            const path = i.image_path;
-            if (!path || path.startsWith('blob:')) return null;
-            if (path.startsWith('http')) return path;
-            
-            // Ensure all package images use the API route
-            if (path.startsWith('/api/image/')) {
-              return path; // Already correct
-            }
-            if (path.startsWith('/uploads/packages/')) {
-              return `/api/image/packages/${path.substring('/uploads/packages/'.length)}`;
-            }
-            if (path.startsWith('uploads/packages/')) {
-              return `/api/image/packages/${path.substring('uploads/packages/'.length)}`;
-            }
-            if (path.includes('packages/')) {
-              const parts = path.split('packages/');
-              if (parts.length > 1) {
-                return `/api/image/packages/${parts[1]}`;
+          .map((entry) => {
+            // Direct base64 string
+            if (typeof entry === 'string') {
+              if (entry.startsWith('data:image/')) return entry;
+              const path = entry;
+              if (!path || path.startsWith('blob:')) return null;
+              if (path.startsWith('http')) return path;
+              if (path.startsWith('/api/image/')) return path;
+              if (path.startsWith('/uploads/packages/')) return `/api/image/packages/${path.substring('/uploads/packages/'.length)}`;
+              if (path.startsWith('uploads/packages/')) return `/api/image/packages/${path.substring('uploads/packages/'.length)}`;
+              if (path.includes('packages/')) {
+                const parts = path.split('packages/');
+                if (parts.length > 1) return `/api/image/packages/${parts[1]}`;
               }
+              return getImagePath(path);
             }
-            // For other paths, use the standard function
-            return getImagePath(path);
+
+            // Object forms
+            if (entry && typeof entry === 'object') {
+              const dataUrl: string | undefined = (entry as any).image_data || (entry as any).data;
+              if (dataUrl && dataUrl.startsWith('data:image/')) return dataUrl;
+              const rawPath: string | undefined = (entry as any).image_path || (entry as any).url || (entry as any).path || (entry as any).src || (entry as any).filename;
+              if (!rawPath) return null;
+              const path = String(rawPath);
+              if (path.startsWith('http')) return path;
+              if (path.startsWith('/api/image/')) return path;
+              if (path.startsWith('/uploads/packages/')) return `/api/image/packages/${path.substring('/uploads/packages/'.length)}`;
+              if (path.startsWith('uploads/packages/')) return `/api/image/packages/${path.substring('uploads/packages/'.length)}`;
+              if (path.includes('packages/')) {
+                const parts = path.split('packages/');
+                if (parts.length > 1) return `/api/image/packages/${parts[1]}`;
+              }
+              return getImagePath(path);
+            }
+
+            return null;
           })
           .filter(Boolean),
         // New enhanced features
@@ -324,7 +347,7 @@ export async function PATCH(
         }
 
         // Upsert supported pet types for this provider if provided
-        if (Array.isArray(body.supportedPetTypes)) {
+        if (Array.isArray(body.supportedPetTypes) && (await hasServiceTypesProviderSchema())) {
           // Deactivate all existing pet types
           await transaction.query(
             'UPDATE service_types SET is_active = 0 WHERE provider_id = ?',

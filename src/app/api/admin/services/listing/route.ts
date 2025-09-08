@@ -1,6 +1,8 @@
 // src/app/api/admin/services/listing/route.ts
 
 import { NextRequest, NextResponse } from 'next/server';
+import { readdir } from 'fs/promises';
+import { join } from 'path';
 import { query, checkTableExists } from '@/lib/db';
 import { verifySecureAuth } from '@/lib/secureAuth';
 import { calculateRevenue, formatRevenue } from '@/lib/revenueCalculator';
@@ -32,6 +34,26 @@ function buildInClause(ids: number[]): { clause: string; params: any[] } {
 // Cache for schema information to avoid repeated queries
 let schemaCache: { columns: string[]; lastChecked: number } | null = null;
 const SCHEMA_CACHE_DURATION = 10 * 60 * 1000; // 10 minutes
+
+// Cache uploads directory listing to avoid repeated disk scans
+let uploadsIndexCache: { files: string[]; lastScanned: number } | null = null;
+const UPLOADS_CACHE_DURATION = 60 * 1000; // 1 minute
+
+async function getUploadsIndex(): Promise<string[]> {
+  const now = Date.now();
+  if (uploadsIndexCache && (now - uploadsIndexCache.lastScanned) < UPLOADS_CACHE_DURATION) {
+    return uploadsIndexCache.files;
+  }
+  try {
+    const dir = join(process.cwd(), 'public', 'uploads', 'packages');
+    const entries = await readdir(dir).catch(() => [] as string[]);
+    uploadsIndexCache = { files: entries, lastScanned: now };
+    return entries;
+  } catch {
+    uploadsIndexCache = { files: [], lastScanned: now };
+    return [];
+  }
+}
 
 // Helper function to get available columns from service_providers table with caching
 async function getServiceProviderColumns(): Promise<string[]> {
@@ -262,6 +284,25 @@ async function fetchRelatedData(packageIds: number[]) {
         }
       }
     });
+  }
+
+  // Filesystem fallback: if a package has no images in DB, try to discover files in public/uploads/packages
+  try {
+    const uploads = await getUploadsIndex();
+    packageIds.forEach((id) => {
+      const current = results.images[id] || [];
+      if (!current || current.length === 0) {
+        const prefix = `package_${id}_`;
+        const matches = uploads.filter((f) => f.startsWith(prefix));
+        if (matches.length > 0) {
+          // Choose first match deterministically (sorted lexicographically)
+          const chosen = matches.sort()[0];
+          results.images[id] = [`/api/image/packages/${chosen}`];
+        }
+      }
+    });
+  } catch {
+    // ignore fallback errors
   }
 
   return results;
