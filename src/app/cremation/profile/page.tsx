@@ -487,8 +487,23 @@ function CremationProfilePage({ userData }: { userData: any }) {
             
             const data = await response.json();
             if (data && data.display_name) {
-                setContactInfo(prev => ({ ...prev, address: data.display_name }));
-                showToast('Location detected successfully!', 'success');
+                const addr = data.display_name as string;
+                const parts = addr.split(',').map((p:string) => p.trim());
+                const segment = {
+                  streetAddress: parts[0] || '',
+                  city: parts[1] || '',
+                  province: parts[2] || '',
+                  postalCode: (parts[3] || '').replace(/[^0-9]/g,'')
+                };
+                setContactInfo(prev => ({ 
+                  ...prev, 
+                  address: addr,
+                  streetAddress: segment.streetAddress,
+                  city: segment.city,
+                  province: segment.province,
+                  postalCode: segment.postalCode
+                }));
+                showToast('Location detected successfully! Fields populated.', 'success');
             } else {
                 throw new Error('Could not determine address');
             }

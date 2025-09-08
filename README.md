@@ -468,14 +468,17 @@ erDiagram
         boolean is_used
     }
 
-    user_restrictions {
-        int restriction_id PK
-        int user_id FK
+    restrictions {
+        int id PK
+        enum subject_type  "user|provider"
+        int subject_id
         text reason
         timestamp restriction_date
         varchar duration
         int report_count
         boolean is_active
+        timestamp created_at
+        timestamp updated_at
     }
 
     user_appeals {
@@ -624,7 +627,7 @@ erDiagram
     users ||--o{ otp_codes : "has"
     users ||--o{ otp_attempts : "has"
     users ||--o{ password_reset_tokens : "has"
-    users ||--o{ user_restrictions : "has"
+    users ||--o{ restrictions : "has (subject_type='user')"
     users ||--o{ user_appeals : "submits"
     users ||--o{ appeal_history : "processes"
     users ||--o{ service_bookings : "makes"
@@ -639,6 +642,7 @@ erDiagram
     service_providers ||--o{ provider_availability : "manages"
     service_providers ||--o{ provider_time_slots : "schedules"
     service_providers ||--o{ reviews : "receives"
+    service_providers ||--o{ restrictions : "has (subject_type='provider')"
 
     service_packages ||--o{ package_inclusions : "includes"
     service_packages ||--o{ package_addons : "has"
@@ -675,7 +679,7 @@ erDiagram
 - **OTP System**: Secure email verification with attempt tracking
 - **Password Reset**: Token-based password recovery
 - **Rate Limiting**: API protection against abuse
-- **User Restrictions**: Admin-controlled user access management
+- **Unified Restrictions**: Admin-controlled access for both users and providers (single `restrictions` table)
 
 #### Payment & Financial
 - **Payment Transactions**: Complete payment processing with PayMongo integration
@@ -998,6 +1002,16 @@ flowchart TD
     class PAYMONGO,TWILIO,SMTP,LOCAL_FILES externalLayer
     class USER_DATA,PET_DATA,BOOKING_DATA,PAYMENT_DATA,PROVIDER_DATA,NOTIFICATION_DATA,ADMIN_DATA,EMAIL_DATA,REVIEW_DATA,FILE_DATA,RATE_LIMIT_DATA,AUTH_DATA storageLayer
 ```
+
+### Restrictions Workflow (Unified)
+
+- All restriction events (fur parents and providers) are stored in a single `restrictions` table.
+- Columns: `id`, `subject_type` ('user' | 'provider'), `subject_id`, `reason`, `duration`, `report_count`, `is_active`, `restriction_date`, `created_at`, `updated_at`.
+- APIs write to `restrictions` and also synchronize a convenience status flag:
+  - Users: update `users.status` to 'restricted'/'active'.
+  - Providers: update `service_providers.status` (and/or `application_status`/`verification_status`) accordingly.
+- Middleware enforces access based on role and status; restricted accounts are redirected to `/restricted`.
+- Appeals are handled via the existing appeals flow and reference the unified restriction record when applicable.
 
 ### Data Flow Process Description
 

@@ -759,8 +759,17 @@ function ProfilePage({ userData: initialUserData }: ProfilePageProps) {
       // Use enhanced reverse geocoding with rate limiting
       try {
         const address = await reverseGeocode(latitude, longitude);
-        setContactInfo(prev => ({ ...prev, address }));
-        showToast('Location detected successfully! Please review and update if needed.', 'success');
+        // Also parse into segmented fields so inputs are populated
+        const parts = parseAddress(address);
+        setContactInfo(prev => ({
+          ...prev,
+          address,
+          streetAddress: parts.streetAddress,
+          city: parts.city,
+          province: parts.province,
+          postalCode: parts.postalCode
+        }));
+        showToast('Location detected successfully! Fields populated.', 'success');
         console.log('✅ [Location] Successfully geocoded address:', address);
       } catch (geocodeError: any) {
         console.warn('❌ [Location] Reverse geocoding failed:', geocodeError.message);
@@ -768,7 +777,15 @@ function ProfilePage({ userData: initialUserData }: ProfilePageProps) {
         // Try fallback geocoding instead of just showing coordinates
         try {
           const fallbackAddress = await fallbackGeocode(latitude, longitude);
-          setContactInfo(prev => ({ ...prev, address: fallbackAddress }));
+          const parts = parseAddress(fallbackAddress);
+          setContactInfo(prev => ({
+            ...prev,
+            address: fallbackAddress,
+            streetAddress: parts.streetAddress,
+            city: parts.city,
+            province: parts.province,
+            postalCode: parts.postalCode
+          }));
           showToast('Location detected with approximate address. Please review and update if needed.', 'warning');
           console.log('⚠️ [Location] Used fallback geocoding:', fallbackAddress);
         } catch (fallbackError: any) {

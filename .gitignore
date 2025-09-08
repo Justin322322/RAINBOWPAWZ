@@ -143,3 +143,7 @@ init_*.js
 
 # Local configuration
 config/local.json
+
+# Ignore SQL dumps and local scripts
+*.sql
+/scripts/
