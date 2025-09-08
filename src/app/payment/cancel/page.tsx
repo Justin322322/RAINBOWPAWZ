@@ -53,14 +53,14 @@ function PaymentCancelContent() {
 
 		const fetchData = async () => {
 			try {
-				const bookingsRes = await fetch('/api/bookings', { cache: 'no-store' });
+				const bookingsRes = await fetch('/api/bookings', { cache: 'no-store', credentials: 'include' as RequestCredentials });
 				if (bookingsRes.ok) {
 					const bookingsJson: { bookings?: BookingSummary[] } = await bookingsRes.json();
 					const found = bookingsJson.bookings?.find(b => Number(b.id) === parsedBookingId) || null;
 					if (!stopped) setBooking(found);
 				}
 
-				const refundsRes = await fetch(`/api/refunds?booking_id=${parsedBookingId}`, { cache: 'no-store' });
+				const refundsRes = await fetch(`/api/refunds?booking_id=${parsedBookingId}`, { cache: 'no-store', credentials: 'include' as RequestCredentials });
 				if (refundsRes.ok) {
 					const refundsJson: { refunds?: RefundSummary[] } = await refundsRes.json();
 					const latest = refundsJson.refunds && refundsJson.refunds.length > 0 ? refundsJson.refunds[0] : null;

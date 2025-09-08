@@ -297,7 +297,7 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
         ? '/api/admin/notifications'
         : userAccountType === 'business'
           ? '/api/cremation/notifications'
-          : '/api/user/notifications_unified';
+          : '/api/user/notifications';
 
       const response = await fetch(endpoint, {
         method: 'PATCH',

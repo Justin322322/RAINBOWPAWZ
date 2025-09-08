@@ -71,10 +71,10 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ success: true, qrPath: null });
     }
 
-    // Prefer service_providers if the table exists, else fallback to service_providers.payment_qr_path
+    // Prefer service_providers.qr_path if the column exists; else fallback to service_providers.payment_qr_path
     let qrPath: string | null = null;
 
-    if (await tableExists('service_providers')) {
+    if (await tableExists('service_providers') && await columnExists('service_providers', 'qr_path')) {
       try {
         const qrRows = await query(
           'SELECT qr_path FROM service_providers WHERE provider_id = ? LIMIT 1',
@@ -157,6 +157,7 @@ export async function POST(request: NextRequest) {
     const dataUrl = `data:${file.type};base64,${base64Data}`;
 
     const hasQrTable = await tableExists('service_providers');
+    const hasQrPathColumn = await columnExists('service_providers', 'qr_path');
     const hasSpColumn = await columnExists('service_providers', 'payment_qr_path');
 
     if (!hasQrTable && !hasSpColumn) {
@@ -168,8 +169,8 @@ export async function POST(request: NextRequest) {
       }, { status: 409 });
     }
 
-    // Best-effort: write to service_providers if available
-    if (hasQrTable) {
+    // Best-effort: write to service_providers.qr_path if available
+    if (hasQrTable && hasQrPathColumn) {
       try {
         const existing = await query(
           'SELECT provider_id FROM service_providers WHERE provider_id = ? LIMIT 1',
@@ -183,7 +184,7 @@ export async function POST(request: NextRequest) {
       } catch {}
     }
 
-    // Denormalize onto service_providers if column exists
+    // Denormalize onto service_providers.payment_qr_path if column exists
     if (hasSpColumn) {
       try {
         await query('UPDATE service_providers SET payment_qr_path = ? WHERE provider_id = ?', [dataUrl, providerId]);

@@ -398,30 +398,24 @@ async function ensureNotificationsTable(): Promise<void> {
     ) as Array<{ count: number }>;
 
     if (tableExists[0].count === 0) {
-      if (process.env.NODE_ENV === 'development') {
-        console.log('Creating notifications_unified table...');
-      }
-      
       await query(`
         CREATE TABLE IF NOT EXISTS notifications_unified (
           id INT AUTO_INCREMENT PRIMARY KEY,
           user_id INT NOT NULL,
           title VARCHAR(255) NOT NULL,
           message TEXT NOT NULL,
-          type ENUM('info', 'success', 'warning', 'error') NOT NULL DEFAULT 'info',
-          status TINYINT(1) NOT NULL DEFAULT 0,
+          type ENUM('system','email','sms','push') NOT NULL DEFAULT 'system',
+          category ENUM('booking','payment','refund','review','admin','marketing','system') NOT NULL DEFAULT 'system',
+          status ENUM('pending','sent','delivered','failed','read') NOT NULL DEFAULT 'delivered',
           link VARCHAR(255) NULL,
           created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
           updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
           INDEX idx_user_id (user_id),
+          INDEX idx_category (category),
           INDEX idx_status (status),
           INDEX idx_created_at (created_at)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
       `);
-      
-      if (process.env.NODE_ENV === 'development') {
-        console.log('Notifications table created successfully');
-      }
     }
 
     notifications_unifiedTableExists = true;
