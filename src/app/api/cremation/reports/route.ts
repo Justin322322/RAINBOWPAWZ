@@ -44,12 +44,14 @@ export async function GET(request: NextRequest) {
       dateCondition = 'AND YEAR(sb.booking_date) = YEAR(CURDATE())';
     }
 
-    // Check if bookings table exists, if not try bookings table
-    let useServiceBookings = true;
+    // Check if bookings table exists
+    let useBookings = true;
     try {
       await query('SELECT 1 FROM bookings LIMIT 1');
-    } catch {
-      useServiceBookings = false;
+      console.log('Using bookings table for reports');
+    } catch (error) {
+      console.log('Bookings table not accessible:', error);
+      useBookings = false;
     }
 
     // Get refund data for the reports
@@ -61,12 +63,11 @@ export async function GET(request: NextRequest) {
         COUNT(CASE WHEN status = 'pending' THEN 1 END) as pending_refunds,
         COUNT(CASE WHEN refund_type = 'manual' THEN 1 END) as manual_refunds
       FROM refunds r
-      ${useServiceBookings ? `
-        JOIN bookings sb ON r.booking_id = sb.id
-        WHERE sb.provider_id = ? ${dateCondition.replace('sb.booking_date', 'r.initiated_at')}
-      ` : `
+      ${useBookings ? `
         JOIN bookings b ON r.booking_id = b.id
         WHERE b.provider_id = ? ${dateCondition.replace('sb.booking_date', 'r.initiated_at')}
+      ` : `
+        WHERE 1=0
       `}
     `;
 
@@ -84,41 +85,41 @@ export async function GET(request: NextRequest) {
 
     let topServices: any[] = [];
 
-    if (useServiceBookings) {
-      // Use bookings table
+    if (useBookings) {
+      // Use bookings table - change 'sb' to 'b' to match database structure
       const totalBookingsQuery = `
-        SELECT COUNT(*) as count FROM bookings sb
-        WHERE sb.provider_id = ? ${dateCondition}
+        SELECT COUNT(*) as count FROM bookings b
+        WHERE b.provider_id = ? ${dateCondition.replace('sb.', 'b.')}
       `;
 
       const completedBookingsQuery = `
-        SELECT COUNT(*) as count FROM bookings sb
-        WHERE sb.provider_id = ? AND sb.status = 'completed' ${dateCondition}
+        SELECT COUNT(*) as count FROM bookings b
+        WHERE b.provider_id = ? AND b.status = 'completed' ${dateCondition.replace('sb.', 'b.')}
       `;
 
       const cancelledBookingsQuery = `
-        SELECT COUNT(*) as count FROM bookings sb
-        WHERE sb.provider_id = ? AND sb.status = 'cancelled' ${dateCondition}
+        SELECT COUNT(*) as count FROM bookings b
+        WHERE b.provider_id = ? AND b.status = 'cancelled' ${dateCondition.replace('sb.', 'b.')}
       `;
 
       const pendingBookingsQuery = `
-        SELECT COUNT(*) as count FROM bookings sb
-        WHERE sb.provider_id = ? AND sb.status IN ('pending', 'confirmed', 'in_progress') ${dateCondition}
+        SELECT COUNT(*) as count FROM bookings b
+        WHERE b.provider_id = ? AND b.status IN ('pending', 'confirmed', 'in_progress') ${dateCondition.replace('sb.', 'b.')}
       `;
 
       const totalRevenueQuery = `
-        SELECT COALESCE(SUM(sb.total_price + IFNULL(sb.delivery_fee, 0)), 0) as total FROM bookings sb
-        WHERE sb.provider_id = ? AND sb.status = 'completed' ${dateCondition}
+        SELECT COALESCE(SUM(IFNULL(b.total_price, b.base_price) + IFNULL(b.delivery_fee, 0)), 0) as total FROM bookings b
+        WHERE b.provider_id = ? AND b.status = 'completed' ${dateCondition.replace('sb.', 'b.')}
       `;
 
       const topServicesQuery = `
         SELECT 
           p.name,
-          COUNT(sb.id) as bookings,
-          COALESCE(SUM(CASE WHEN sb.status = 'completed' THEN sb.total_price + IFNULL(sb.delivery_fee, 0) ELSE 0 END), 0) as revenue
-        FROM bookings sb
-        LEFT JOIN service_packages p ON sb.package_id = p.package_id
-        WHERE sb.provider_id = ? ${dateCondition}
+          COUNT(b.id) as bookings,
+          COALESCE(SUM(CASE WHEN b.status = 'completed' THEN IFNULL(b.total_price, b.base_price) + IFNULL(b.delivery_fee, 0) ELSE 0 END), 0) as revenue
+        FROM bookings b
+        LEFT JOIN service_packages p ON b.package_id = p.package_id
+        WHERE b.provider_id = ? ${dateCondition.replace('sb.', 'b.')}
         GROUP BY p.package_id, p.name
         ORDER BY bookings DESC, revenue DESC
         LIMIT 5
