@@ -219,75 +219,96 @@ export async function GET(request: NextRequest) {
       [providerId]
     ) as any[];
 
-    // For each service package, get inclusions and images
+    // For each service package, get inclusions and images from JSON columns
     for (let pkg of servicePackages) {
-      const inclusions = await query(
-        `SELECT inclusions.description
-         FROM service_packages sp, JSON_TABLE(sp.inclusions, '$[*]' COLUMNS (name VARCHAR(255) PATH '$.name', description TEXT PATH '$.description', is_included BOOLEAN PATH '$.is_included')) as inclusions
-         WHERE package_id = ?`,
+      // Get the package data with JSON columns
+      const packageData = await query(
+        `SELECT inclusions, images FROM service_packages WHERE package_id = ?`,
         [pkg.id]
       ) as any[];
 
-      const images = await query(
-        `SELECT images.url as image_path, NULL as image_data
-         FROM service_packages sp, JSON_TABLE(sp.images, '$[*]' COLUMNS (url VARCHAR(500) PATH '$.url', alt_text VARCHAR(255) PATH '$.alt_text', is_primary BOOLEAN PATH '$.is_primary')) as images
-         WHERE package_id = ?`,
-        [pkg.id]
-      ) as any[];
-
-      pkg.inclusions = inclusions.map((inc: any) => inc.description);
-
-      // Process images
-      pkg.images = [];
-
-      if (images.length > 0) {
-        pkg.images = images.map((img: any) => {
-          // If we have base64 image data, use it directly
-          if (img.image_data && img.image_data.startsWith('data:image/')) {
-            return img.image_data;
-          }
+      // Parse inclusions from JSON column
+      let inclusions: string[] = [];
+      if (packageData.length > 0 && packageData[0].inclusions) {
+        try {
+          const inclusionsData = typeof packageData[0].inclusions === 'string' 
+            ? JSON.parse(packageData[0].inclusions) 
+            : packageData[0].inclusions;
           
-          // Fallback to file path processing for backward compatibility
-          const imagePath = img.image_path;
-          if (!imagePath || imagePath.startsWith('blob:')) {
-            return null;
+          if (Array.isArray(inclusionsData)) {
+            inclusions = inclusionsData.map((inc: any) => {
+              if (typeof inc === 'string') return inc;
+              if (inc && typeof inc === 'object') {
+                return inc.description || inc.name || inc.toString();
+              }
+              return String(inc);
+            });
           }
-          
-          // Ensure all package images use the API route
-          if (imagePath.startsWith('/api/image/')) {
-            return imagePath; // Already correct
-          }
-          if (imagePath.startsWith('/uploads/packages/')) {
-            return `/api/image/packages/${imagePath.substring('/uploads/packages/'.length)}`;
-          }
-          if (imagePath.startsWith('uploads/packages/')) {
-            return `/api/image/packages/${imagePath.substring('uploads/packages/'.length)}`;
-          }
-          if (imagePath.includes('packages/')) {
-            const parts = imagePath.split('packages/');
-            if (parts.length > 1) {
-              return `/api/image/packages/${parts[1]}`;
-            }
-          }
-          // For legacy paths, try to convert to API route
-          if (imagePath.startsWith('/uploads/')) {
-            return `/api/image/${imagePath.substring('/uploads/'.length)}`;
-          }
-          if (imagePath.startsWith('uploads/')) {
-            return `/api/image/${imagePath}`;
-          }
-          
-          // Default fallback to API route
-          return `/api/image/packages/${imagePath}`;
-        }).filter(Boolean);
-
-        if (pkg.images.length > 0) {
-          pkg.image = pkg.images[0];
-        } else {
-          pkg.image = null;
+        } catch (e) {
+          console.warn(`Failed to parse inclusions for package ${pkg.id}:`, e);
+          inclusions = [];
         }
+      }
+
+      pkg.inclusions = inclusions;
+
+      // Parse images from JSON column
+      let images: string[] = [];
+      if (packageData.length > 0 && packageData[0].images) {
+        try {
+          const imagesData = typeof packageData[0].images === 'string' 
+            ? JSON.parse(packageData[0].images) 
+            : packageData[0].images;
+          
+          if (Array.isArray(imagesData)) {
+            images = imagesData.map((img: any) => {
+              let resolved: string | null = null;
+              
+              if (typeof img === 'string') {
+                resolved = img;
+              } else if (img && typeof img === 'object') {
+                const rawPath = img.url || img.path || img.src || null;
+                const dataUrl = img.data || null;
+                
+                if (dataUrl && typeof dataUrl === 'string' && dataUrl.startsWith('data:image/')) {
+                  resolved = dataUrl;
+                } else if (rawPath && typeof rawPath === 'string') {
+                  resolved = rawPath;
+                }
+              }
+              
+              if (resolved) {
+                // Apply path mappings
+                if (resolved.startsWith('/api/image/')) {
+                  return resolved;
+                } else if (resolved.startsWith('/uploads/packages/')) {
+                  return `/api/image/packages/${resolved.substring('/uploads/packages/'.length)}`;
+                } else if (resolved.startsWith('uploads/packages/')) {
+                  return `/api/image/packages/${resolved.substring('uploads/packages/'.length)}`;
+                } else if (resolved.includes('packages/')) {
+                  const parts = resolved.split('packages/');
+                  return parts.length > 1 ? `/api/image/packages/${parts[1]}` : resolved;
+                } else if (resolved.startsWith('/uploads/')) {
+                  return `/api/image/${resolved.substring('/uploads/'.length)}`;
+                } else if (resolved.startsWith('uploads/')) {
+                  return `/api/image/${resolved.substring('uploads/'.length)}`;
+                }
+                return resolved;
+              }
+              return null;
+            }).filter((url): url is string => Boolean(url));
+          }
+        } catch (e) {
+          console.warn(`Failed to parse images for package ${pkg.id}:`, e);
+          images = [];
+        }
+      }
+
+      pkg.images = images;
+
+      if (pkg.images.length > 0) {
+        pkg.image = pkg.images[0];
       } else {
-        pkg.images = [];
         pkg.image = null;
       }
     }
