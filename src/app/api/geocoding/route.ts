@@ -264,8 +264,80 @@ function calculateNominatimConfidence(item: any): number {
   return Math.min(0.95, confidence);
 }
 
+// Fallback coordinates for common Philippine locations
+function getFallbackCoordinates(address: string): any | null {
+  const lowerAddress = address.toLowerCase();
+  
+  // Common Philippine locations with their coordinates
+  const fallbackLocations: { [key: string]: { lat: number; lon: number; name: string } } = {
+    // Bataan locations - exact addresses from database
+    'don manuel banzon avenue': { lat: 14.6767, lon: 120.5363, name: 'Don Manuel Banzon Avenue, Balanga City, Bataan' },
+    'capitol drive': { lat: 14.6767, lon: 120.5363, name: 'Capitol Drive, Balanga, Bataan' },
+    'balanga': { lat: 14.6767, lon: 120.5363, name: 'Balanga, Bataan' },
+    'bataan': { lat: 14.6767, lon: 120.5363, name: 'Bataan Province' },
+    'mariveles': { lat: 14.4333, lon: 120.4833, name: 'Mariveles, Bataan' },
+    'limay': { lat: 14.5667, lon: 120.6167, name: 'Limay, Bataan' },
+    'hermosa': { lat: 14.8333, lon: 120.5000, name: 'Hermosa, Bataan' },
+    'dinalupihan': { lat: 14.8667, lon: 120.4667, name: 'Dinalupihan, Bataan' },
+    'orani': { lat: 14.8000, lon: 120.5333, name: 'Orani, Bataan' },
+    'samal': { lat: 14.7667, lon: 120.5500, name: 'Samal, Bataan' },
+    'bagac': { lat: 14.6000, lon: 120.4000, name: 'Bagac, Bataan' },
+    'morong': { lat: 14.5333, lon: 120.4667, name: 'Morong, Bataan' },
+    'abucay': { lat: 14.7333, lon: 120.5333, name: 'Abucay, Bataan' },
+    'pilar': { lat: 14.6667, lon: 120.5833, name: 'Pilar, Bataan' },
+    
+    // Metro Manila
+    'manila': { lat: 14.5995, lon: 120.9842, name: 'Manila City' },
+    'quezon city': { lat: 14.6760, lon: 121.0437, name: 'Quezon City' },
+    'makati': { lat: 14.5547, lon: 121.0244, name: 'Makati City' },
+    'pasig': { lat: 14.5764, lon: 121.0851, name: 'Pasig City' },
+    'taguig': { lat: 14.5176, lon: 121.0509, name: 'Taguig City' },
+    'marikina': { lat: 14.6507, lon: 121.1029, name: 'Marikina City' },
+    'caloocan': { lat: 14.6488, lon: 120.9644, name: 'Caloocan City' },
+    'las piñas': { lat: 14.4378, lon: 120.9942, name: 'Las Piñas City' },
+    'parañaque': { lat: 14.4793, lon: 121.0198, name: 'Parañaque City' },
+    'muntinlupa': { lat: 14.3831, lon: 121.0362, name: 'Muntinlupa City' },
+    'pasay': { lat: 14.5378, lon: 120.9896, name: 'Pasay City' },
+    
+    // Central Luzon
+    'central luzon': { lat: 15.4817, lon: 120.5979, name: 'Central Luzon Region' },
+    'bulacan': { lat: 14.7942, lon: 120.8794, name: 'Bulacan Province' },
+    'pampanga': { lat: 15.0794, lon: 120.6200, name: 'Pampanga Province' },
+    'nueva ecija': { lat: 15.5784, lon: 121.1113, name: 'Nueva Ecija Province' },
+    'tarlac': { lat: 15.4756, lon: 120.5979, name: 'Tarlac Province' },
+    'zambales': { lat: 15.5074, lon: 119.9647, name: 'Zambales Province' }
+  };
+  
+  // Try to find a match with more flexible matching
+  for (const [key, coords] of Object.entries(fallbackLocations)) {
+    // Check for exact key match or partial match
+    if (lowerAddress.includes(key) || 
+        (key.includes('balanga') && lowerAddress.includes('balanga')) ||
+        (key.includes('capitol') && lowerAddress.includes('capitol')) ||
+        (key.includes('don manuel') && lowerAddress.includes('don manuel'))) {
+      return {
+        lat: coords.lat,
+        lon: coords.lon,
+        display_name: `${coords.name} (Fallback)`,
+        importance: 0.3,
+        type: 'fallback',
+        provider: 'local_fallback',
+        confidence: 0.3
+      };
+    }
+  }
+  
+  return null;
+}
+
 export async function GET(request: NextRequest) {
   try {
+    // Add CORS headers at the beginning
+    const responseHeaders = new Headers();
+    responseHeaders.set('Access-Control-Allow-Origin', '*');
+    responseHeaders.set('Access-Control-Allow-Methods', 'GET, OPTIONS');
+    responseHeaders.set('Access-Control-Allow-Headers', 'Content-Type');
+
     const { searchParams } = new URL(request.url);
     const address = searchParams.get('address');
     const lat = searchParams.get('lat');
@@ -276,7 +348,7 @@ export async function GET(request: NextRequest) {
     if (!address && !(lat && lon)) {
       return NextResponse.json(
         { error: 'Missing required parameters: address for forward geocoding or lat/lon for reverse geocoding' },
-        { status: 400 }
+        { status: 400, headers: responseHeaders }
       );
     }
 
@@ -305,7 +377,10 @@ export async function GET(request: NextRequest) {
 
       const data = await response.json();
       
-      return NextResponse.json([data]);
+      return NextResponse.json([data], {
+        status: 200,
+        headers: responseHeaders
+      });
     }
 
     // Forward geocoding (address to coordinates)
@@ -364,25 +439,30 @@ export async function GET(request: NextRequest) {
     }
 
     if (results.length === 0) {
-      return NextResponse.json(
-        { 
-          error: 'No geocoding results found',
-          details: errors.length > 0 ? errors : 'All providers failed',
-          suggestions: [
-            'Check if the address is correct',
-            'Try adding more specific details (street name, barangay)',
-            'Ensure the address is in the Philippines'
-          ]
-        },
-        { status: 404 }
-      );
+      // Instead of returning 404, provide fallback coordinates for common Philippine locations
+      const fallbackResult = getFallbackCoordinates(address!);
+      if (fallbackResult) {
+        console.log(`🗺️ [Geocoding API] Using fallback coordinates for: ${address}`);
+        return NextResponse.json([fallbackResult], {
+          status: 200,
+          headers: responseHeaders
+        });
+      }
+      
+      // Return fallback coordinates for Philippines center
+      return NextResponse.json([{
+        lat: 14.5995, // Philippines center
+        lon: 120.9842,
+        display_name: 'Philippines (Default Location)',
+        importance: 0.1,
+        type: 'fallback',
+        provider: 'default_fallback',
+        confidence: 0.1
+      }], {
+        status: 200,
+        headers: responseHeaders
+      });
     }
-
-    // Add CORS headers
-    const responseHeaders = new Headers();
-    responseHeaders.set('Access-Control-Allow-Origin', '*');
-    responseHeaders.set('Access-Control-Allow-Methods', 'GET, OPTIONS');
-    responseHeaders.set('Access-Control-Allow-Headers', 'Content-Type');
 
     return new NextResponse(JSON.stringify(results), {
       status: 200,

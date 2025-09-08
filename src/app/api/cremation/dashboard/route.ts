@@ -229,10 +229,9 @@ export async function GET(request: NextRequest) {
       ) as any[];
 
       const images = await query(
-        `SELECT image_path, image_data
+        `SELECT images.url as image_path, NULL as image_data
          FROM service_packages sp, JSON_TABLE(sp.images, '$[*]' COLUMNS (url VARCHAR(500) PATH '$.url', alt_text VARCHAR(255) PATH '$.alt_text', is_primary BOOLEAN PATH '$.is_primary')) as images
-         WHERE package_id = ?
-         ORDER BY display_order ASC`,
+         WHERE package_id = ?`,
         [pkg.id]
       ) as any[];
 
