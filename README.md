@@ -267,43 +267,23 @@ PAYMONGO_SECRET_KEY=your-paymongo-secret-key
 
 ### Entity Relationship Diagram (ERD)
 
-The Rainbow Paws application now uses a streamlined and optimized MySQL database schema. Below is the current ERD showing our efficient 13-table structure:
+The ERD below is generated from the current database schema (see ERD-GENERATED.md). It reflects the unified `restrictions` table and the active tables in your live database dump.
 
 ```mermaid
 erDiagram
-    %% RainbowPaws Optimized Database ERD
-    %% 13 Tables (63% reduction from 35 tables)
-
-    USERS {
+    users {
         int user_id PK
-        varchar email UK
+        varchar email
         varchar password
         varchar first_name
         varchar last_name
         varchar phone
         text address
         enum gender
-        varchar profile_picture
+        longtext profile_picture
         enum role
         enum status
         enum restriction_status
-        boolean is_verified
-        boolean is_otp_verified
-        timestamp last_login
-        timestamp created_at
-        timestamp updated_at
-        boolean sms_notifications
-        boolean email_notifications
-    }
-
-    admin_profiles {
-        int id PK
-        int user_id FK
-        varchar username
-        varchar full_name
-        varchar admin_role
-        timestamp created_at
-        timestamp updated_at
     }
 
     service_providers {
@@ -319,14 +299,6 @@ erDiagram
         text hours
         text description
         enum application_status
-        timestamp verification_date
-        text verification_notes
-        varchar bir_certificate_path
-        varchar business_permit_path
-        varchar government_id_path
-        int active_service_count
-        timestamp created_at
-        timestamp updated_at
     }
 
     service_packages {
@@ -338,34 +310,85 @@ erDiagram
         enum cremation_type
         varchar processing_time
         decimal price
+        enum pricing_mode
+        decimal overage_fee_per_kg
         decimal delivery_fee_per_km
-        text conditions
-        boolean is_active
+        tinyint uses_custom_options
+    }
+
+    bookings {
+        int id PK
+        int user_id FK
+        int provider_id FK
+        int package_id FK
+        int service_type_id FK
+        varchar pet_name
+        varchar pet_type
+        decimal pet_weight
+        text cause_of_death
+        mediumtext pet_image_url
+        date booking_date
+        time booking_time
+    }
+
+    payment_transactions {
+        int id PK
+        int booking_id FK
+        varchar payment_intent_id
+        varchar source_id
+        decimal amount
+        varchar currency
+        enum payment_method
+        enum status
+        int refund_id
+        timestamp refunded_at
+        enum provider
+        varchar provider_transaction_id
+    }
+
+    refunds {
+        int id PK
+        int booking_id FK
+        int user_id FK
+        decimal amount
+        text reason
+        enum status
+        enum refund_type
+        enum payment_method
+        varchar transaction_id
+        varchar paymongo_refund_id
+        int processed_by
+        varchar receipt_path
+    }
+
+    notifications_unified {
+        int id PK
+        int user_id FK
+        int provider_id
+        enum type
+        enum category
+        varchar title
+        text message
+        json data
+        enum status
+        enum priority
+        varchar link
+        timestamp scheduled_at
+    }
+
+    restrictions {
+        int id PK
+        enum subject_type "user|provider"
+        int subject_id
+        text reason
+        timestamp restriction_date
+        varchar duration
+        int report_count
+        tinyint is_active
+        int actor_admin_id
+        json data
         timestamp created_at
         timestamp updated_at
-    }
-
-    package_inclusions {
-        int inclusion_id PK
-        int package_id FK
-        varchar description
-        timestamp created_at
-    }
-
-    package_addons {
-        int addon_id PK
-        int package_id FK
-        varchar description
-        decimal price
-        timestamp created_at
-    }
-
-    package_images {
-        int image_id PK
-        int package_id FK
-        varchar image_path
-        int display_order
-        timestamp created_at
     }
 
     pets {
@@ -377,11 +400,34 @@ erDiagram
         enum gender
         varchar age
         decimal weight
-        varchar photo_path
+        mediumtext photo_path
         text special_notes
         timestamp created_at
         timestamp updated_at
     }
+
+    service_types {
+        int id PK
+        varchar name
+        text description
+        enum category
+        tinyint is_active
+        timestamp created_at
+        timestamp updated_at
+        json pet_types_data
+    }
+
+    users ||--o{ pets : owns
+    users ||--o{ bookings : makes
+    users ||--o{ notifications_unified : receives
+    users ||--o{ restrictions : has (subject_type='user')
+    service_providers ||--o{ service_packages : offers
+    service_providers ||--o{ bookings : receives
+    service_providers ||--o{ restrictions : has (subject_type='provider')
+    service_packages ||--o{ bookings : booked_as
+    bookings ||--o{ payment_transactions : has
+    bookings ||--o{ refunds : may_have
+```
 
     service_bookings {
         int id PK
