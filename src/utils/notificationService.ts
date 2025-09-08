@@ -135,7 +135,7 @@ export async function createNotificationFast({
 }): Promise<NotificationResult> {
   try {
     const result = await query(
-      `INSERT INTO notifications_unified_unified (user_id, title, message, type, link)
+      `INSERT INTO notifications_unified (user_id, title, message, type, link)
        VALUES (?, ?, ?, ?, ?)`,
       [userId, title, message, type, link]
     ) as unknown as InsertResult;
@@ -206,7 +206,7 @@ async function insertNotificationWithRetry(
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
       return await query(
-        `INSERT INTO notifications_unified_unified_unified (user_id, title, message, type, link)
+        `INSERT INTO notifications_unified_unified (user_id, title, message, type, link)
          VALUES (?, ?, ?, ?, ?)`,
         [userId, title, message, type, link]
       ) as unknown as InsertResult;
@@ -232,7 +232,7 @@ async function insertNotificationWithRetry(
   throw lastError!;
 }
 /**
- * Send email notification if user has email notifications_unified_unified enabled
+ * Send email notification if user has email notifications_unified enabled
  */
 async function sendEmailNotification(
   userId: number,
@@ -379,7 +379,7 @@ async function ensureNotificationsTable(): Promise<void> {
 
     if (tableExists[0].count === 0) {
       if (process.env.NODE_ENV === 'development') {
-        console.log('Creating notifications_unified_unified table...');
+        console.log('Creating notifications_unified table...');
       }
       
       await query(`

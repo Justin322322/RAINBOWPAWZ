@@ -413,7 +413,7 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
           });
 
           // Setup SSE connection for real-time notifications_unified
-          eventSource = new EventSource('/api/notifications_unified/sse', {
+          eventSource = new EventSource('/api/notifications/sse', {
             withCredentials: true
           });
 

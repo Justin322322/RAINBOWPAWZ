@@ -27,7 +27,7 @@ export async function GET(request: NextRequest) {
     // Check which column name to use (id or notification_id)
     let idColumn = 'id';
     try {
-      const tableInfo = await query(`DESCRIBE notifications_unified_unified`) as any[];
+      const tableInfo = await query(`DESCRIBE notifications_unified`) as any[];
       const hasNotificationId = tableInfo.some((col: any) => col.Field === 'notification_id');
       const hasId = tableInfo.some((col: any) => col.Field === 'id');
       
@@ -48,7 +48,7 @@ export async function GET(request: NextRequest) {
         link,
         status,
         created_at
-      FROM notifications_unified_unified 
+      FROM notifications_unified 
       WHERE user_id = ? 
       ORDER BY created_at DESC 
       LIMIT ${Number(limit)} OFFSET ${Number(offset)}
@@ -57,7 +57,7 @@ export async function GET(request: NextRequest) {
     // Get total count
     const countResult = await query(`
       SELECT COUNT(*) as total 
-      FROM notifications_unified_unified 
+      FROM notifications_unified 
       WHERE user_id = ?
     `, [parseInt(user.userId)]) as any[];
 
@@ -66,7 +66,7 @@ export async function GET(request: NextRequest) {
     // Get unread count - ensure proper boolean handling
     const unreadResult = await query(`
       SELECT COUNT(*) as unread 
-      FROM notifications_unified_unified 
+      FROM notifications_unified 
       WHERE user_id = ? AND (status = 0 OR status = false OR status IS NULL)
     `, [parseInt(user.userId)]) as any[];
 
@@ -101,7 +101,7 @@ export async function GET(request: NextRequest) {
     const totalUnreadCount = unreadCount + pendingBookingsCount;
 
     console.log('Notification counts:', {
-      notifications_unified_unified: notifications_unified.length,
+      notifications_unified: notifications_unified.length,
       total,
       unread: unreadCount,
       pendingBookings: pendingBookingsCount,
@@ -156,14 +156,14 @@ export async function PATCH(request: NextRequest) {
     if (markAll) {
       // Mark all notifications_unified as read
       await query(`
-        UPDATE notifications_unified_unified 
+        UPDATE notifications_unified 
         SET status = 1 
         WHERE user_id = ?
       `, [parseInt(user.userId)]);
 
       return NextResponse.json({
         success: true,
-        message: 'All notifications_unified_unified marked as read'
+        message: 'All notifications_unified marked as read'
       });
     }
 
@@ -175,7 +175,7 @@ export async function PATCH(request: NextRequest) {
 
     // Mark specific notification as read
     const result = await query(`
-      UPDATE notifications_unified_unified 
+      UPDATE notifications_unified 
       SET status = 1 
       WHERE id = ? AND user_id = ?
     `, [notificationId, parseInt(user.userId)]) as any;
@@ -201,7 +201,7 @@ export async function PATCH(request: NextRequest) {
 }
 
 /**
- * DELETE - Delete cremation provider notifications_unified_unified
+ * DELETE - Delete cremation provider notifications_unified
  */
 export async function DELETE(request: NextRequest) {
   try {
@@ -231,7 +231,7 @@ export async function DELETE(request: NextRequest) {
         idColumn = 'notification_id';
       }
     } catch (describeError) {
-      console.warn('Could not describe notifications_unified_unified table:', describeError);
+      console.warn('Could not describe notifications_unified table:', describeError);
     }
 
     let deleteQuery;
@@ -239,16 +239,16 @@ export async function DELETE(request: NextRequest) {
 
     if (deleteAll) {
       // Delete all notifications_unified for this cremation provider
-      deleteQuery = 'DELETE FROM notifications_unified_unified WHERE user_id = ?';
+      deleteQuery = 'DELETE FROM notifications_unified WHERE user_id = ?';
       queryParams = [parseInt(user.userId)];
     } else if (notificationIds && Array.isArray(notificationIds) && notificationIds.length > 0) {
       // Delete specific notifications_unified
       // SECURITY FIX: Build safe parameterized query without template literals
       const placeholders = notificationIds.map(() => '?').join(',');
       if (idColumn === 'notification_id') {
-        deleteQuery = `DELETE FROM notifications_unified_unified WHERE notification_id IN (${placeholders}) AND user_id = ?`;
+        deleteQuery = `DELETE FROM notifications_unified WHERE notification_id IN (${placeholders}) AND user_id = ?`;
       } else {
-        deleteQuery = `DELETE FROM notifications_unified_unified_unified WHERE id IN (${placeholders}) AND user_id = ?`;
+        deleteQuery = `DELETE FROM notifications_unified_unified WHERE id IN (${placeholders}) AND user_id = ?`;
       }
       queryParams = [...notificationIds, parseInt(user.userId)];
     } else {

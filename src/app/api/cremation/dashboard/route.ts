@@ -222,7 +222,7 @@ export async function GET(request: NextRequest) {
     // For each service package, get inclusions and images
     for (let pkg of servicePackages) {
       const inclusions = await query(
-        `SELECT description
+        `SELECT inclusions.description
          FROM service_packages sp, JSON_TABLE(sp.inclusions, '$[*]' COLUMNS (name VARCHAR(255) PATH '$.name', description TEXT PATH '$.description', is_included BOOLEAN PATH '$.is_included')) as inclusions
          WHERE package_id = ?`,
         [pkg.id]

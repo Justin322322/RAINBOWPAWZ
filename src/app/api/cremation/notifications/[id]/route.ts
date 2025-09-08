@@ -30,7 +30,7 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
     // Check which column name to use (id or notification_id)
     let idColumn = 'id';
     try {
-      const tableInfo = await query(`DESCRIBE notifications_unified_unified`) as any[];
+      const tableInfo = await query(`DESCRIBE notifications_unified`) as any[];
       const hasNotificationId = tableInfo.some((col: any) => col.Field === 'notification_id');
       const hasId = tableInfo.some((col: any) => col.Field === 'id');
       
@@ -51,7 +51,7 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
         link,
         status,
         created_at
-      FROM notifications_unified_unified 
+      FROM notifications_unified 
       WHERE ${idColumn} = ? AND user_id = ?
     `, [parseInt(notificationId), parseInt(user.userId)]) as any[];
 
@@ -105,7 +105,7 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
     // Check which column name to use (id or notification_id)
     let idColumn = 'id';
     try {
-      const tableInfo = await query(`DESCRIBE notifications_unified_unified`) as any[];
+      const tableInfo = await query(`DESCRIBE notifications_unified`) as any[];
       const hasNotificationId = tableInfo.some((col: any) => col.Field === 'notification_id');
       const hasId = tableInfo.some((col: any) => col.Field === 'id');
       
@@ -118,7 +118,7 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
 
     // Mark the specific notification as read for this cremation provider
     const result = await query(`
-      UPDATE notifications_unified_unified_unified 
+      UPDATE notifications_unified 
       SET status = 1 
       WHERE ${idColumn} = ? AND user_id = ?
     `, [parseInt(notificationId), parseInt(user.userId)]) as any;

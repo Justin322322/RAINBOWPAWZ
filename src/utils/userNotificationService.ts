@@ -93,12 +93,12 @@ async function ensureNotificationsTable(): Promise<boolean> {
       SELECT COUNT(*) as count
       FROM information_schema.tables
       WHERE table_schema = DATABASE()
-      AND table_name = 'notifications_unified_unified'
+      AND table_name = 'notifications_unified'
     `) as Array<{ count: number }>;
 
     if (tableExists[0].count === 0) {
       await query(`
-        CREATE TABLE IF NOT EXISTS notifications_unified_unified (
+        CREATE TABLE IF NOT EXISTS notifications_unified (
           id INT AUTO_INCREMENT PRIMARY KEY,
           user_id INT NOT NULL,
           title VARCHAR(255) NOT NULL,
@@ -128,7 +128,7 @@ async function ensureNotificationsTable(): Promise<boolean> {
  */
 async function getNotificationIdColumn(): Promise<'id' | 'notification_id'> {
   try {
-    const tableInfo = await query(`DESCRIBE notifications_unified_unified`) as TableColumnInfo[];
+    const tableInfo = await query(`DESCRIBE notifications_unified`) as TableColumnInfo[];
     const hasNotificationId = tableInfo.some(col => col.Field === 'notification_id');
     const hasId = tableInfo.some(col => col.Field === 'id');
     
@@ -151,9 +151,9 @@ export async function getUserNotifications(userId: number, limit: number = 10): 
     
     const selectQuery = idColumn === 'notification_id'
       ? `SELECT notification_id as id, user_id, title, message, type, status, link, created_at 
-         FROM notifications_unified_unified WHERE user_id = ? ORDER BY created_at DESC LIMIT ${Number(limit)}`
+         FROM notifications_unified WHERE user_id = ? ORDER BY created_at DESC LIMIT ${Number(limit)}`
       : `SELECT id, user_id, title, message, type, status, link, created_at 
-         FROM notifications_unified_unified WHERE user_id = ? ORDER BY created_at DESC LIMIT ${Number(limit)}`;
+         FROM notifications_unified WHERE user_id = ? ORDER BY created_at DESC LIMIT ${Number(limit)}`;
     
     const notifications_unified = await query(selectQuery, [userId]) as NotificationRecord[];
     
@@ -180,8 +180,8 @@ export async function markNotificationAsRead(notificationId: number, userId: num
     const idColumn = await getNotificationIdColumn();
     
     const updateQuery = idColumn === 'notification_id'
-      ? 'UPDATE notifications_unified_unified SET status = TRUE WHERE notification_id = ? AND user_id = ?'
-      : 'UPDATE notifications_unified_unified SET status = TRUE WHERE id = ? AND user_id = ?';
+      ? 'UPDATE notifications_unified SET status = TRUE WHERE notification_id = ? AND user_id = ?'
+      : 'UPDATE notifications_unified SET status = TRUE WHERE id = ? AND user_id = ?';
     
     await query(updateQuery, [notificationId, userId]);
     return true;
@@ -199,7 +199,7 @@ export async function markNotificationAsRead(notificationId: number, userId: num
 export async function markAllNotificationsAsRead(userId: number): Promise<boolean> {
   try {
     await query(`
-      UPDATE notifications_unified_unified_unified 
+      UPDATE notifications_unified_unified 
       SET status = TRUE 
       WHERE user_id = ? AND status = FALSE
     `, [userId]);
