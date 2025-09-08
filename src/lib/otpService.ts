@@ -63,22 +63,25 @@ export async function verifyOtp({
       return { success: false, error: 'User is already verified', message: 'User is already verified' };
     }
 
-    // Check for rate limiting (max 15 attempts in 10 minutes)
-    const rateLimitResult = await query(
-      `SELECT COUNT(*) as count FROM auth_tokens
-       WHERE user_id = ? AND attempt_type = 'verify' AND attempt_time > DATE_SUB(NOW(), INTERVAL 10 MINUTE)`,
-      [userId]
-    ) as any[];
+    // Check for rate limiting (max 15 attempts in 10 minutes); skip gracefully if columns not present
+    try {
+      const rateLimitResult = await query(
+        `SELECT COUNT(*) as count FROM auth_tokens
+         WHERE user_id = ? AND attempt_type = 'verify' AND attempt_time > DATE_SUB(NOW(), INTERVAL 10 MINUTE)`,
+        [userId]
+      ) as any[];
+      if (rateLimitResult[0].count >= 15) {
+        return { success: false, error: 'Too many attempts. Please try again later.', message: 'Too many attempts. Please try again later.' };
+      }
+    } catch {}
 
-    if (rateLimitResult[0].count >= 15) {
-      return { success: false, error: 'Too many attempts. Please try again later.', message: 'Too many attempts. Please try again later.' };
-    }
-
-    // Record the verification attempt (separate log row)
-    await query(
-      'INSERT INTO auth_tokens (user_id, attempt_type, ip_address) VALUES (?, ?, ?)',
-      [userId, 'verify', ipAddress]
-    );
+    // Record the verification attempt (best-effort; skip if schema lacks columns)
+    try {
+      await query(
+        'INSERT INTO auth_tokens (user_id, attempt_type, ip_address) VALUES (?, ?, ?)',
+        [userId, 'verify', ipAddress]
+      );
+    } catch {}
 
     // Get only the latest valid OTP for the user
     const otpResult = await query(
@@ -148,16 +151,17 @@ export async function generateOtp({
       return { success: false, error: 'User is already verified', message: 'User is already verified' };
     }
 
-    // Check for rate limiting (max 10 attempts in 10 minutes)
-    const rateLimitResult = await query(
-      `SELECT COUNT(*) as count FROM auth_tokens
-      WHERE user_id = ? AND attempt_type = 'generate' AND attempt_time > DATE_SUB(NOW(), INTERVAL 10 MINUTE)`,
-      [userId]
-    ) as any[];
-
-    if (rateLimitResult[0].count >= 10) {
-      return { success: false, error: 'Too many attempts. Please try again later.', message: 'Too many attempts. Please try again later.' };
-    }
+    // Check for rate limiting (max 10 attempts in 10 minutes); skip gracefully if columns not present
+    try {
+      const rateLimitResult = await query(
+        `SELECT COUNT(*) as count FROM auth_tokens
+        WHERE user_id = ? AND attempt_type = 'generate' AND attempt_time > DATE_SUB(NOW(), INTERVAL 10 MINUTE)`,
+        [userId]
+      ) as any[];
+      if (rateLimitResult[0].count >= 10) {
+        return { success: false, error: 'Too many attempts. Please try again later.', message: 'Too many attempts. Please try again later.' };
+      }
+    } catch {}
 
     // Generate a new OTP
     const otpCode = generateRandomOTP();
@@ -172,18 +176,19 @@ export async function generateOtp({
         "UPDATE auth_tokens SET is_used = 1 WHERE user_id = ? AND token_type = 'otp_code' AND is_used = 0",
         [userId]
       );
+    } catch {
+      return {
+        success: false,
+        error: 'Failed to generate verification code. Please try again.',
+        message: 'Failed to generate verification code. Please try again.'
+      };
+    }
 
-      // Store the new OTP in the database
+    // Store the new OTP in the database (critical)
+    try {
       await query(
         "INSERT INTO auth_tokens (user_id, token_type, token_value, expires_at, ip_address) VALUES (?, 'otp_code', ?, ?, ?)",
         [userId, otpCode, expiresAt, ipAddress]
-      );
-
-      // Record the attempt (separate log row) with context but without exposing the OTP value
-      const attemptMeta = JSON.stringify({ otpLength: String(otpCode).length, maskedOtpTail: String(otpCode).slice(-2) });
-      await query(
-        "INSERT INTO auth_tokens (user_id, attempt_type, token_type, token_value, expires_at, attempts_data, ip_address) VALUES (?, 'generate', 'otp_code', NULL, ?, ?, ?)",
-        [userId, expiresAt, attemptMeta, ipAddress]
       );
     } catch {
       return {
@@ -192,6 +197,15 @@ export async function generateOtp({
         message: 'Failed to generate verification code. Please try again.'
       };
     }
+
+    // Best-effort attempt logging with optional columns; ignore failures
+    try {
+      const attemptMeta = JSON.stringify({ otpLength: String(otpCode).length, maskedOtpTail: String(otpCode).slice(-2) });
+      await query(
+        "INSERT INTO auth_tokens (user_id, attempt_type, token_type, token_value, expires_at, attempts_data, ip_address) VALUES (?, 'generate', 'otp_code', NULL, ?, ?, ?)",
+        [userId, expiresAt, attemptMeta, ipAddress]
+      );
+    } catch {}
 
     // Send the OTP email (with retry logic in the sendOtpEmail function)
     const emailSent = await sendOtpEmail(email, otpCode);

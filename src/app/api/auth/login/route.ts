@@ -195,6 +195,18 @@ export async function POST(request: Request) {
               if (businessResult && businessResult.length > 0) {
                 const business = businessResult[0];
 
+                // Block login for non-approved business accounts
+                if (business.verification_status && String(business.verification_status).toLowerCase() !== 'approved') {
+                  return NextResponse.json({
+                    error: 'Account pending approval',
+                    message: 'Your business application is not approved yet. Please wait for verification.',
+                    status: String(business.verification_status).toLowerCase(),
+                  }, {
+                    status: 403,
+                    headers
+                  });
+                }
+
                 // Merge business details with user data
                 const businessUser = {
                   ...user,
