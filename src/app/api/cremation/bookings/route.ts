@@ -780,33 +780,37 @@ export async function POST(request: NextRequest) {
     // **🔥 FIX: Handle external operations outside transaction to avoid conflicts**
     const bookingId = result.bookingId;
 
-    // Remove the booked time slot from availability to prevent double booking
+    // Remove the booked time slot from normalized tables and update day availability
     try {
-      // Format booking time to match the time_slot format (HH:MM)
-      const _formattedBookingTime = bookingTime.substring(0, 5);
-      
-      // Find the time slot that matches this booking
-      const findTimeSlotQuery = `
-        SELECT id 
-        FROM service_providers 
-        WHERE provider_id = ? 
-        AND date = ? 
-        AND start_time = ?
-      `;
-      
-      const timeSlots = await query(findTimeSlotQuery, [
-        providerId, 
-        bookingDate,
-        bookingTime
-      ]) as any[];
-      
-      if (timeSlots && timeSlots.length > 0) {
-        // Delete the time slot to prevent it from being booked again
-        const timeSlotId = timeSlots[0].id;
-        await query('DELETE FROM service_providers WHERE id = ?', [timeSlotId]);
-      } else {
-        // Time slot not found, continue
-      }
+      const dateStr = String(bookingDate);
+      const timeStr = String(bookingTime).substring(0, 5); // HH:MM
+
+      // Delete the specific slot
+      await query(
+        `DELETE FROM availability_time_slots 
+         WHERE provider_id = ? 
+           AND availability_date = ? 
+           AND start_time = STR_TO_DATE(?, '%H:%i') 
+         LIMIT 1`,
+        [providerId, dateStr, timeStr]
+      );
+
+      // Count remaining slots for that date
+      const remainRows = await query(
+        `SELECT COUNT(*) AS c 
+           FROM availability_time_slots 
+          WHERE provider_id = ? AND availability_date = ?`,
+        [providerId, dateStr]
+      ) as any[];
+      const remaining = Number(remainRows?.[0]?.c || 0);
+
+      // Update day availability: no slots -> mark unavailable; otherwise ensure available
+      await query(
+        `INSERT INTO provider_availability (provider_id, availability_date, is_available)
+         VALUES (?, ?, ?)
+         ON DUPLICATE KEY UPDATE is_available = VALUES(is_available), updated_at = NOW()`,
+        [providerId, dateStr, remaining > 0 ? 1 : 0]
+      );
     } catch (timeSlotError) {
       // Log the error but don't fail the booking creation
       console.error('Error removing time slot after booking creation:', timeSlotError);
