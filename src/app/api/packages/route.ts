@@ -55,9 +55,18 @@ export async function GET(request: NextRequest) {
         cremation_type AS cremationType,
         processing_time AS processingTime,
         price,
+        pricing_mode AS pricingMode,
+        delivery_fee_per_km AS deliveryFeePerKm,
+        overage_fee_per_kg AS overageFeePerKg,
         conditions,
         is_active AS isActive,
-        provider_id AS providerId
+        provider_id AS providerId,
+        inclusions,
+        addons,
+        images,
+        size_pricing AS sizePricing,
+        created_at,
+        updated_at
       FROM service_packages
       ${whereClause}
       ORDER BY created_at DESC
@@ -120,15 +129,15 @@ export async function GET(request: NextRequest) {
     // Collect package ids for enrichment
     const packageIds = rows.map((p: any) => p.id);
 
-    // Fetch images for all packages in one query (use parameterized query)
+    // Fetch images for all packages from the JSON column
     let imagesByPackage: Record<number, string[]> = {};
     if (packageIds.length > 0) {
       const placeholders = packageIds.map(() => '?').join(',');
       const imagesRows = (await query(
-        `SELECT package_id as packageId, image_path, image_data
-         FROM service_packages sp, JSON_TABLE(sp.images, '$[*]' COLUMNS (url VARCHAR(500) PATH '$.url', alt_text VARCHAR(255) PATH '$.alt_text', is_primary BOOLEAN PATH '$.is_primary')) as images
+        `SELECT package_id as packageId, images
+         FROM service_packages 
          WHERE package_id IN (${placeholders})
-         ORDER BY display_order`,
+         AND images IS NOT NULL`,
         packageIds
       )) as any[];
 
@@ -145,46 +154,103 @@ export async function GET(request: NextRequest) {
 
       imagesByPackage = imagesRows.reduce((acc: Record<number, string[]>, row: any) => {
         const id = Number(row.packageId);
-        const rawPath: string | null = row.image_path || null;
-        const dataUrl: string | null = row.image_data || null;
-        let resolved: string | null = null;
-
-        // Fast path for base64 data URLs
-        if (dataUrl && typeof dataUrl === 'string' && dataUrl.startsWith('data:image/')) {
-          resolved = dataUrl;
-        } else if (rawPath && typeof rawPath === 'string') {
-          // Use pre-computed mappings for better performance
-          for (const [prefix, mapper] of Object.entries(pathMappings)) {
-            if (rawPath.startsWith(prefix)) {
-              resolved = mapper(rawPath);
-              break;
+        let images: any[] = [];
+        
+        // Parse JSON images column
+        try {
+          if (row.images) {
+            images = typeof row.images === 'string' ? JSON.parse(row.images) : row.images;
+            if (!Array.isArray(images)) {
+              images = [];
             }
           }
+        } catch (e) {
+          console.warn(`Failed to parse images JSON for package ${id}:`, e);
+          images = [];
+        }
 
-          // Fallback for paths that don't match known patterns
-          if (!resolved) {
-            resolved = rawPath.includes('packages/')
-              ? pathMappings['packages/'](rawPath)
-              : rawPath;
+        const resolvedImages: string[] = [];
+        
+        for (const img of images) {
+          let resolved: string | null = null;
+          
+          if (typeof img === 'string') {
+            // Direct image path/URL
+            resolved = img;
+          } else if (img && typeof img === 'object') {
+            // Image object with url/path property
+            const rawPath = img.url || img.path || img.src || null;
+            const dataUrl = img.data || null;
+            
+            // Fast path for base64 data URLs
+            if (dataUrl && typeof dataUrl === 'string' && dataUrl.startsWith('data:image/')) {
+              resolved = dataUrl;
+            } else if (rawPath && typeof rawPath === 'string') {
+              resolved = rawPath;
+            }
+          }
+          
+          if (resolved) {
+            // Apply path mappings
+            for (const [prefix, mapper] of Object.entries(pathMappings)) {
+              if (resolved.startsWith(prefix)) {
+                resolved = mapper(resolved);
+                break;
+              }
+            }
+            
+            // Fallback for paths that don't match known patterns
+            if (resolved && !resolved.startsWith('http') && !resolved.startsWith('data:') && !resolved.startsWith('/api/')) {
+              if (resolved.includes('packages/')) {
+                resolved = pathMappings['packages/'](resolved);
+              }
+            }
+            
+            resolvedImages.push(resolved);
           }
         }
 
-        if (resolved) {
-          if (!acc[id]) acc[id] = [];
-          acc[id].push(resolved);
+        if (resolvedImages.length > 0) {
+          acc[id] = resolvedImages;
         }
         return acc;
       }, {});
     }
 
-    // Return packages with enriched images (leave inclusions/addOns empty for list performance)
-    const packages = rows.map((p: any) => ({
-      ...p,
-      inclusions: [],
-      addOns: [],
-      images: imagesByPackage[p.id] || [],
-      supportedPetTypes: []
-    }));
+    // Return packages with enriched images and parsed JSON fields
+    const packages = rows.map((p: any) => {
+      // Parse JSON fields safely
+      let inclusions: string[] = [];
+      let addOns: any[] = [];
+      
+      try {
+        if (p.inclusions) {
+          inclusions = typeof p.inclusions === 'string' ? JSON.parse(p.inclusions) : p.inclusions;
+          if (!Array.isArray(inclusions)) inclusions = [];
+        }
+      } catch (e) {
+        console.warn(`Failed to parse inclusions for package ${p.id}:`, e);
+        inclusions = [];
+      }
+      
+      try {
+        if (p.addons) {
+          addOns = typeof p.addons === 'string' ? JSON.parse(p.addons) : p.addons;
+          if (!Array.isArray(addOns)) addOns = [];
+        }
+      } catch (e) {
+        console.warn(`Failed to parse addons for package ${p.id}:`, e);
+        addOns = [];
+      }
+      
+      return {
+        ...p,
+        inclusions,
+        addOns,
+        images: imagesByPackage[p.id] || [],
+        supportedPetTypes: []
+      };
+    });
 
     console.log('Packages processed successfully, returning', packages.length, 'packages');
 
