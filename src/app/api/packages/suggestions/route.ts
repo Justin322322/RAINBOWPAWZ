@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { query } from '@/lib/db';
 
 export const dynamic = 'force-dynamic';
 
@@ -9,26 +8,65 @@ export async function GET(request: NextRequest) {
     const q = (url.searchParams.get('q') || '').trim();
     const limit = Math.min(Number(url.searchParams.get('limit') || 10), 50);
 
-    const params: any[] = [];
-    const likeClause = q ? 'WHERE description LIKE ?' : '';
-    if (q) params.push(`%${q}%`);
+    console.log('Packages suggestions API called with query:', q, 'limit:', limit);
+    
+    // Since the suggestion tables don't exist in the consolidated database,
+    // we'll provide basic suggestions based on common pet service terms
+    const commonInclusions = [
+      'Individual cremation',
+      'Return of ashes in urn',
+      'Certificate of cremation',
+      'Transportation service',
+      'Safe handling',
+      'Respectful process',
+      'Memorial keepsake',
+      '24/7 support',
+      'Professional service',
+      'Compassionate care'
+    ];
 
-    const inclusions = (await query(
-      `SELECT description FROM package_inclusion_suggestions ${likeClause} ORDER BY popularity DESC, description ASC LIMIT ${Number(limit)}`,
-      params
-    )) as any[];
+    const commonAddOns = [
+      { name: 'Premium urn upgrade', price: 500 },
+      { name: 'Memorial photo frame', price: 200 },
+      { name: 'Paw print impression', price: 300 },
+      { name: 'Memorial jewelry', price: 800 },
+      { name: 'Additional certificates', price: 100 },
+      { name: 'Express service', price: 1000 },
+      { name: 'Weekend service', price: 500 },
+      { name: 'Home pickup', price: 300 },
+      { name: 'Memorial video', price: 600 },
+      { name: 'Custom engraving', price: 400 }
+    ];
 
-    const addOns = (await query(
-      `SELECT name, default_price FROM package_addon_suggestions ${q ? 'WHERE name LIKE ?' : ''} ORDER BY popularity DESC, name ASC LIMIT ${Number(limit)}`,
-      q ? [`%${q}%`] : []
-    )) as any[];
+    // Filter suggestions based on query
+    let filteredInclusions = commonInclusions;
+    let filteredAddOns = commonAddOns;
+
+    if (q) {
+      const queryLower = q.toLowerCase();
+      filteredInclusions = commonInclusions.filter(item => 
+        item.toLowerCase().includes(queryLower)
+      );
+      filteredAddOns = commonAddOns.filter(item => 
+        item.name.toLowerCase().includes(queryLower)
+      );
+    }
+
+    // Limit results
+    const inclusions = filteredInclusions.slice(0, limit);
+    const addOns = filteredAddOns.slice(0, limit);
 
     return NextResponse.json({
-      inclusions: inclusions.map((r) => r.description),
-      addOns: addOns.map((r) => ({ name: r.name, price: Number(r.default_price || 0) }))
+      inclusions,
+      addOns
     });
+    
   } catch (err: any) {
-    return NextResponse.json({ error: 'Failed to load suggestions', details: err.message }, { status: 500 });
+    console.error('Packages suggestions API error:', err);
+    return NextResponse.json({ 
+      error: 'Failed to load suggestions', 
+      details: err.message 
+    }, { status: 500 });
   }
 }
 

@@ -46,10 +46,32 @@ async function getUploadsIndex(): Promise<string[]> {
   }
   try {
     const dir = join(process.cwd(), 'public', 'uploads', 'packages');
-    const entries = await readdir(dir).catch(() => [] as string[]);
-    uploadsIndexCache = { files: entries, lastScanned: now };
-    return entries;
-  } catch {
+    const allFiles: string[] = [];
+    
+    // Recursively scan directory and subdirectories
+    const scanDirectory = async (currentDir: string, relativePath: string = '') => {
+      try {
+        const entries = await readdir(currentDir, { withFileTypes: true });
+        for (const entry of entries) {
+          const fullPath = join(currentDir, entry.name);
+          const relativeFilePath = relativePath ? `${relativePath}/${entry.name}` : entry.name;
+          
+          if (entry.isDirectory()) {
+            await scanDirectory(fullPath, relativeFilePath);
+          } else if (entry.isFile() && entry.name.match(/\.(jpg|jpeg|png|gif|webp)$/i)) {
+            allFiles.push(relativeFilePath);
+          }
+        }
+      } catch (error) {
+        console.warn(`Error scanning directory ${currentDir}:`, error);
+      }
+    };
+    
+    await scanDirectory(dir);
+    uploadsIndexCache = { files: allFiles, lastScanned: now };
+    return allFiles;
+  } catch (error) {
+    console.warn('Error in getUploadsIndex:', error);
     uploadsIndexCache = { files: [], lastScanned: now };
     return [];
   }
@@ -244,22 +266,29 @@ async function fetchRelatedData(packageIds: number[]) {
           if (typeof pkg.images === 'string') {
             // Check for corrupted data with [object Object]
             if (pkg.images.includes('[object Object]')) {
-              console.warn(`Package ${pkg.package_id} has corrupted images data with [object Object]`);
-              // Skip corrupted data
+              console.warn(`Package ${pkg.package_id} has corrupted images data with [object Object] - skipping`);
+              // Skip corrupted data completely
+              return;
             } else {
-              imagesData = JSON.parse(pkg.images);
+              try {
+                imagesData = JSON.parse(pkg.images);
+              } catch (parseError) {
+                console.warn(`Package ${pkg.package_id} has invalid JSON in images column:`, parseError);
+                return;
+              }
             }
           } else if (Array.isArray(pkg.images)) {
             imagesData = pkg.images;
           }
           
-          if (Array.isArray(imagesData)) {
+          if (Array.isArray(imagesData) && imagesData.length > 0) {
             imagesData.forEach((img: any) => {
               let resolved: string | null = null;
               
               if (typeof img === 'string') {
                 // Skip corrupted string data
-                if (img.includes('[object Object]')) {
+                if (img.includes('[object Object]') || img === '[object Object]') {
+                  console.warn(`Package ${pkg.package_id} has corrupted image string: ${img}`);
                   return;
                 }
                 resolved = img;
@@ -274,7 +303,7 @@ async function fetchRelatedData(packageIds: number[]) {
                 }
               }
               
-              if (resolved) {
+              if (resolved && resolved !== '[object Object]') {
                 // Apply path mappings
                 if (resolved.startsWith('/api/image/')) {
                   results.images[pkg.package_id].push(resolved);
@@ -305,20 +334,40 @@ async function fetchRelatedData(packageIds: number[]) {
   // Filesystem fallback: if a package has no images in DB, try to discover files in public/uploads/packages
   try {
     const uploads = await getUploadsIndex();
+    console.log('Filesystem fallback - available files:', uploads);
+    
     packageIds.forEach((id) => {
       const current = results.images[id] || [];
       if (!current || current.length === 0) {
+        console.log(`Package ${id} has no images in DB, checking filesystem...`);
+        
+        // Look for files that start with package_${id}_
         const prefix = `package_${id}_`;
         const matches = uploads.filter((f) => f.startsWith(prefix));
+        console.log(`Package ${id} filesystem matches:`, matches);
+        
         if (matches.length > 0) {
           // Choose first match deterministically (sorted lexicographically)
           const chosen = matches.sort()[0];
           results.images[id] = [`/api/image/packages/${chosen}`];
+          console.log(`Package ${id} using filesystem image:`, chosen);
+        } else {
+          // If no specific package files found, try to find any package images as fallback
+          const anyPackageFiles = uploads.filter((f) => f.includes('package_') && f.match(/\.(jpg|jpeg|png|gif|webp)$/i));
+          if (anyPackageFiles.length > 0) {
+            const fallbackImage = anyPackageFiles.sort()[0];
+            results.images[id] = [`/api/image/packages/${fallbackImage}`];
+            console.log(`Package ${id} using fallback image:`, fallbackImage);
+          } else {
+            // Ultimate fallback: use placeholder image
+            results.images[id] = ['/placeholder-pet.png'];
+            console.log(`Package ${id} using ultimate fallback: placeholder-pet.png`);
+          }
         }
       }
     });
-  } catch {
-    // ignore fallback errors
+  } catch (error) {
+    console.warn('Filesystem fallback error:', error);
   }
 
   return results;

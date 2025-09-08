@@ -184,19 +184,27 @@ function ServiceDetailPage({ userData }: ServiceDetailPageProps) {
         const packagesResponse = await fetch(`/api/packages?providerId=${providerId}`);
 
         if (!packagesResponse.ok) {
-          throw new Error('Failed to fetch packages');
+          console.error('Packages API error:', packagesResponse.status, packagesResponse.statusText);
+          throw new Error(`Failed to fetch packages: ${packagesResponse.status} ${packagesResponse.statusText}`);
         }
 
         const packagesData = await packagesResponse.json();
+        console.log('Packages data received:', packagesData);
 
         // The packages already contain images from the database via the /api/packages endpoint
         const packages = packagesData.packages || [];
+        console.log('Packages array:', packages);
 
         // Combine provider data with packages (images are already included)
         const providerWithPackages = {
           ...providerData.provider,
           packages: packages
         };
+
+        // Check if provider has no packages
+        if (packages.length === 0) {
+          console.warn(`Provider ${providerId} has no packages available`);
+        }
 
         setProvider(providerWithPackages);
 
@@ -213,7 +221,8 @@ function ServiceDetailPage({ userData }: ServiceDetailPageProps) {
         } catch {
           setPets(mockPets);
         }
-      } catch {
+      } catch (error) {
+        console.error('Error fetching service details:', error);
         setError('Failed to load provider details');
       } finally {
         setLoading(false);

@@ -120,6 +120,7 @@ export async function GET(request: NextRequest) {
     // If no packages, return empty result
     if (!rows || rows.length === 0) {
       console.log('No packages found, returning empty result');
+      console.log('Provider ID:', providerId, 'WHERE clause:', whereClause, 'Query params:', finalQueryParams);
       return NextResponse.json({
         packages: [],
         pagination: { page, limit, total: 0, totalPages: 0 },

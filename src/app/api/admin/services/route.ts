@@ -98,7 +98,9 @@ export async function GET(request: NextRequest) {
 
     if (hasIsActive) {
       sql += ' ORDER BY is_active DESC';
-    }    // Execute the query
+    }
+    
+    // Execute the query
     const services = await query(sql, [providerId]);
 
     // Transform the response to ensure consistent field names
