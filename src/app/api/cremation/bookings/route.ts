@@ -633,7 +633,8 @@ export async function POST(request: NextRequest) {
     if (priceColumn) {
       availableColumns.push(priceColumn);
       placeholders.push('?');
-      values.push(price);
+      const numericPrice = typeof price === 'string' ? Number(price.replace(/[^0-9.]/g, '')) : Number(price);
+      values.push(Number.isFinite(numericPrice) ? numericPrice : 0);
     }
 
     // Add optional fields if they exist in the schema
