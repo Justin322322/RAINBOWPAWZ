@@ -1,8 +1,3 @@
-<div align="center">
-  <img width="200" height="600" alt="logo" src="https://github.com/user-attachments/assets/769e4e6c-f22d-455a-9a3e-49b8b860f4f4" />
-</div>
-
-
 # Rainbow Paws Application
 
 A comprehensive Next.js application for pet memorial services, connecting pet owners with cremation service providers.
@@ -33,7 +28,7 @@ A comprehensive Next.js application for pet memorial services, connecting pet ow
 
 ## Overview
 
-Rainbow Paws is a full-featured web application that facilitates pet memorial services by connecting pet owners (fur parents) with cremation service providers. The platform offers booking management, payment processing, notifications, and comprehensive dashboards for all user types.
+Rainbow Paws is a full-featured web application that facilitates pet memorial services by connecting pet owners (fur parents) with cremation service providers. The platform offers booking management, [...]
 
 ## Features
 
@@ -267,11 +262,11 @@ PAYMONGO_SECRET_KEY=your-paymongo-secret-key
 
 ### Entity Relationship Diagram (ERD)
 
-The ERD below is generated from the current database schema (see ERD-GENERATED.md). It reflects the unified `restrictions` table and the active tables in your live database dump.
+The ERD below is a cleaned and corrected representation of the primary tables and their relationships. (This mermaid block replaces previous malformed/duplicated entries.)
 
 ```mermaid
 erDiagram
-    users {
+    USERS {
         int user_id PK
         varchar email
         varchar password
@@ -280,93 +275,102 @@ erDiagram
         varchar phone
         text address
         enum gender
-        longtext profile_picture
+        text profile_picture
         enum role
         enum status
-        enum restriction_status
     }
 
-    service_providers {
+    SERVICE_PROVIDERS {
         int provider_id PK
         int user_id FK
         varchar name
         enum provider_type
-        enum business_entity_type
-        varchar contact_first_name
-        varchar contact_last_name
         varchar phone
         text address
-        text hours
         text description
         enum application_status
     }
 
-    service_packages {
+    SERVICE_PACKAGES {
         int package_id PK
         int provider_id FK
         varchar name
         text description
         enum category
-        enum cremation_type
-        varchar processing_time
         decimal price
         enum pricing_mode
-        decimal overage_fee_per_kg
-        decimal delivery_fee_per_km
-        tinyint uses_custom_options
     }
 
-    bookings {
-        int id PK
+    PETS {
+        int pet_id PK
+        int user_id FK
+        varchar name
+        varchar species
+        varchar breed
+        enum gender
+        decimal weight
+        text photo_path
+    }
+
+    SERVICE_BOOKINGS {
+        int booking_id PK
         int user_id FK
         int provider_id FK
         int package_id FK
-        int service_type_id FK
         varchar pet_name
         varchar pet_type
         decimal pet_weight
         text cause_of_death
-        mediumtext pet_image_url
+        varchar pet_image_url
         date booking_date
         time booking_time
+        enum status
+        text special_requests
+        decimal price
+        timestamp created_at
+        timestamp updated_at
     }
 
-    payment_transactions {
+    PAYMENT_TRANSACTIONS {
         int id PK
         int booking_id FK
         varchar payment_intent_id
-        varchar source_id
         decimal amount
         varchar currency
         enum payment_method
         enum status
-        int refund_id
-        timestamp refunded_at
-        enum provider
-        varchar provider_transaction_id
+        timestamp created_at
+        timestamp updated_at
     }
 
-    refunds {
+    REFUNDS {
         int id PK
         int booking_id FK
         int user_id FK
         decimal amount
         text reason
         enum status
-        enum refund_type
-        enum payment_method
-        varchar transaction_id
-        varchar paymongo_refund_id
-        int processed_by
-        varchar receipt_path
+        timestamp created_at
+        timestamp updated_at
     }
 
-    notifications_unified {
+    RESTRICTIONS {
+        int id PK
+        enum subject_type "user|provider"
+        int subject_id
+        text reason
+        varchar duration
+        int report_count
+        boolean is_active
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    NOTIFICATIONS_UNIFIED {
         int id PK
         int user_id FK
         int provider_id
         enum type
-        enum category
         varchar title
         text message
         json data
@@ -376,283 +380,7 @@ erDiagram
         timestamp scheduled_at
     }
 
-    restrictions {
-        int id PK
-        enum subject_type "user|provider"
-        int subject_id
-        text reason
-        timestamp restriction_date
-        varchar duration
-        int report_count
-        tinyint is_active
-        int actor_admin_id
-        json data
-        timestamp created_at
-        timestamp updated_at
-    }
-
-    pets {
-        int pet_id PK
-        int user_id FK
-        varchar name
-        varchar species
-        varchar breed
-        enum gender
-        varchar age
-        decimal weight
-        mediumtext photo_path
-        text special_notes
-        timestamp created_at
-        timestamp updated_at
-    }
-
-    service_types {
-        int id PK
-        varchar name
-        text description
-        enum category
-        tinyint is_active
-        timestamp created_at
-        timestamp updated_at
-        json pet_types_data
-    }
-
-    users ||--o{ pets : owns
-    users ||--o{ bookings : makes
-    users ||--o{ notifications_unified : receives
-    users ||--o{ restrictions : has (subject_type='user')
-    service_providers ||--o{ service_packages : offers
-    service_providers ||--o{ bookings : receives
-    service_providers ||--o{ restrictions : has (subject_type='provider')
-    service_packages ||--o{ bookings : booked_as
-    bookings ||--o{ payment_transactions : has
-    bookings ||--o{ refunds : may_have
-```
-
-    service_bookings {
-        int id PK
-        int user_id FK
-        int provider_id FK
-        int package_id FK
-        int service_type_id FK
-        varchar pet_name
-        varchar pet_type
-        text cause_of_death
-        varchar pet_image_url
-        date booking_date
-        time booking_time
-        enum status
-        text special_requests
-        varchar payment_method
-        enum payment_status
-        int refund_id FK
-        enum delivery_option
-        text delivery_address
-        float delivery_distance
-        decimal delivery_fee
-        decimal price
-        timestamp created_at
-        timestamp updated_at
-    }
-
-    payment_transactions {
-        int id PK
-        int booking_id FK
-        varchar payment_intent_id
-        varchar source_id
-        decimal amount
-        varchar currency
-        enum payment_method
-        enum status
-        int refund_id FK
-        timestamp refunded_at
-        enum provider
-        varchar provider_transaction_id
-        text checkout_url
-        text return_url
-        text failure_reason
-        json metadata
-        timestamp created_at
-        timestamp updated_at
-    }
-
-    notifications {
-        int id PK
-        int user_id FK
-        varchar title
-        text message
-        enum type
-        boolean is_read
-        varchar link
-        timestamp created_at
-    }
-
-    otp_codes {
-        int id PK
-        int user_id FK
-        varchar otp_code
-        datetime expires_at
-        boolean is_used
-        timestamp used_at
-        timestamp created_at
-    }
-
-    otp_attempts {
-        int id PK
-        int user_id FK
-        enum attempt_type
-        varchar ip_address
-        timestamp attempt_time
-    }
-
-    password_reset_tokens {
-        int id PK
-        int user_id FK
-        varchar token UK
-        timestamp created_at
-        datetime expires_at
-        boolean is_used
-    }
-
-    restrictions {
-        int id PK
-        enum subject_type  "user|provider"
-        int subject_id
-        text reason
-        timestamp restriction_date
-        varchar duration
-        int report_count
-        boolean is_active
-        timestamp created_at
-        timestamp updated_at
-    }
-
-    user_appeals {
-        int appeal_id PK
-        int user_id FK
-        int admin_id FK
-        enum user_type
-        int business_id FK
-        enum appeal_type
-        varchar subject
-        text message
-        json evidence_files
-        enum status
-        text admin_response
-        timestamp submitted_at
-        timestamp reviewed_at
-        timestamp resolved_at
-        timestamp created_at
-        timestamp updated_at
-    }
-
-    appeal_history {
-        int history_id PK
-        int appeal_id FK
-        int admin_id FK
-        enum previous_status
-        enum new_status
-        text admin_response
-        timestamp changed_at
-        text notes
-    }
-
-    refunds {
-        int id PK
-        int booking_id FK
-        int processed_by FK
-        decimal amount
-        text reason
-        enum status
-        varchar payment_method
-        varchar transaction_id
-        text notes
-        timestamp created_at
-        timestamp updated_at
-    }
-
-    service_types {
-        int id PK
-        varchar name
-        text description
-        enum category
-        boolean is_active
-        timestamp created_at
-        timestamp updated_at
-    }
-
-    admin_logs {
-        int id PK
-        int admin_id FK
-        varchar action
-        varchar entity_type
-        int entity_id
-        text details
-        varchar ip_address
-        timestamp created_at
-    }
-
-
-
-    business_notifications {
-        int id PK
-        int user_id FK
-        varchar title
-        text message
-        enum type
-        boolean is_read
-        varchar link
-        timestamp created_at
-    }
-
-    business_custom_options {
-        int id PK
-        int provider_id FK
-        enum option_type
-        varchar option_value
-        boolean is_active
-        timestamp created_at
-    }
-
-    business_pet_types {
-        int id PK
-        int provider_id FK
-        varchar pet_type
-        boolean is_active
-        timestamp created_at
-    }
-
-    package_size_pricing {
-        int id PK
-        int package_id FK
-        enum size_category
-        decimal weight_range_min
-        decimal weight_range_max
-        decimal price
-        timestamp created_at
-    }
-
-    provider_availability {
-        int id PK
-        int provider_id FK
-        date date
-        boolean is_available
-        timestamp created_at
-        timestamp updated_at
-    }
-
-    provider_time_slots {
-        int id PK
-        int provider_id FK
-        date date
-        time start_time
-        time end_time
-        boolean is_available
-        int booking_id FK
-        timestamp created_at
-    }
-
-    reviews {
+    REVIEWS {
         int id PK
         int user_id FK
         int service_provider_id FK
@@ -660,52 +388,19 @@ erDiagram
         int rating
         text comment
         timestamp created_at
-        timestamp expires_at
     }
 
-
-
-    %% Relationships - All foreign key constraints
-    users ||--o{ admin_profiles : "has"
-    users ||--o{ service_providers : "has"
-    users ||--o{ pets : "owns"
-    users ||--o{ notifications : "receives"
-    users ||--o{ otp_codes : "has"
-    users ||--o{ otp_attempts : "has"
-    users ||--o{ password_reset_tokens : "has"
-    users ||--o{ restrictions : "has (subject_type='user')"
-    users ||--o{ user_appeals : "submits"
-    users ||--o{ appeal_history : "processes"
-    users ||--o{ service_bookings : "makes"
-    users ||--o{ refunds : "processes"
-    users ||--o{ business_notifications : "receives"
-    users ||--o{ reviews : "writes"
-
-    service_providers ||--o{ service_packages : "offers"
-    service_providers ||--o{ service_bookings : "receives"
-    service_providers ||--o{ business_custom_options : "configures"
-    service_providers ||--o{ business_pet_types : "supports"
-    service_providers ||--o{ provider_availability : "manages"
-    service_providers ||--o{ provider_time_slots : "schedules"
-    service_providers ||--o{ reviews : "receives"
-    service_providers ||--o{ restrictions : "has (subject_type='provider')"
-
-    service_packages ||--o{ package_inclusions : "includes"
-    service_packages ||--o{ package_addons : "has"
-    service_packages ||--o{ package_images : "has"
-    service_packages ||--o{ service_bookings : "booked_as"
-    service_packages ||--o{ package_size_pricing : "has_pricing"
-
-    service_types ||--o{ service_bookings : "categorizes"
-
-    service_bookings ||--o{ payment_transactions : "has"
-    service_bookings ||--o{ refunds : "may_have"
-    service_bookings ||--o{ reviews : "generates"
-    service_bookings ||--o{ provider_time_slots : "reserves"
-
-    user_appeals ||--o{ appeal_history : "tracks"
-
-    admin_profiles ||--o{ admin_logs : "creates"
+    USERS ||--o{ PETS : "owns"
+    USERS ||--o{ SERVICE_BOOKINGS : "makes"
+    USERS ||--o{ NOTIFICATIONS_UNIFIED : "receives"
+    USERS ||--o{ RESTRICTIONS : "may_have (subject_type='user')"
+    SERVICE_PROVIDERS ||--o{ SERVICE_PACKAGES : "offers"
+    SERVICE_PROVIDERS ||--o{ SERVICE_BOOKINGS : "receives"
+    SERVICE_PROVIDERS ||--o{ RESTRICTIONS : "may_have (subject_type='provider')"
+    SERVICE_PACKAGES ||--o{ SERVICE_BOOKINGS : "booked_as"
+    SERVICE_BOOKINGS ||--o{ PAYMENT_TRANSACTIONS : "has"
+    SERVICE_BOOKINGS ||--o{ REFUNDS : "may_have"
+    SERVICE_BOOKINGS ||--o{ REVIEWS : "generates"
 ```
 
 ### Key Database Features
@@ -879,7 +574,7 @@ PORT=3005 npm run start
 
 ## Data Flow Diagram
 
-The following Data Flow Diagram illustrates how data flows through the optimized Rainbow Paws application architecture. This diagram reflects our streamlined 13-table database system and modern data processing workflows:
+The following Data Flow Diagram illustrates how data flows through the optimized Rainbow Paws application architecture. This diagram reflects our streamlined 13-table database system and modern data p[...]
 
 ```mermaid
 flowchart TD
