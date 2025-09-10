@@ -171,7 +171,7 @@ function CremationRefundsPage({ userData }: { userData: any }) {
     .filter(r => r.status === 'completed')
     .reduce((sum, r) => sum + r.amount, 0);
 
-  const pendingRefunds = refunds.filter(r => r.status === 'pending' && r.refund_type === 'manual').length;
+  const pendingRefunds = refunds.filter(r => r.status === 'pending').length; // Both manual and automatic pending refunds
 
   return (
     <CremationDashboardLayout activePage="refunds" userData={userData}>
@@ -366,7 +366,8 @@ function CremationRefundsPage({ userData }: { userData: any }) {
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                        {refund.status === 'pending' && refund.refund_type === 'manual' && (
+                        {/* Manual refund actions */}
+                        {refund.refund_type === 'manual' && ['pending', 'processing'].includes(refund.status) && (
                           <div className="space-y-2">
                             {!refund.receipt_path ? (
                               <div>
@@ -386,6 +387,17 @@ function CremationRefundsPage({ userData }: { userData: any }) {
                                 </label>
                                 {uploadingReceipt === refund.id && (
                                   <div className="text-xs text-blue-500">Uploading...</div>
+                                )}
+                                {/* Allow approval even without receipt for certain cases */}
+                                {(refund.payment_method === 'cash' || refund.payment_method === 'qr_code') && (
+                                  <div className="flex space-x-2 mt-2">
+                                    <button
+                                      onClick={() => handleVerifyRefund(refund.id, true)}
+                                      className="px-3 py-1 bg-blue-600 text-white rounded text-xs hover:bg-blue-700"
+                                    >
+                                      Approve (No Receipt)
+                                    </button>
+                                  </div>
                                 )}
                               </div>
                             ) : (
@@ -410,6 +422,31 @@ function CremationRefundsPage({ userData }: { userData: any }) {
                                 </div>
                               </div>
                             )}
+                          </div>
+                        )}
+                        
+                        {/* Pending automatic refund actions (stuck due to missing PayMongo payment ID) */}
+                        {refund.refund_type === 'automatic' && refund.status === 'pending' && (
+                          <div className="space-y-2">
+                            <div className="text-xs text-orange-600 mb-2">Auto-refund stuck (missing payment ID)</div>
+                            <div className="flex space-x-2">
+                              <button
+                                onClick={() => handleVerifyRefund(refund.id, true)}
+                                className="px-3 py-1 bg-orange-600 text-white rounded text-xs hover:bg-orange-700"
+                                title="Manually approve this automatic refund that couldn't be processed automatically"
+                              >
+                                Manual Approve
+                              </button>
+                              <button
+                                onClick={() => {
+                                  const reason = prompt('Rejection reason:');
+                                  if (reason) handleVerifyRefund(refund.id, false, reason);
+                                }}
+                                className="px-3 py-1 bg-red-600 text-white rounded text-xs hover:bg-red-700"
+                              >
+                                Reject
+                              </button>
+                            </div>
                           </div>
                         )}
                         <button
@@ -443,15 +480,17 @@ function CremationRefundsPage({ userData }: { userData: any }) {
           onClose={() => setSelectedRefund(null)}
           title={`Refund Details #${selectedRefund.id}`}
           size="large"
-          variant="info"
+          variant="default"
           footerContent={
-            <div className="flex justify-end space-x-2">
-              {selectedRefund.status === 'pending' && selectedRefund.refund_type === 'manual' && selectedRefund.receipt_path ? (
+            <div className="flex flex-col sm:flex-row justify-end gap-3">
+              {/* Manual refund approval buttons */}
+              {selectedRefund.refund_type === 'manual' && ['pending', 'processing'].includes(selectedRefund.status) ? (
                 <>
                   <button
                     onClick={() => handleVerifyRefund(selectedRefund.id, true)}
-                    className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
+                    className="inline-flex items-center justify-center px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors duration-200 w-full sm:w-auto"
                   >
+                    <CheckCircleIcon className="w-4 h-4 mr-2" />
                     Approve
                   </button>
                   <button
@@ -459,70 +498,208 @@ function CremationRefundsPage({ userData }: { userData: any }) {
                       const reason = prompt('Rejection reason:');
                       if (reason) handleVerifyRefund(selectedRefund.id, false, reason);
                     }}
-                    className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700"
+                    className="inline-flex items-center justify-center px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors duration-200 w-full sm:w-auto"
                   >
+                    <XCircleIcon className="w-4 h-4 mr-2" />
+                    Reject
+                  </button>
+                </>
+              ) : null}
+              
+              {/* Pending automatic refund approval buttons */}
+              {selectedRefund.refund_type === 'automatic' && selectedRefund.status === 'pending' ? (
+                <>
+                  <button
+                    onClick={() => handleVerifyRefund(selectedRefund.id, true)}
+                    className="inline-flex items-center justify-center px-4 py-2 bg-orange-600 text-white text-sm font-medium rounded-lg hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500 transition-colors duration-200 w-full sm:w-auto"
+                  >
+                    <CheckCircleIcon className="w-4 h-4 mr-2" />
+                    Manual Approve
+                  </button>
+                  <button
+                    onClick={() => {
+                      const reason = prompt('Rejection reason:');
+                      if (reason) handleVerifyRefund(selectedRefund.id, false, reason);
+                    }}
+                    className="inline-flex items-center justify-center px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors duration-200 w-full sm:w-auto"
+                  >
+                    <XCircleIcon className="w-4 h-4 mr-2" />
                     Reject
                   </button>
                 </>
               ) : null}
               <button
                 onClick={() => setSelectedRefund(null)}
-                className="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200"
+                className="inline-flex items-center justify-center px-4 py-2 bg-gray-100 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-colors duration-200 w-full sm:w-auto"
               >
                 Close
               </button>
             </div>
           }
         >
-          <div className="space-y-3 text-sm">
-            <div>
-              <span className="font-medium">Booking ID:</span> #{selectedRefund.booking_id}
+          <div className="space-y-6">
+            {/* Hero Section - Amount and Status */}
+            <div className="text-center bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl p-6 border border-gray-200">
+              <div className="inline-flex items-center justify-center w-16 h-16 bg-[var(--primary-green)] rounded-full mb-4">
+                <CurrencyDollarIcon className="w-8 h-8 text-white" />
+              </div>
+              <h2 className="text-3xl font-bold text-gray-900 mb-2">
+                ₱{selectedRefund.amount.toLocaleString()}
+              </h2>
+              <div className="flex items-center justify-center">
+                <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
+                  selectedRefund.status === 'completed' ? 'bg-green-100 text-green-800' :
+                  selectedRefund.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                  selectedRefund.status === 'processing' ? 'bg-blue-100 text-blue-800' :
+                  selectedRefund.status === 'failed' ? 'bg-red-100 text-red-800' :
+                  'bg-gray-100 text-gray-800'
+                }`}>
+                  {getStatusIcon(selectedRefund.status, selectedRefund.refund_type)}
+                  <span className="ml-2 capitalize">{selectedRefund.status}</span>
+                </span>
+              </div>
             </div>
-            <div>
-              <span className="font-medium">Amount:</span> ₱{selectedRefund.amount.toLocaleString()}
+
+            {/* Refund Information Card */}
+            <div className="bg-white rounded-xl border border-gray-200 p-6">
+              <div className="flex items-center space-x-3 mb-4">
+                <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
+                  <DocumentCheckIcon className="w-4 h-4 text-blue-600" />
+                </div>
+                <h3 className="text-lg font-semibold text-gray-900">Refund Information</h3>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="bg-gray-50 rounded-lg p-4">
+                  <div className="text-sm text-gray-600 mb-1">Booking ID</div>
+                  <div className="text-base font-medium text-gray-900">#{selectedRefund.booking_id}</div>
+                </div>
+                <div className="bg-gray-50 rounded-lg p-4">
+                  <div className="text-sm text-gray-600 mb-1">Payment Method</div>
+                  <div className="text-base font-medium text-gray-900 capitalize">{selectedRefund.payment_method}</div>
+                </div>
+                <div className="bg-gray-50 rounded-lg p-4">
+                  <div className="text-sm text-gray-600 mb-1">Refund Type</div>
+                  <div className="text-base font-medium text-gray-900">
+                    <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                      selectedRefund.refund_type === 'automatic' ? 'bg-blue-100 text-blue-800' : 'bg-purple-100 text-purple-800'
+                    }`}>
+                      {selectedRefund.refund_type === 'automatic' ? 'Automatic' : 'Manual'}
+                    </span>
+                  </div>
+                </div>
+                <div className="bg-gray-50 rounded-lg p-4">
+                  <div className="text-sm text-gray-600 mb-1">Initiated</div>
+                  <div className="text-base font-medium text-gray-900">
+                    {new Date(selectedRefund.initiated_at).toLocaleDateString()}
+                  </div>
+                </div>
+              </div>
             </div>
-            <div>
-              <span className="font-medium">Payment Method:</span> {selectedRefund.payment_method}
+
+            {/* Reason */}
+            <div className="bg-white rounded-xl border border-gray-200 p-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-3">Refund Reason</h3>
+              <div className="bg-gray-50 rounded-lg p-4">
+                <p className="text-gray-700">{selectedRefund.reason}</p>
+              </div>
             </div>
-            <div>
-              <span className="font-medium">Type:</span> {selectedRefund.refund_type}
-            </div>
-            <div>
-              <span className="font-medium">Reason:</span> {selectedRefund.reason}
-            </div>
-            <div>
-              <span className="font-medium">Status:</span> {selectedRefund.status}
-            </div>
-            <div>
-              <span className="font-medium">Initiated:</span> {new Date(selectedRefund.initiated_at).toLocaleString()}
-            </div>
-            {selectedRefund.processed_at && (
-              <div><span className="font-medium">Processed:</span> {new Date(selectedRefund.processed_at).toLocaleString()}</div>
-            )}
-            {selectedRefund.completed_at && (
-              <div><span className="font-medium">Completed:</span> {new Date(selectedRefund.completed_at).toLocaleString()}</div>
-            )}
-            {selectedRefund.notes && (
-              <div>
-                <span className="font-medium">Notes:</span> {selectedRefund.notes}
+
+            {/* Timeline */}
+            {(selectedRefund.processed_at || selectedRefund.completed_at) && (
+              <div className="bg-white rounded-xl border border-gray-200 p-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Processing Timeline</h3>
+                <div className="space-y-4">
+                  <div className="flex items-center">
+                    <div className="w-2 h-2 bg-blue-500 rounded-full mr-4"></div>
+                    <div>
+                      <div className="text-sm font-medium text-gray-900">Refund Initiated</div>
+                      <div className="text-xs text-gray-500">
+                        {new Date(selectedRefund.initiated_at).toLocaleString()}
+                      </div>
+                    </div>
+                  </div>
+                  {selectedRefund.processed_at && (
+                    <div className="flex items-center">
+                      <div className="w-2 h-2 bg-orange-500 rounded-full mr-4"></div>
+                      <div>
+                        <div className="text-sm font-medium text-gray-900">Processing Started</div>
+                        <div className="text-xs text-gray-500">
+                          {new Date(selectedRefund.processed_at).toLocaleString()}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  {selectedRefund.completed_at && (
+                    <div className="flex items-center">
+                      <div className="w-2 h-2 bg-green-500 rounded-full mr-4"></div>
+                      <div>
+                        <div className="text-sm font-medium text-gray-900">Refund Completed</div>
+                        <div className="text-xs text-gray-500">
+                          {new Date(selectedRefund.completed_at).toLocaleString()}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
             )}
+
+            {/* Notes */}
+            {selectedRefund.notes && (
+              <div className="bg-white rounded-xl border border-gray-200 p-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-3">Additional Notes</h3>
+                <div className="bg-gray-50 rounded-lg p-4">
+                  <p className="text-gray-700 whitespace-pre-wrap">{selectedRefund.notes}</p>
+                </div>
+              </div>
+            )}
+
+            {/* Receipt or Status Information */}
             {selectedRefund.receipt_path ? (
-              <div>
-                <span className="font-medium">Receipt:</span>
-                <a
-                  href={selectedRefund.receipt_path}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-blue-600 hover:underline ml-1"
-                >
-                  View Receipt
-                </a>
+              <div className="bg-white rounded-xl border border-gray-200 p-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-3">Receipt</h3>
+                <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                  <div className="flex items-center">
+                    <CheckCircleIcon className="w-5 h-5 text-green-600 mr-3" />
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-green-800">Receipt Available</p>
+                      <p className="text-sm text-green-600">Click to view the refund receipt</p>
+                    </div>
+                    <a
+                      href={selectedRefund.receipt_path}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center px-3 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 transition-colors duration-200"
+                    >
+                      <DocumentCheckIcon className="w-4 h-4 mr-2" />
+                      View Receipt
+                    </a>
+                  </div>
+                </div>
               </div>
             ) : (
               selectedRefund.refund_type === 'manual' && selectedRefund.status === 'pending' ? (
-                <div className="text-yellow-700 bg-yellow-50 border border-yellow-200 rounded p-2">
-                  Waiting for receipt upload.
+                <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-6">
+                  <div className="flex items-center">
+                    <ClockIcon className="w-6 h-6 text-yellow-600 mr-3" />
+                    <div>
+                      <h3 className="text-lg font-semibold text-yellow-800 mb-1">Waiting for Receipt</h3>
+                      <p className="text-yellow-700">This manual refund is waiting for receipt upload before it can be processed.</p>
+                    </div>
+                  </div>
+                </div>
+              ) : selectedRefund.refund_type === 'automatic' && selectedRefund.status === 'pending' ? (
+                <div className="bg-orange-50 border border-orange-200 rounded-xl p-6">
+                  <div className="flex items-center">
+                    <ExclamationTriangleIcon className="w-6 h-6 text-orange-600 mr-3" />
+                    <div>
+                      <h3 className="text-lg font-semibold text-orange-800 mb-1">Automatic Refund Stuck</h3>
+                      <p className="text-orange-700">
+                        This refund couldn&apos;t be processed automatically because the PayMongo payment ID was not found. 
+                        You can manually approve it using the buttons below to complete the refund.
+                      </p>
+                    </div>
+                  </div>
                 </div>
               ) : null
             )}

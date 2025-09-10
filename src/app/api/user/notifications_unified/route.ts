@@ -225,7 +225,7 @@ export async function PATCH(request: NextRequest) {
     }
 
     // Apply rate limiting
-    const rateLimitResult = await RateLimiter.checkNotificationUpdateLimit(user.userId);
+    const rateLimitResult = await RateLimiter.checkNotificationCreateLimit(user.userId);
     const rateLimitHeaders = createRateLimitHeaders(rateLimitResult);
 
     if (!rateLimitResult.allowed) {

@@ -21,7 +21,7 @@ import { logAdminAction } from '@/utils/adminUtils';
  */
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const authResult = await verifySecureAuth(request);
@@ -29,7 +29,8 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const refundId = parseInt(params.id);
+    const resolvedParams = await params;
+    const refundId = parseInt(resolvedParams.id);
     if (isNaN(refundId)) {
       return NextResponse.json({ error: 'Invalid refund ID' }, { status: 400 });
     }
@@ -72,7 +73,7 @@ export async function GET(
  */
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const authResult = await verifySecureAuth(request);
@@ -87,7 +88,8 @@ export async function PUT(
       }, { status: 403 });
     }
 
-    const refundId = parseInt(params.id);
+    const resolvedParams = await params;
+    const refundId = parseInt(resolvedParams.id);
     if (isNaN(refundId)) {
       return NextResponse.json({ error: 'Invalid refund ID' }, { status: 400 });
     }

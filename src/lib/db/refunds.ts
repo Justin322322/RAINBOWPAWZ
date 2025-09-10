@@ -3,7 +3,7 @@
  * Handles refund processing with comprehensive audit trail
  */
 
-import { query } from '@/lib/db';
+import { query } from './query';
 
 export interface RefundRecord {
   id?: number;
@@ -45,12 +45,80 @@ export interface RefundAuditLog {
 /**
  * Ensure refunds table exists with all necessary fields
  */
-export async function ensureRefundsTable(): Promise<void> { /* no-op: DDL removed */ }
+export async function ensureRefundsTable(): Promise<void> {
+  // Only create tables if DDL is allowed
+  if (process.env.ALLOW_DDL !== 'true' && process.env.NODE_ENV === 'production') {
+    return;
+  }
+
+  try {
+    await query(`
+      CREATE TABLE IF NOT EXISTS refunds (
+        id INT PRIMARY KEY AUTO_INCREMENT,
+        booking_id INT NOT NULL,
+        user_id INT NOT NULL,
+        amount DECIMAL(10,2) NOT NULL,
+        reason TEXT NOT NULL,
+        status ENUM('pending', 'processing', 'completed', 'failed', 'cancelled') NOT NULL DEFAULT 'pending',
+        refund_type ENUM('automatic', 'manual') NOT NULL DEFAULT 'manual',
+        payment_method ENUM('gcash', 'card', 'paymaya', 'cash', 'qr_code') NOT NULL DEFAULT 'cash',
+        transaction_id VARCHAR(255) DEFAULT NULL,
+        paymongo_refund_id VARCHAR(255) DEFAULT NULL,
+        processed_by INT DEFAULT NULL,
+        receipt_path VARCHAR(500) DEFAULT NULL,
+        receipt_verified BOOLEAN DEFAULT FALSE,
+        receipt_verified_by INT DEFAULT NULL,
+        notes TEXT DEFAULT NULL,
+        metadata JSON DEFAULT NULL,
+        initiated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        processed_at TIMESTAMP NULL DEFAULT NULL,
+        completed_at TIMESTAMP NULL DEFAULT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        INDEX idx_refunds_booking_id (booking_id),
+        INDEX idx_refunds_user_id (user_id),
+        INDEX idx_refunds_status (status),
+        INDEX idx_refunds_refund_type (refund_type),
+        INDEX idx_refunds_paymongo_refund_id (paymongo_refund_id)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    `);
+  } catch (error: any) {
+    console.error('Error creating refunds table:', error?.message || error);
+  }
+}
 
 /**
  * Ensure refund audit logs table exists
  */
-export async function ensureRefundAuditTable(): Promise<void> { /* no-op: DDL removed */ }
+export async function ensureRefundAuditTable(): Promise<void> {
+  // Only create tables if DDL is allowed
+  if (process.env.ALLOW_DDL !== 'true' && process.env.NODE_ENV === 'production') {
+    return;
+  }
+
+  try {
+    await query(`
+      CREATE TABLE IF NOT EXISTS refund_audit_logs (
+        id INT PRIMARY KEY AUTO_INCREMENT,
+        refund_id INT NOT NULL,
+        action VARCHAR(100) NOT NULL,
+        previous_status VARCHAR(50) DEFAULT NULL,
+        new_status VARCHAR(50) NOT NULL,
+        performed_by INT DEFAULT NULL,
+        performed_by_type ENUM('system', 'admin', 'staff') NOT NULL DEFAULT 'system',
+        details TEXT DEFAULT NULL,
+        ip_address VARCHAR(45) DEFAULT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_refund_audit_refund_id (refund_id),
+        INDEX idx_refund_audit_performed_by (performed_by),
+        INDEX idx_refund_audit_action (action),
+        INDEX idx_refund_audit_created_at (created_at)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    `);
+  } catch (error: any) {
+    console.error('Error creating refund_audit_logs table:', error?.message || error);
+  }
+}
 
 /**
  * Initialize refund-related database tables

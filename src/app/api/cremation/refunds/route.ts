@@ -5,7 +5,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { verifySecureAuth } from '@/lib/secureAuth';
-import { query } from '@/lib/db';
+import { query } from '@/lib/db/query';
 import { initializeRefundTables } from '@/lib/db/refunds';
 
 /**

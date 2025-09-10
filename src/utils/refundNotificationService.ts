@@ -3,7 +3,7 @@
  * Handles email and SMS notifications_unified for refund processes
  */
 
-import { query } from '@/lib/db';
+import { query } from '@/lib/db/query';
 import { sendEmail } from '@/lib/consolidatedEmailService';
 import { createUserNotification } from '@/utils/userNotificationService';
 

@@ -3,7 +3,7 @@
  * Handles comprehensive refund processing with automatic and manual workflows
  */
 
-import { query } from '@/lib/db';
+import { query } from '@/lib/db/query';
 import { 
   createRefund as createPayMongoRefund, 
   phpToCentavos
@@ -13,10 +13,15 @@ import {
   updateRefundRecord,
   logRefundAudit,
   getRefundsByBookingId,
+  getRefundById,
   hasExistingRefund,
   initializeRefundTables,
   RefundRecord
 } from '@/lib/db/refunds';
+import {
+  sendRefundProcessedNotification,
+  sendRefundFailedNotification
+} from '@/utils/refundNotificationService';
 
 export interface RefundRequest {
   bookingId: number;
@@ -538,9 +543,20 @@ export async function uploadRefundReceipt(
   ipAddress?: string
 ): Promise<{ success: boolean; message: string; error?: string }> {
   try {
-    // Update refund record with receipt path
+    // Get current refund to capture previous status
+    const refund = await getRefundById(refundId);
+    if (!refund) {
+      return {
+        success: false,
+        message: 'Refund not found',
+        error: 'REFUND_NOT_FOUND'
+      };
+    }
+
+    // Update refund record with receipt path and status
     await updateRefundRecord(refundId, {
       receipt_path: receiptPath,
+      status: 'processing',
       processed_at: new Date()
     });
 
@@ -548,6 +564,7 @@ export async function uploadRefundReceipt(
     await logRefundAudit({
       refund_id: refundId,
       action: 'receipt_uploaded',
+      previous_status: refund.status,
       new_status: 'processing',
       performed_by: uploadedBy,
       performed_by_type: uploadedByType,
@@ -582,6 +599,16 @@ export async function verifyAndCompleteRefund(
   ipAddress?: string
 ): Promise<{ success: boolean; message: string; error?: string }> {
   try {
+    // Get current refund to capture previous status
+    const refund = await getRefundById(refundId);
+    if (!refund) {
+      return {
+        success: false,
+        message: 'Refund not found',
+        error: 'REFUND_NOT_FOUND'
+      };
+    }
+
     if (approved) {
       // Approve and complete the refund
       await updateRefundRecord(refundId, {
@@ -594,13 +621,32 @@ export async function verifyAndCompleteRefund(
       await logRefundAudit({
         refund_id: refundId,
         action: 'refund_approved',
-        previous_status: 'processing',
+        previous_status: refund.status,
         new_status: 'completed',
         performed_by: verifiedBy,
         performed_by_type: verifiedByType,
         details: 'Manual refund approved and completed',
         ip_address: ipAddress
       });
+
+      // Send notification about successful refund completion
+      try {
+        await sendRefundProcessedNotification({
+          refundId: refundId,
+          bookingId: refund.booking_id,
+          userId: refund.user_id,
+          amount: parseFloat(refund.amount.toString()),
+          refundType: 'manual',
+          paymentMethod: refund.payment_method,
+          status: 'completed',
+          reason: refund.reason,
+          transactionId: refund.transaction_id,
+          receiptPath: refund.receipt_path
+        });
+      } catch (notificationError) {
+        console.error('Failed to send refund completion notification:', notificationError);
+        // Don't fail the refund if notification fails
+      }
 
       return {
         success: true,
@@ -618,13 +664,32 @@ export async function verifyAndCompleteRefund(
       await logRefundAudit({
         refund_id: refundId,
         action: 'refund_rejected',
-        previous_status: 'processing',
+        previous_status: refund.status,
         new_status: 'failed',
         performed_by: verifiedBy,
         performed_by_type: verifiedByType,
         details: rejectionReason || 'Refund rejected during verification',
         ip_address: ipAddress
       });
+
+      // Send notification about refund rejection
+      try {
+        await sendRefundFailedNotification({
+          refundId: refundId,
+          bookingId: refund.booking_id,
+          userId: refund.user_id,
+          amount: parseFloat(refund.amount.toString()),
+          refundType: 'manual',
+          paymentMethod: refund.payment_method,
+          status: 'failed',
+          reason: refund.reason,
+          transactionId: refund.transaction_id,
+          receiptPath: refund.receipt_path
+        }, rejectionReason);
+      } catch (notificationError) {
+        console.error('Failed to send refund rejection notification:', notificationError);
+        // Don't fail the refund if notification fails
+      }
 
       return {
         success: true,

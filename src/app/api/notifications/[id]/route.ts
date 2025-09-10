@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { query } from '@/lib/db';
+import { query } from '@/lib/db/query';
 import { getAuthTokenFromRequest } from '@/utils/auth';
 import { createStandardErrorResponse, createStandardSuccessResponse } from '@/utils/rateLimitUtils';
 
@@ -37,22 +37,11 @@ export async function DELETE(
       );
     }
 
-    // Check which column name to use (id or notification_id)
-    const idColumn = 'id';
-
     // SECURITY FIX: Check if the notification exists and belongs to the user
-    let notificationResult;
-    if (idColumn === 'notification_id') {
-      notificationResult = await query(
-        'SELECT notification_id, user_id FROM notifications_unified WHERE notification_id = ?',
-        [notificationId]
-      ) as any[];
-    } else {
-      notificationResult = await query(
-        'SELECT id, user_id FROM notifications_unified WHERE id = ?',
-        [notificationId]
-      ) as any[];
-    }
+    const notificationResult = await query(
+      'SELECT id, user_id FROM notifications_unified WHERE id = ?',
+      [notificationId]
+    ) as any[];
 
     if (!notificationResult || notificationResult.length === 0) {
       return NextResponse.json(
@@ -72,10 +61,7 @@ export async function DELETE(
     }
 
     // Delete the notification
-    let deleteQuery;
-    deleteQuery = 'DELETE FROM notifications_unified WHERE id = ?';
-    
-    await query(deleteQuery, [notificationId]);
+    await query('DELETE FROM notifications_unified WHERE id = ?', [notificationId]);
 
     return NextResponse.json(
       createStandardSuccessResponse(

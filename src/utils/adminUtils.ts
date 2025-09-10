@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server';
-import { query } from '@/lib/db';
+import { query } from '@/lib/db/query';
 import { getAuthTokenFromRequest } from '@/utils/auth';
 
 /**
