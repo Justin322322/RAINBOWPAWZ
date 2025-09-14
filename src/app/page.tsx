@@ -207,7 +207,7 @@ export default function Home() {
   const _secondaryButtonStyle = `${buttonBaseStyle} bg-white/10 backdrop-blur-md text-white hover:bg-white/20 border-white/30`;
 
   return (
-    <div className="min-h-screen flex flex-col font-sans bg-gradient-to-b from-stone-50 to-white text-gray-800">
+    <div className="min-h-screen flex flex-col font-sans text-gray-800">
       {/* Navigation */}
       <header className={`fixed w-full top-0 z-50 bg-[var(--primary-green)] transition-all duration-300 ${isScrolled ? 'shadow-lg' : ''}`}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -430,7 +430,7 @@ export default function Home() {
       </section>
 
       {/* Services Section */}
-      <section id="services" className="scroll-mt-16 pt-16 pb-24 bg-white">
+      <section id="services" className="scroll-mt-16 pt-16 pb-24 bg-white/95 backdrop-blur-sm relative z-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
             <h2 className="section-title">Memorial Services</h2>
@@ -480,7 +480,7 @@ export default function Home() {
       </section>
 
       {/* How It Works Section */}
-      <section id="how-it-works" className="scroll-mt-16 pt-16 pb-24 bg-[var(--background-light)]">
+      <section id="how-it-works" className="scroll-mt-16 pt-16 pb-24 bg-white/90 backdrop-blur-sm relative z-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <h2 className="text-center text-2xl text-[var(--primary-green)] mb-16">How It Works</h2>
         </div>
@@ -526,7 +526,7 @@ export default function Home() {
       </section>
 
       {/* Our Promise Section - Add scroll margin to account for fixed header */}
-      <section id="promise" className="scroll-mt-16 pt-16 pb-24 md:pb-32 bg-white relative overflow-hidden">
+      <section id="promise" className="scroll-mt-16 pt-16 pb-24 md:pb-32 bg-white/95 backdrop-blur-sm relative overflow-hidden z-10">
         <div className="absolute inset-0 bg-[url('/pattern.png')] opacity-5"></div>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative">
           <motion.div
@@ -573,7 +573,7 @@ export default function Home() {
       </section>
 
       {/* Responsive Design Showcase Section */}
-      <section id="responsive-showcase" className="scroll-mt-20 py-24 md:py-32 bg-gradient-to-b from-white to-gray-50">
+      <section id="responsive-showcase" className="scroll-mt-20 py-24 md:py-32 bg-white/90 backdrop-blur-sm relative z-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -647,7 +647,7 @@ export default function Home() {
       </section>
 
       {/* Why Choose Us Section */}
-      <section id="why-choose" className="scroll-mt-20 py-24 md:py-32 bg-gradient-to-b from-gray-50 to-white">
+      <section id="why-choose" className="scroll-mt-20 py-24 md:py-32 bg-white/95 backdrop-blur-sm relative z-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
