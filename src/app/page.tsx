@@ -641,8 +641,8 @@ export default function Home() {
                 <div className="text-4xl mb-4 group-hover:scale-110 transition-transform duration-300 text-[var(--primary-green)] font-bold">
                   {feature.icon}
                 </div>
-                <h3 className="text-xl font-medium text-gray-800 mb-3 modern-heading">{feature.title}</h3>
-                <p className="text-gray-600 leading-relaxed modern-text">{feature.description}</p>
+                <h3 className="text-2xl font-light text-gray-800 mb-3">{feature.title}</h3>
+                <p className="text-gray-600 leading-relaxed">{feature.description}</p>
               </div>
             ))}
           </motion.div>
