@@ -629,12 +629,15 @@ function AdminLogsPage({ adminData }: { adminData: any }) {
             </div>
 
             {/* Clear Filters */}
-            <button
-              onClick={clearFilters}
-              className="px-4 py-2.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-sm font-medium xl:col-span-2"
-            >
-              Clear All Filters
-            </button>
+            <div className="xl:col-span-2 flex justify-start">
+              <button
+                onClick={clearFilters}
+                className="px-4 py-2.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-sm font-medium inline-flex items-center justify-center min-w-[140px]"
+              >
+                <XMarkIcon className="h-4 w-4 mr-2" />
+                Clear All Filters
+              </button>
+            </div>
           </div>
         </div>
 
