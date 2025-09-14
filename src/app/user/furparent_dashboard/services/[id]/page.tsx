@@ -17,6 +17,7 @@ import {
 
 import FurParentPageSkeleton from '@/components/ui/FurParentPageSkeleton';
 import { handleImageError } from '@/utils/imageUtils';
+import { useLoading } from '@/contexts/LoadingContext';
 import ReviewsList from '@/components/reviews/ReviewsList';
 import StaticMapComponent from '@/components/map/StaticMapComponent';
 // OTP verification is handled by the layout
@@ -38,7 +39,7 @@ function ServiceDetailPage({ userData }: ServiceDetailPageProps) {
   const providerId = params.id;
 
   const [provider, setProvider] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
+  const { isLoading: loading, startLoading, stopLoading } = useLoading();
   const [error, setError] = useState<string | null>(null);
   const [selectedService, setSelectedService] = useState<number | null>(null);
   const [selectedPet, setSelectedPet] = useState<number | null>(null);
@@ -161,7 +162,7 @@ function ServiceDetailPage({ userData }: ServiceDetailPageProps) {
     }
 
     // Fetch real provider data
-    setLoading(true);
+    startLoading('Loading service details...');
 
     const fetchData = async () => {
       try {
@@ -225,7 +226,7 @@ function ServiceDetailPage({ userData }: ServiceDetailPageProps) {
         console.error('Error fetching service details:', error);
         setError('Failed to load provider details');
       } finally {
-        setLoading(false);
+        stopLoading();
       }
     };
 

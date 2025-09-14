@@ -15,6 +15,7 @@ import { useCart } from '@/contexts/CartContext';
 import CartSidebar from '@/components/cart/CartSidebar';
 import { handleImageError } from '@/utils/imageUtils';
 import { useToast } from '@/context/ToastContext';
+import { useLoading } from '@/contexts/LoadingContext';
 
 interface PackageDetailPageProps {
   userData?: any;
@@ -29,7 +30,7 @@ function PackageDetailPage({ userData: _userData }: PackageDetailPageProps) {
 
   const [provider, setProvider] = useState<any>(null);
   const [packageData, setPackageData] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
+  const { isLoading: loading, startLoading, stopLoading } = useLoading();
   const [error, setError] = useState<string | null>(null);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [isCartOpen, setIsCartOpen] = useState(false);
@@ -41,7 +42,7 @@ function PackageDetailPage({ userData: _userData }: PackageDetailPageProps) {
 
   useEffect(() => {
     // Fetch real provider and package data
-    setLoading(true);
+    startLoading('Loading package details...');
 
     const fetchData = async () => {
       try {
@@ -85,7 +86,7 @@ function PackageDetailPage({ userData: _userData }: PackageDetailPageProps) {
         console.error('Error fetching package details:', err);
         setError(err.message || 'Failed to load package details');
       } finally {
-        setLoading(false);
+        stopLoading();
       }
     };
 

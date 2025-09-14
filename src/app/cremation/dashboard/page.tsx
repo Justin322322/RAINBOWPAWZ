@@ -14,6 +14,7 @@ import {
   ArchiveBoxIcon
 } from '@heroicons/react/24/outline';
 import { useToast } from '@/context/ToastContext';
+import { useLoading } from '@/contexts/LoadingContext';
 import { PackageImage } from '@/components/packages/PackageImage';
 import AvailabilityCalendar from '@/components/booking/AvailabilityCalendar';
 import { useRouter } from 'next/navigation';
@@ -24,7 +25,7 @@ import { SkeletonCard } from '@/components/ui/SkeletonLoader';
 function CremationDashboardPage({ userData }: { userData: any }) {
   const router = useRouter();
   const _userName = userData?.business_name || userData?.first_name || 'Cremation Provider';
-  const [isLoading, setIsLoading] = useState(true);
+  const { isLoading, startLoading, stopLoading } = useLoading();
   const [dashboardData, setDashboardData] = useState<any>({
     stats: [
       { name: 'Total Bookings', value: '0', change: '0%', changeType: 'increase' },
@@ -132,7 +133,7 @@ function CremationDashboardPage({ userData }: { userData: any }) {
         return;
       }
 
-      setIsLoading(true);
+      startLoading('Loading dashboard data...');
       setError(null);
 
       try {
@@ -183,7 +184,7 @@ function CremationDashboardPage({ userData }: { userData: any }) {
         if (errorMessage.includes('401') || errorMessage.includes('Unauthorized')) {
           const isLoggingOut = typeof window !== 'undefined' && sessionStorage.getItem('is_logging_out') === 'true';
           if (isLoggingOut) {
-            setIsLoading(false);
+            stopLoading();
             return;
           }
         }
@@ -199,7 +200,7 @@ function CremationDashboardPage({ userData }: { userData: any }) {
           ]
         });
       } finally {
-        setIsLoading(false);
+        stopLoading();
       }
     };
 

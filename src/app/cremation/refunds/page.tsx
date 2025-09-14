@@ -15,6 +15,7 @@ import withBusinessVerification from '@/components/withBusinessVerification';
 import { StatsCardSkeleton } from '@/components/ui/LoadingComponents';
 import { Modal } from '@/components/ui/Modal';
 import { useToast } from '@/context/ToastContext';
+import { useLoading } from '@/contexts/LoadingContext';
 
 interface RefundRecord {
   id: number;
@@ -38,7 +39,7 @@ interface RefundRecord {
 
 function CremationRefundsPage({ userData }: { userData: any }) {
   const [refunds, setRefunds] = useState<RefundRecord[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const { isLoading, startLoading, stopLoading } = useLoading();
   const [error, setError] = useState<string | null>(null);
   const [selectedRefund, setSelectedRefund] = useState<RefundRecord | null>(null);
   const [filter, setFilter] = useState<'all' | 'pending' | 'manual' | 'completed'>('all');
@@ -51,7 +52,7 @@ function CremationRefundsPage({ userData }: { userData: any }) {
 
   const fetchRefunds = async () => {
     try {
-      setIsLoading(true);
+      startLoading('Loading refunds...');
       setError(null);
       const response = await fetch('/api/cremation/refunds');
       if (response.ok) {
@@ -64,7 +65,7 @@ function CremationRefundsPage({ userData }: { userData: any }) {
       console.error('Error fetching refunds:', error);
       setError(error instanceof Error ? error.message : 'Failed to fetch refunds');
     } finally {
-      setIsLoading(false);
+      stopLoading();
     }
   };
 

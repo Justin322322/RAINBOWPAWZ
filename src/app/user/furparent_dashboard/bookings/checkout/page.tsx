@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 import { motion } from 'framer-motion';
 import { useToast } from '@/context/ToastContext';
+import { useLoading } from '@/contexts/LoadingContext';
 import {
   ArrowLeftIcon,
   CheckIcon,
@@ -40,7 +41,7 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
   // Local state to hold user data (either from props or session storage)
   const [currentUserData, setCurrentUserData] = useState<any>(null);
 
-  const [loading, setLoading] = useState(true);
+  const { isLoading: globalLoading, startLoading, stopLoading } = useLoading();
   const [error, setError] = useState<string | null>(null);
   const [bookingData, setBookingData] = useState<any>(null);
   
@@ -456,7 +457,7 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
       // Only show a specific error about missing provider/package IDs
       // This is different from the date/time selection error
       setError('Missing provider or package information. Please try again.');
-      setLoading(false);
+      stopLoading();
       return;
     }
 
@@ -539,7 +540,7 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
       } catch {
         setError('Failed to load booking information. Please try again.');
       } finally {
-        setLoading(false);
+        stopLoading();
       }
     };
 
@@ -1096,7 +1097,7 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
 
         <h1 className="text-3xl font-bold text-[var(--primary-green)] mb-8">Checkout</h1>
 
-        {loading || isWaitingForAuth ? (
+        {globalLoading || isWaitingForAuth ? (
           <FurParentPageSkeleton type="checkout" />
         ) : error ? (
           <div className="bg-red-50 border border-red-200 p-6 rounded-lg">

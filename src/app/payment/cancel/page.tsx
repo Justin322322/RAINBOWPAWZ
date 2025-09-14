@@ -3,6 +3,7 @@
 import React, { useEffect, useMemo, useRef, useState, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { XCircleIcon } from '@heroicons/react/24/solid';
+import { useLoading } from '@/contexts/LoadingContext';
 
 interface BookingSummary {
 	id: number;
@@ -30,7 +31,7 @@ interface RefundSummary {
 function PaymentCancelContent() {
 	const searchParams = useSearchParams();
 	const router = useRouter();
-	const [isLoading, setIsLoading] = useState(true);
+	const { isLoading, startLoading, stopLoading } = useLoading();
 	const [booking, setBooking] = useState<BookingSummary | null>(null);
 	const [refund, setRefund] = useState<RefundSummary | null>(null);
 	const intervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -42,7 +43,7 @@ function PaymentCancelContent() {
 	}, [bookingId]);
 
 	useEffect(() => {
-		const timer = setTimeout(() => setIsLoading(false), 300);
+		const timer = setTimeout(() => stopLoading(), 300);
 		return () => clearTimeout(timer);
 	}, []);
 
