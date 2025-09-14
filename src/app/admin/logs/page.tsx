@@ -481,67 +481,81 @@ function AdminLogsPage({ adminData }: { adminData: any }) {
 
         {/* Filters */}
         <div className="bg-white rounded-xl shadow-md border border-gray-100 p-4 sm:p-6">
-          <div className="flex items-center mb-4">
-            <FunnelIcon className="h-5 w-5 text-gray-500 mr-2" />
-            <h3 className="text-lg font-medium text-gray-800">Filters</h3>
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center">
+              <FunnelIcon className="h-5 w-5 text-gray-500 mr-2" />
+              <h3 className="text-lg font-medium text-gray-800">Filters</h3>
+            </div>
+            <button
+              onClick={clearFilters}
+              className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-sm font-medium inline-flex items-center"
+            >
+              <XMarkIcon className="h-4 w-4 mr-2" />
+              Clear All Filters
+            </button>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
-            {/* Search */}
-            <div className="relative lg:col-span-2 xl:col-span-1">
-              <MagnifyingGlassIcon className="h-4 w-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-              <input
-                type="text"
-                placeholder="Search logs..."
-                value={filters.search}
-                onChange={(e) => handleFilterChange('search', e.target.value)}
-                className="pl-10 pr-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[var(--primary-green)] focus:border-transparent w-full text-sm"
+          <div className="space-y-6">
+            {/* Search and Dropdown Filters */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {/* Search */}
+              <div className="relative">
+                <MagnifyingGlassIcon className="h-4 w-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="Search logs..."
+                  value={filters.search}
+                  onChange={(e) => handleFilterChange('search', e.target.value)}
+                  className="pl-10 pr-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[var(--primary-green)] focus:border-transparent w-full text-sm"
+                />
+              </div>
+
+              {/* Action Filter */}
+              <Select
+                options={[
+                  { label: 'All Activities', value: '' },
+                  { label: 'Approvals', value: 'approve' },
+                  { label: 'Rejections', value: 'reject' },
+                  { label: 'Restrictions', value: 'restrict' },
+                  { label: 'Restorations', value: 'restore' },
+                  { label: 'Admin Logins', value: 'login' },
+                ]}
+                value={filters.action}
+                onChange={(value) => handleFilterChange('action', value)}
+                placeholder="All Activities"
+                className="text-sm"
+              />
+
+              {/* Entity Type Filter */}
+              <Select
+                options={[
+                  { label: 'All Types', value: '' },
+                  { label: 'Cremation Centers', value: 'service_providers' },
+                  { label: 'Applications', value: 'application' },
+                  { label: 'Bookings', value: 'booking' },
+                  { label: 'Reviews', value: 'review' },
+                ]}
+                value={filters.entity_type}
+                onChange={(value) => handleFilterChange('entity_type', value)}
+                placeholder="All Types"
+                className="text-sm"
               />
             </div>
 
-            {/* Action Filter */}
-            <Select
-              options={[
-                { label: 'All Activities', value: '' },
-                { label: 'Approvals', value: 'approve' },
-                { label: 'Rejections', value: 'reject' },
-                { label: 'Restrictions', value: 'restrict' },
-                { label: 'Restorations', value: 'restore' },
-                { label: 'Admin Logins', value: 'login' },
-              ]}
-              value={filters.action}
-              onChange={(value) => handleFilterChange('action', value)}
-              placeholder="All Activities"
-              className="text-sm"
-            />
-
-            {/* Entity Type Filter */}
-            <Select
-              options={[
-                { label: 'All Types', value: '' },
-                { label: 'Cremation Centers', value: 'service_providers' },
-                { label: 'Applications', value: 'application' },
-                { label: 'Bookings', value: 'booking' },
-                { label: 'Reviews', value: 'review' },
-              ]}
-              value={filters.entity_type}
-              onChange={(value) => handleFilterChange('entity_type', value)}
-              placeholder="All Types"
-              className="text-sm"
-            />
-
             {/* Date Range Filter */}
-            <div className="xl:col-span-2 space-y-3">
-              <div className="flex items-center space-x-2">
-                <CalendarDaysIcon className="h-4 w-4 text-gray-500" />
-                <span className="text-sm font-medium text-gray-700">Date Range</span>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-2">
+                  <CalendarDaysIcon className="h-4 w-4 text-gray-500" />
+                  <span className="text-sm font-medium text-gray-700">Date Range</span>
+                </div>
                 {(filters.date_from || filters.date_to) && (
                   <button
                     onClick={clearDateFilters}
                     className="text-xs text-red-600 hover:text-red-700 flex items-center"
                   >
                     <XMarkIcon className="h-3 w-3 mr-1" />
-                    Clear
+                    Clear Date
                   </button>
                 )}
               </div>
@@ -587,7 +601,7 @@ function AdminLogsPage({ adminData }: { adminData: any }) {
               </div>
 
               {/* Custom Date Range */}
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-md">
                 <div className="space-y-1">
                   <label className="text-xs text-gray-600">From</label>
                   <input
@@ -616,7 +630,7 @@ function AdminLogsPage({ adminData }: { adminData: any }) {
 
               {/* Active Filter Indicator */}
               {(filters.date_from || filters.date_to) && (
-                <div className="text-xs text-gray-600 bg-gray-50 px-3 py-2 rounded-md">
+                <div className="text-xs text-gray-600 bg-gray-50 px-3 py-2 rounded-md max-w-md">
                   <span className="font-medium">Active:</span>{' '}
                   {filters.date_from && filters.date_to
                     ? `${format(new Date(filters.date_from), 'MMM dd, yyyy')} - ${format(new Date(filters.date_to), 'MMM dd, yyyy')}`
@@ -626,17 +640,6 @@ function AdminLogsPage({ adminData }: { adminData: any }) {
                   }
                 </div>
               )}
-            </div>
-
-            {/* Clear Filters */}
-            <div className="xl:col-span-2 flex justify-start">
-              <button
-                onClick={clearFilters}
-                className="px-4 py-2.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-sm font-medium inline-flex items-center justify-center min-w-[140px]"
-              >
-                <XMarkIcon className="h-4 w-4 mr-2" />
-                Clear All Filters
-              </button>
             </div>
           </div>
         </div>
