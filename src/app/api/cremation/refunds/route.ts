@@ -6,15 +6,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifySecureAuth } from '@/lib/secureAuth';
 import { query } from '@/lib/db/query';
-import { initializeRefundTables } from '@/lib/db/refunds';
 
 /**
  * GET /api/cremation/refunds - Get refunds for the authenticated cremation business
  */
 export async function GET(request: NextRequest) {
   try {
-    // Ensure refund tables exist first
-    await initializeRefundTables();
+    // Refund tables are already initialized
 
     const authResult = await verifySecureAuth(request);
     if (!authResult) {

@@ -15,7 +15,6 @@ import {
   getRefundsByBookingId,
   getRefundById,
   hasExistingRefund,
-  initializeRefundTables,
   RefundRecord
 } from '@/lib/db/refunds';
 import {
@@ -33,39 +32,19 @@ export interface RefundRequest {
   ipAddress?: string;
 }
 
-export interface RefundResult {
-  success: boolean;
-  refundId?: number;
-  refundType: 'automatic' | 'manual';
-  paymentMethod: string;
-  message: string;
-  error?: string;
-  requiresManualProcessing?: boolean;
-  instructions?: string[];
-}
 
-export interface BookingPaymentInfo {
-  bookingId: number;
-  userId: number;
-  amount: number;
-  paymentMethod: string;
-  paymentStatus: string;
-  sourceId?: string;
-  transactionId?: string;
-  paymentId?: string;
-}
 
 /**
  * Initialize refund service (ensure database tables exist)
  */
 export async function initializeRefundService(): Promise<void> {
-  await initializeRefundTables();
+  // Database tables are already initialized
 }
 
 /**
  * Process a refund request with automatic payment method detection
  */
-export async function processRefund(request: RefundRequest): Promise<RefundResult> {
+export async function processRefund(request: RefundRequest): Promise<any> {
   try {
     // Initialize tables if not exists
     await initializeRefundService();
@@ -131,8 +110,8 @@ export async function processRefund(request: RefundRequest): Promise<RefundResul
  */
 async function processAutomaticRefund(
   request: RefundRequest, 
-  bookingInfo: BookingPaymentInfo
-): Promise<RefundResult> {
+  bookingInfo: any
+): Promise<any> {
   try {
     // Find the PayMongo payment ID
     let paymentId: string | null = null;
@@ -317,8 +296,8 @@ async function processAutomaticRefund(
  */
 async function processManualRefund(
   request: RefundRequest, 
-  bookingInfo: BookingPaymentInfo
-): Promise<RefundResult> {
+  bookingInfo: any
+): Promise<any> {
   try {
     // Create refund record for manual processing
     const refundId = await createRefundRecord({
@@ -372,7 +351,7 @@ async function processManualRefund(
 /**
  * Get booking and payment information
  */
-async function getBookingPaymentInfo(bookingId: number): Promise<BookingPaymentInfo | null> {
+async function getBookingPaymentInfo(bookingId: number): Promise<any | null> {
   try {
     // Try bookings table first (map to existing transaction columns)
     let bookingResults = await query(`
@@ -707,12 +686,6 @@ export async function verifyAndCompleteRefund(
   }
 }
 
-/**
- * Get refund status and details
- */
-export async function getRefundStatus(bookingId: number): Promise<RefundRecord[]> {
-  return await getRefundsByBookingId(bookingId);
-}
 
 /**
  * Reconcile a previously queued automatic refund once payment_id is known

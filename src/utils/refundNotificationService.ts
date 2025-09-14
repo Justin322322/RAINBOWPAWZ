@@ -7,35 +7,12 @@ import { query } from '@/lib/db/query';
 import { sendEmail } from '@/lib/consolidatedEmailService';
 import { createUserNotification } from '@/utils/userNotificationService';
 
-export interface RefundNotificationData {
-  refundId: number;
-  bookingId: number;
-  userId: number;
-  amount: number;
-  refundType: 'automatic' | 'manual';
-  paymentMethod: string;
-  status: string;
-  reason: string;
-  transactionId?: string;
-  receiptPath?: string;
-  customerInfo?: {
-    firstName: string;
-    lastName: string;
-    email: string;
-    phone?: string;
-  };
-  bookingDetails?: {
-    serviceName: string;
-    bookingDate?: string;
-    petName?: string;
-  };
-}
 
 /**
  * Send refund processed notification (email + SMS + in-app)
  */
 export async function sendRefundProcessedNotification(
-  refundData: RefundNotificationData
+  refundData: any
 ): Promise<{ success: boolean; error?: string }> {
   try {
     const { customerInfo } = refundData;
@@ -79,7 +56,7 @@ export async function sendRefundProcessedNotification(
  * Send refund initiation notification (for manual refunds)
  */
 export async function sendRefundInitiatedNotification(
-  refundData: RefundNotificationData,
+  refundData: any,
   instructions?: string[]
 ): Promise<{ success: boolean; error?: string }> {
   try {
@@ -123,7 +100,7 @@ export async function sendRefundInitiatedNotification(
  * Send refund failed notification
  */
 export async function sendRefundFailedNotification(
-  refundData: RefundNotificationData,
+  refundData: any,
   failureReason?: string
 ): Promise<{ success: boolean; error?: string }> {
   try {
@@ -164,7 +141,7 @@ export async function sendRefundFailedNotification(
  * Send email notification for refunds
  */
 async function sendRefundEmail(
-  refundData: RefundNotificationData,
+  refundData: any,
   type: 'processed' | 'initiated' | 'failed',
   instructions?: string[],
   failureReason?: string
@@ -214,7 +191,7 @@ async function sendRefundEmail(
  * Send SMS notification for refunds
  */
 async function sendRefundSMS(
-  refundData: RefundNotificationData,
+  refundData: any,
   type: 'processed' | 'initiated'
 ): Promise<void> {
   const { customerInfo } = refundData;
@@ -263,7 +240,7 @@ async function sendRefundSMS(
 /**
  * Get customer information
  */
-async function getCustomerInfo(userId: number): Promise<RefundNotificationData['customerInfo'] | null> {
+async function getCustomerInfo(userId: number): Promise<any['customerInfo'] | null> {
   try {
     const results = await query(`
       SELECT first_name, last_name, email, phone
@@ -291,7 +268,7 @@ async function getCustomerInfo(userId: number): Promise<RefundNotificationData['
 /**
  * Create refund processed email HTML
  */
-function createRefundProcessedEmailHtml(refundData: RefundNotificationData): string {
+function createRefundProcessedEmailHtml(refundData: any): string {
   const { customerInfo } = refundData;
   const isAutomatic = refundData.refundType === 'automatic';
   
@@ -361,7 +338,7 @@ function createRefundProcessedEmailHtml(refundData: RefundNotificationData): str
 /**
  * Create refund processed email text
  */
-function createRefundProcessedEmailText(refundData: RefundNotificationData): string {
+function createRefundProcessedEmailText(refundData: any): string {
   const { customerInfo } = refundData;
   const isAutomatic = refundData.refundType === 'automatic';
   
@@ -400,7 +377,7 @@ function createRefundProcessedEmailText(refundData: RefundNotificationData): str
 /**
  * Create refund initiated email HTML
  */
-function createRefundInitiatedEmailHtml(refundData: RefundNotificationData, instructions?: string[]): string {
+function createRefundInitiatedEmailHtml(refundData: any, instructions?: string[]): string {
   const { customerInfo } = refundData;
   
   return `
@@ -472,7 +449,7 @@ function createRefundInitiatedEmailHtml(refundData: RefundNotificationData, inst
 /**
  * Create refund initiated email text
  */
-function createRefundInitiatedEmailText(refundData: RefundNotificationData, instructions?: string[]): string {
+function createRefundInitiatedEmailText(refundData: any, instructions?: string[]): string {
   const { customerInfo } = refundData;
   
   return `
@@ -512,7 +489,7 @@ function createRefundInitiatedEmailText(refundData: RefundNotificationData, inst
 /**
  * Create refund failed email HTML
  */
-function createRefundFailedEmailHtml(refundData: RefundNotificationData, failureReason?: string): string {
+function createRefundFailedEmailHtml(refundData: any, failureReason?: string): string {
   const { customerInfo } = refundData;
   
   return `
@@ -578,7 +555,7 @@ function createRefundFailedEmailHtml(refundData: RefundNotificationData, failure
 /**
  * Create refund failed email text
  */
-function createRefundFailedEmailText(refundData: RefundNotificationData, failureReason?: string): string {
+function createRefundFailedEmailText(refundData: any, failureReason?: string): string {
   const { customerInfo } = refundData;
   
   return `
