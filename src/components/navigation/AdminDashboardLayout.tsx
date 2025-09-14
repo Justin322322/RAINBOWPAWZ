@@ -31,21 +31,11 @@ function AdminDashboardLayout({
   // Content loading state for skeleton animation only
   const [contentLoading, setContentLoading] = useState(true);
 
-  // Effect to simulate content loading with a short delay
+  // Effect to hide content loading immediately when data is available
   useEffect(() => {
-    let timer: NodeJS.Timeout | null = null;
-
     if (adminData) {
-      timer = setTimeout(() => {
-        setContentLoading(false);
-      }, 300);
+      setContentLoading(false);
     }
-
-    return () => {
-      if (timer) {
-        clearTimeout(timer);
-      }
-    };
   }, [adminData]);
 
   // State for mobile sidebar visibility
