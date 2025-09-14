@@ -352,11 +352,7 @@ function CremationProfilePage({ userData }: { userData: any }) {
   }, []);
 
   useEffect(() => {
-    const fetchData = async () => {
-      await fetchProfileData();
-      setIsLoading(false);
-    };
-    fetchData();
+    fetchProfileData();
   }, [fetchProfileData]);
 
 

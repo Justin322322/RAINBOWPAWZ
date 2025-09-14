@@ -164,16 +164,9 @@ function ProfilePage({ userData: initialUserData }: ProfilePageProps) {
       return;
     }
 
-    console.log('⚠️ [Profile] No initial user data received, waiting...');
-    // If no initial data, wait a bit and then start the loading timeout
-    const timeout = setTimeout(() => {
-      if (!userData) {
-        console.log('⏰ [Profile] No user data after timeout, showing skeleton');
-        setShowSkeleton(false);
-      }
-    }, 1000); // Wait 1 second for user data to load
-
-    return () => clearTimeout(timeout);
+    console.log('⚠️ [Profile] No initial user data received, showing skeleton immediately');
+    // Show skeleton immediately if no initial data
+    setShowSkeleton(true);
   }, [initialUserData, userData]);
 
   // Additional effect to handle prop changes after initialization
