@@ -134,7 +134,7 @@ function CremationProfilePage({ userData }: { userData: any }) {
 
   // Profile data state
   const [profileData, setProfileData] = useState<any>(null);
-  const [initialLoading, setInitialLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   // Document upload states
@@ -151,7 +151,6 @@ function CremationProfilePage({ userData }: { userData: any }) {
   // Document preview modal states
   const [showPreviewModal, setShowPreviewModal] = useState(false);
   const [previewImage, setPreviewImage] = useState<{ url: string; title: string } | null>(null);
-  const [showSkeleton, setShowSkeleton] = useState(false);
 
   const fileInputRefs = {
     businessPermit: useRef<HTMLInputElement>(null),
@@ -201,7 +200,7 @@ function CremationProfilePage({ userData }: { userData: any }) {
     
     try {
       if (forceLoading) {
-        setInitialLoading(true);
+        setIsLoading(true);
       }
       setError(null);
 
@@ -338,7 +337,7 @@ function CremationProfilePage({ userData }: { userData: any }) {
       showToastRef.current(errorMessage, 'error');
     } finally {
       if (isMountedRef.current) {
-        setInitialLoading(false);
+        setIsLoading(false);
       }
     }
   }, []);
@@ -354,26 +353,12 @@ function CremationProfilePage({ userData }: { userData: any }) {
 
   useEffect(() => {
     const fetchData = async () => {
-      setShowSkeleton(true);
       await fetchProfileData();
-      setInitialLoading(false);
+      setIsLoading(false);
     };
     fetchData();
   }, [fetchProfileData]);
 
-  useEffect(() => {
-    let skeletonTimer: NodeJS.Timeout | null = null;
-    if (!initialLoading && showSkeleton) {
-      skeletonTimer = setTimeout(() => {
-        setShowSkeleton(false);
-      }, 700);
-    }
-    return () => {
-      if (skeletonTimer) {
-        clearTimeout(skeletonTimer);
-      }
-    };
-  }, [initialLoading, showSkeleton]);
 
   const handlePasswordChange = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -738,13 +723,13 @@ function CremationProfilePage({ userData }: { userData: any }) {
                 subtitle="Manage your account settings and business information"
                 icon={<UserIcon className="h-8 w-8 text-white" />}
                 className="p-6"
-                showSkeleton={showSkeleton || initialLoading}
+                showSkeleton={isLoading}
             >
                 {/* Profile Picture Section */}
                 <ProfileSection
                     title="Profile Picture"
                     subtitle="Upload and manage your profile picture"
-                    showSkeleton={showSkeleton || initialLoading}
+                    showSkeleton={isLoading}
                 >
                     <ProfileCard>
                         <div className="p-6">
@@ -779,7 +764,7 @@ function CremationProfilePage({ userData }: { userData: any }) {
                         <ProfileSection
                             title="Account Information"
                             subtitle="Read-only information for reference"
-                            showSkeleton={showSkeleton || initialLoading}
+                            showSkeleton={isLoading}
                         >
                             <ProfileCard>
                                 <ProfileGrid cols={3}>
@@ -794,7 +779,7 @@ function CremationProfilePage({ userData }: { userData: any }) {
                         <ProfileSection
                             title="Business Information"
                             subtitle="Update your business details and information"
-                            showSkeleton={showSkeleton || initialLoading}
+                            showSkeleton={isLoading}
                         >
                             <ProfileCard>
                                 <form onSubmit={handleBusinessUpdate} className="space-y-6">
@@ -817,7 +802,7 @@ function CremationProfilePage({ userData }: { userData: any }) {
                         <ProfileSection
                             title="Contact Information"
                             subtitle="Update your personal contact details and address"
-                            showSkeleton={showSkeleton || initialLoading}
+                            showSkeleton={isLoading}
                         >
                             <ProfileCard>
                                 <form onSubmit={handleContactUpdate} className="space-y-6">
@@ -896,7 +881,7 @@ function CremationProfilePage({ userData }: { userData: any }) {
                         <ProfileSection
                           title="Change Password"
                           subtitle="Update your account password"
-                          showSkeleton={showSkeleton || initialLoading}
+                          showSkeleton={isLoading}
                         >
                           <ProfileCard>
                             <form onSubmit={handlePasswordChange} className="space-y-6">
@@ -921,7 +906,7 @@ function CremationProfilePage({ userData }: { userData: any }) {
                         <ProfileSection
                             title="Business Documents"
                             subtitle="Upload and manage your business verification documents"
-                            showSkeleton={showSkeleton || initialLoading}
+                            showSkeleton={isLoading}
                         >
                             <ProfileCard>
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
