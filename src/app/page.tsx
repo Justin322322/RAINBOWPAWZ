@@ -638,9 +638,6 @@ export default function Home() {
                 key={index}
                 className="text-center p-6 bg-white rounded-xl border border-gray-100 hover:border-teal-100 transition-all duration-300 shadow-sm hover:shadow-lg group"
               >
-                <div className="text-4xl mb-4 group-hover:scale-110 transition-transform duration-300 text-[var(--primary-green)] font-bold">
-                  {feature.icon}
-                </div>
                 <h3 className="text-2xl font-light text-gray-800 mb-3">{feature.title}</h3>
                 <p className="text-gray-600 leading-relaxed">{feature.description}</p>
               </div>
