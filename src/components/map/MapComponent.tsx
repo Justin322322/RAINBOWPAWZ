@@ -551,9 +551,9 @@ export default function MapComponent({
             batch.map(provider => geocodeAddressEnhanced(provider.address, 'provider', provider.id))
           );
 
-          // Add delay between batches to avoid rate limiting
+          // Add small delay between batches to avoid rate limiting
           if (i + batchSize < serviceProviders.length) {
-            await new Promise(resolve => setTimeout(resolve, 1000));
+            await new Promise(resolve => setTimeout(resolve, 100));
           }
         }
       };
