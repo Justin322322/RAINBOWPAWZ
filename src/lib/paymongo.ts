@@ -109,24 +109,6 @@ interface CreateRefundData {
   metadata?: Record<string, any>;
 }
 
-interface PayMongoPayment {
-  id: string;
-  type: string;
-  attributes: {
-    amount: number;
-    currency: string;
-    description: string;
-    status: string;
-    livemode: boolean;
-    source?: {
-      id: string;
-      type: string;
-    };
-    refunds?: PayMongoRefund[];
-    created_at: number;
-    updated_at: number;
-  };
-}
 
 
 

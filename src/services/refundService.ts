@@ -12,10 +12,8 @@ import {
   createRefundRecord,
   updateRefundRecord,
   logRefundAudit,
-  getRefundsByBookingId,
   getRefundById,
-  hasExistingRefund,
-  RefundRecord
+  hasExistingRefund
 } from '@/lib/db/refunds';
 import {
   sendRefundProcessedNotification,
