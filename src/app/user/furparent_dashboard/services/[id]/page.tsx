@@ -71,72 +71,19 @@ function ServiceDetailPage({ userData }: ServiceDetailPageProps) {
   // Get user location from profile with coordinates support
   // Remove hardcoded default address
   const [userLocation, setUserLocation] = useState<LocationData | null>(null);
-  const [isLoadingLocation, setIsLoadingLocation] = useState(true);
+  const [isLoadingLocation, setIsLoadingLocation] = useState(false);
 
   useEffect(() => {
-    const getLocation = () => {
-      setIsLoadingLocation(true);
+    // Set location based on user data
+    let location = null;
+    if (userData?.address && userData.address.trim() !== '') {
+      location = {
+        address: userData.address,
+        source: 'profile' as const
+      };
+    }
 
-      // Always get fresh data from session storage
-      let currentUserData = userData;
-
-      // Get the most recent data from session storage
-      if (typeof window !== 'undefined') {
-        const sessionUserData = sessionStorage.getItem('user_data');
-        if (sessionUserData) {
-          try {
-            const parsedData = JSON.parse(sessionUserData);
-            // Use session storage data if it's more recent or if userData prop is not available
-            currentUserData = parsedData;
-          } catch (error) {
-            console.error('Failed to parse user data from session storage:', error);
-          }
-        }
-      }
-
-      // Set location based on current user data
-      let location = null;
-      if (currentUserData?.address && currentUserData.address.trim() !== '') {
-        location = {
-          address: currentUserData.address,
-          source: 'profile' as const
-        };
-      }
-
-      setUserLocation(location);
-      setIsLoadingLocation(false);
-    };
-
-    // Run immediately
-    getLocation();
-
-    // Listen for custom events (when profile is updated)
-    const handleUserDataUpdate = (event: CustomEvent) => {
-      if (event.detail) {
-        // Update session storage with new data
-        try {
-          sessionStorage.setItem('user_data', JSON.stringify(event.detail));
-        } catch (error) {
-          console.error('Failed to update session storage:', error);
-        }
-
-        // Update location
-        if (event.detail.address && event.detail.address.trim() !== '') {
-          setUserLocation({
-            address: event.detail.address,
-            source: 'profile' as const
-          });
-        } else {
-          setUserLocation(null);
-        }
-      }
-    };
-
-    window.addEventListener('userDataUpdated', handleUserDataUpdate as EventListener);
-
-    return () => {
-      window.removeEventListener('userDataUpdated', handleUserDataUpdate as EventListener);
-    };
+    setUserLocation(location);
   }, [userData]);
 
   // Function to sort packages based on selected criteria
@@ -156,11 +103,6 @@ function ServiceDetailPage({ userData }: ServiceDetailPageProps) {
   };
 
   useEffect(() => {
-    // Wait for location loading to complete to ensure we have coordinates if available
-    if (isLoadingLocation) {
-      return;
-    }
-
     // Fetch real provider data
     startLoading('Loading service details...');
 
@@ -230,10 +172,10 @@ function ServiceDetailPage({ userData }: ServiceDetailPageProps) {
       }
     };
 
-    if (providerId && !isLoadingLocation) {
+    if (providerId) {
       fetchData();
     }
-  }, [providerId, userLocation, isLoadingLocation, mockPets, startLoading, stopLoading]);
+  }, [providerId, userLocation, mockPets, startLoading, stopLoading]);
 
   const handleNextPackage = () => {
     const sortedPackages = getSortedPackages();

@@ -260,55 +260,24 @@ function ProfilePage({ userData: initialUserData }: ProfilePageProps) {
     }
   }, [userData, isEditingPersonal, isEditingContact]);
 
-  // Skeleton loading control with minimum delay (600-800ms for fur parent standards)
+  // Simplified skeleton loading control
   useEffect(() => {
-    let skeletonTimer: NodeJS.Timeout | null = null;
-    let fallbackTimer: NodeJS.Timeout | null = null;
-
     // Check if OTP verification is needed
     if (userData && userData.is_otp_verified === 0) {
       const otpVerifiedInSession = sessionStorage.getItem('otp_verified') === 'true';
       if (!otpVerifiedInSession) {
-        console.log('⚠️ [Profile] OTP verification needed, showing skeleton until verified');
         setShowSkeleton(true);
         return;
       }
     }
 
-    // Show skeleton if we don't have userData
+    // Show skeleton only if we don't have userData
     if (!userData) {
       setShowSkeleton(true);
-      console.log('🔄 [Profile] Showing skeleton - userData:', !!userData);
-
-      // Fallback: Force hide skeleton after 5 seconds to prevent infinite loading
-      fallbackTimer = setTimeout(() => {
-        console.log('⚠️ [Profile] Fallback: Force hiding skeleton after 5s timeout');
-        setShowSkeleton(false);
-      }, 5000); // Reduced from 10s to 5s
-
-      return () => {
-        if (fallbackTimer) {
-          clearTimeout(fallbackTimer);
-        }
-      };
-    }
-
-    // Clear fallback timer if we have data
-    if (fallbackTimer) {
-      clearTimeout(fallbackTimer);
-    }
-
-    // Hide skeleton with a small delay for smooth transition
-    skeletonTimer = setTimeout(() => {
-      console.log('✅ [Profile] Hiding skeleton - userData available');
+    } else {
+      // Hide skeleton immediately when we have data
       setShowSkeleton(false);
-    }, 300); // Reduced delay for better responsiveness
-
-    return () => {
-      if (skeletonTimer) {
-        clearTimeout(skeletonTimer);
-      }
-    };
+    }
   }, [userData]);
 
   // Listen for profile picture updates
