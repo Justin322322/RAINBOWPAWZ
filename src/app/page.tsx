@@ -582,9 +582,9 @@ export default function Home() {
             transition={{ duration: 0.6 }}
             className="text-center mb-16"
           >
-            <h2 className="text-4xl md:text-5xl font-light text-gray-800 mb-6">Seamless Experience Across All Devices</h2>
+            <h2 className="text-4xl md:text-5xl font-light text-gray-800 mb-6 modern-heading">Seamless Experience Across All Devices</h2>
             <div className="w-24 h-1 bg-gradient-to-r from-[var(--primary-green)] to-[var(--primary-green-light)] mx-auto mb-8"></div>
-            <p className="text-lg text-gray-600 max-w-3xl mx-auto leading-relaxed">
+            <p className="text-lg text-gray-600 max-w-3xl mx-auto leading-relaxed modern-text">
               Experience RainbowPaws on any device with our fully responsive design. 
               From mobile phones to desktop computers, our platform adapts perfectly to your screen size.
             </p>
@@ -608,11 +608,6 @@ export default function Home() {
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/10 to-transparent rounded-xl pointer-events-none"></div>
             </div>
-            
-            {/* Floating elements for visual interest */}
-            <div className="absolute -top-4 -left-4 w-8 h-8 bg-[var(--primary-green)] rounded-full opacity-20 animate-pulse"></div>
-            <div className="absolute -bottom-6 -right-6 w-12 h-12 bg-[var(--primary-green-light)] rounded-full opacity-20 animate-pulse delay-1000"></div>
-            <div className="absolute top-1/2 -right-8 w-6 h-6 bg-gradient-to-r from-[var(--primary-green)] to-[var(--primary-green-light)] rounded-full opacity-30 animate-pulse delay-500"></div>
           </motion.div>
 
           <motion.div
@@ -646,8 +641,8 @@ export default function Home() {
                 <div className="text-4xl mb-4 group-hover:scale-110 transition-transform duration-300 text-[var(--primary-green)] font-bold">
                   {feature.icon}
                 </div>
-                <h3 className="text-xl font-medium text-gray-800 mb-3">{feature.title}</h3>
-                <p className="text-gray-600 leading-relaxed">{feature.description}</p>
+                <h3 className="text-xl font-medium text-gray-800 mb-3 modern-heading">{feature.title}</h3>
+                <p className="text-gray-600 leading-relaxed modern-text">{feature.description}</p>
               </div>
             ))}
           </motion.div>
