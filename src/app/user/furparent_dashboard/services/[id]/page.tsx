@@ -233,7 +233,7 @@ function ServiceDetailPage({ userData }: ServiceDetailPageProps) {
     if (providerId && !isLoadingLocation) {
       fetchData();
     }
-  }, [providerId, userLocation, isLoadingLocation, mockPets]);
+  }, [providerId, userLocation, isLoadingLocation, mockPets, startLoading, stopLoading]);
 
   const handleNextPackage = () => {
     const sortedPackages = getSortedPackages();

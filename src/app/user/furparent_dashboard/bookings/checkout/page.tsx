@@ -41,7 +41,7 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
   // Local state to hold user data (either from props or session storage)
   const [currentUserData, setCurrentUserData] = useState<any>(null);
 
-  const { isLoading: globalLoading, startLoading, stopLoading } = useLoading();
+  const { isLoading: globalLoading, stopLoading } = useLoading();
   const [error, setError] = useState<string | null>(null);
   const [bookingData, setBookingData] = useState<any>(null);
   
@@ -545,7 +545,7 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
     };
 
     fetchData();
-  }, [searchParams, initialParamsProcessed]);
+  }, [searchParams, initialParamsProcessed, stopLoading]);
 
   // Calculate delivery fee based on provider's distance when option changes
   useEffect(() => {

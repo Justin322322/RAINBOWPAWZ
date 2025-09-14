@@ -93,7 +93,7 @@ function PackageDetailPage({ userData: _userData }: PackageDetailPageProps) {
     if (providerId && packageId) {
       fetchData();
     }
-  }, [providerId, packageId]);
+  }, [providerId, packageId, startLoading, stopLoading]);
 
   const handleNextImage = () => {
     if (packageData && currentImageIndex < packageData.images.length - 1) {

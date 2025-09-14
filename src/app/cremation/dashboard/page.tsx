@@ -205,7 +205,7 @@ function CremationDashboardPage({ userData }: { userData: any }) {
     };
 
     fetchDashboardData();
-  }, [userData]); // Add userData as dependency since we use it for providerId
+  }, [userData, startLoading, stopLoading]); // Add userData as dependency since we use it for providerId
 
   // Check availability tables after initial loading
   useEffect(() => {

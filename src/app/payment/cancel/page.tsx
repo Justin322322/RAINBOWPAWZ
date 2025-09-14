@@ -31,7 +31,7 @@ interface RefundSummary {
 function PaymentCancelContent() {
 	const searchParams = useSearchParams();
 	const router = useRouter();
-	const { isLoading, startLoading, stopLoading } = useLoading();
+	const { isLoading, stopLoading } = useLoading();
 	const [booking, setBooking] = useState<BookingSummary | null>(null);
 	const [refund, setRefund] = useState<RefundSummary | null>(null);
 	const intervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -45,7 +45,7 @@ function PaymentCancelContent() {
 	useEffect(() => {
 		const timer = setTimeout(() => stopLoading(), 300);
 		return () => clearTimeout(timer);
-	}, []);
+	}, [stopLoading]);
 
 	useEffect(() => {
 		if (!parsedBookingId) return;

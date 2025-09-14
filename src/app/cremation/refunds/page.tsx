@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { 
   CurrencyDollarIcon, 
   DocumentCheckIcon, 
@@ -46,11 +46,7 @@ function CremationRefundsPage({ userData }: { userData: any }) {
   const [uploadingReceipt, setUploadingReceipt] = useState<number | null>(null);
   const { showToast } = useToast();
 
-  useEffect(() => {
-    fetchRefunds();
-  }, []);
-
-  const fetchRefunds = async () => {
+  const fetchRefunds = useCallback(async () => {
     try {
       startLoading('Loading refunds...');
       setError(null);
@@ -67,7 +63,11 @@ function CremationRefundsPage({ userData }: { userData: any }) {
     } finally {
       stopLoading();
     }
-  };
+  }, [startLoading, stopLoading]);
+
+  useEffect(() => {
+    fetchRefunds();
+  }, [fetchRefunds]);
 
   const handleFileUpload = async (refundId: number, file: File) => {
     if (!file) return;
