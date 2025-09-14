@@ -647,8 +647,18 @@ export default function Home() {
       </section>
 
       {/* Why Choose Us Section */}
-      <section id="why-choose" className="scroll-mt-20 py-24 md:py-32 bg-white/95 backdrop-blur-sm relative z-10">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <section id="why-choose" className="scroll-mt-20 py-24 md:py-32 relative z-10">
+        <div className="absolute inset-0">
+          <Image
+            src="/images/bg.png"
+            alt="Forest background for Why Choose Rainbow Paws section"
+            fill
+            className="object-cover"
+            priority
+          />
+          <div className="absolute inset-0 bg-black/40"></div>
+        </div>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -656,7 +666,7 @@ export default function Home() {
             transition={{ duration: 0.6 }}
             className="text-center"
           >
-            <h2 className="text-4xl md:text-5xl font-light text-gray-800 mb-6">Why Choose Rainbow Paws</h2>
+            <h2 className="text-4xl md:text-5xl font-light text-white mb-6">Why Choose Rainbow Paws</h2>
             <div className="w-24 h-1 bg-gradient-to-r from-[var(--primary-green)] to-[var(--primary-green-light)] mx-auto mb-16"></div>
           </motion.div>
 
@@ -684,7 +694,7 @@ export default function Home() {
                 viewport={{ once: true }}
                 transition={{ duration: 0.5, delay: index * 0.2 }}
                 key={index}
-                className="p-8 bg-white rounded-2xl border border-gray-100 hover:border-teal-100 transition-all duration-300 shadow-sm hover:shadow-xl flex flex-col items-center group"
+                className="p-8 bg-white/90 backdrop-blur-sm rounded-2xl border border-white/20 hover:border-white/40 transition-all duration-300 shadow-lg hover:shadow-xl flex flex-col items-center group"
               >
                 <div className="p-4 text-[var(--primary-green)] mb-6 transform transition-transform duration-300 group-hover:scale-110">
                   <feature.icon className="h-10 w-10" />
