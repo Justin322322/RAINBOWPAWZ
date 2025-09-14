@@ -26,7 +26,7 @@ export default function Home() {
       setIsScrolled(window.scrollY > 50);
 
       // Scroll spy functionality
-      const sections = ['services', 'how-it-works', 'promise'];
+      const sections = ['services', 'how-it-works', 'promise', 'responsive-showcase', 'why-choose'];
       const navHeight = 80;
       const scrollPosition = window.scrollY + navHeight + 50; // Add offset for better detection
 
@@ -569,6 +569,88 @@ export default function Home() {
               </motion.div>
             ))}
           </div>
+        </div>
+      </section>
+
+      {/* Responsive Design Showcase Section */}
+      <section id="responsive-showcase" className="scroll-mt-20 py-24 md:py-32 bg-gradient-to-b from-white to-gray-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6 }}
+            className="text-center mb-16"
+          >
+            <h2 className="text-4xl md:text-5xl font-light text-gray-800 mb-6">Seamless Experience Across All Devices</h2>
+            <div className="w-24 h-1 bg-gradient-to-r from-[var(--primary-green)] to-[var(--primary-green-light)] mx-auto mb-8"></div>
+            <p className="text-lg text-gray-600 max-w-3xl mx-auto leading-relaxed">
+              Experience RainbowPaws on any device with our fully responsive design. 
+              From mobile phones to desktop computers, our platform adapts perfectly to your screen size.
+            </p>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            whileInView={{ opacity: 1, scale: 1 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.8, delay: 0.2 }}
+            className="relative max-w-5xl mx-auto"
+          >
+            <div className="relative overflow-hidden rounded-2xl shadow-2xl bg-white p-4 md:p-8">
+              <Image
+                src="/images/responsive.png"
+                alt="RainbowPaws responsive design showcase showing mobile and desktop views"
+                width={1200}
+                height={800}
+                className="w-full h-auto rounded-xl"
+                priority
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/10 to-transparent rounded-xl pointer-events-none"></div>
+            </div>
+            
+            {/* Floating elements for visual interest */}
+            <div className="absolute -top-4 -left-4 w-8 h-8 bg-[var(--primary-green)] rounded-full opacity-20 animate-pulse"></div>
+            <div className="absolute -bottom-6 -right-6 w-12 h-12 bg-[var(--primary-green-light)] rounded-full opacity-20 animate-pulse delay-1000"></div>
+            <div className="absolute top-1/2 -right-8 w-6 h-6 bg-gradient-to-r from-[var(--primary-green)] to-[var(--primary-green-light)] rounded-full opacity-30 animate-pulse delay-500"></div>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6, delay: 0.4 }}
+            className="mt-16 grid grid-cols-1 md:grid-cols-3 gap-8"
+          >
+            {[
+              {
+                title: "Mobile Optimized",
+                description: "Perfectly designed for smartphones and tablets with touch-friendly interfaces.",
+                icon: "Mobile"
+              },
+              {
+                title: "Desktop Ready",
+                description: "Full-featured experience on desktop and laptop computers with enhanced layouts.",
+                icon: "Desktop"
+              },
+              {
+                title: "Cross-Platform",
+                description: "Consistent experience across all devices and operating systems.",
+                icon: "Sync"
+              }
+            ].map((feature, index) => (
+              <div
+                key={index}
+                className="text-center p-6 bg-white rounded-xl border border-gray-100 hover:border-teal-100 transition-all duration-300 shadow-sm hover:shadow-lg group"
+              >
+                <div className="text-4xl mb-4 group-hover:scale-110 transition-transform duration-300 text-[var(--primary-green)] font-bold">
+                  {feature.icon}
+                </div>
+                <h3 className="text-xl font-medium text-gray-800 mb-3">{feature.title}</h3>
+                <p className="text-gray-600 leading-relaxed">{feature.description}</p>
+              </div>
+            ))}
+          </motion.div>
         </div>
       </section>
 
