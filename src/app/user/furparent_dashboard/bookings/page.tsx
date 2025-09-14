@@ -189,8 +189,6 @@ const BookingsPage: React.FC<BookingsPageProps> = ({ userData }) => {
       try {
         setIsLoading(true);
 
-        // Add a small delay to ensure the skeleton is visible
-        await new Promise(resolve => setTimeout(resolve, 1000));
 
         // Always fetch all bookings with credentials to ensure cookies are sent
         const response = await fetch('/api/bookings', {

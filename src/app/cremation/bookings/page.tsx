@@ -59,9 +59,6 @@ function CremationBookingsPage({ userData }: { userData: any }) {
       setFetchError(null);
 
       try {
-        // Add minimum loading delay for better UX (same as admin)
-        const minLoadingTime = new Promise(resolve => setTimeout(resolve, 600));
-        
         const providerId = userData?.business_id || userData?.provider_id || 999;
         
         // Build query parameters including search and filter terms
@@ -88,8 +85,7 @@ function CremationBookingsPage({ userData }: { userData: any }) {
           }
         });
 
-        // Wait for both the minimum time and the data
-        const [, response] = await Promise.all([minLoadingTime, dataPromise]);
+        const response = await dataPromise;
 
         if (!response.ok) {
           const errorData = await response.json().catch(() => ({}));

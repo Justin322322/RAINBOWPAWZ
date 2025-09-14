@@ -43,8 +43,7 @@ function PaymentCancelContent() {
 	}, [bookingId]);
 
 	useEffect(() => {
-		const timer = setTimeout(() => stopLoading(), 300);
-		return () => clearTimeout(timer);
+		stopLoading();
 	}, [stopLoading]);
 
 	useEffect(() => {
