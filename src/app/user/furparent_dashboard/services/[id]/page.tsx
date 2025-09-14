@@ -71,7 +71,6 @@ function ServiceDetailPage({ userData }: ServiceDetailPageProps) {
   // Get user location from profile with coordinates support
   // Remove hardcoded default address
   const [userLocation, setUserLocation] = useState<LocationData | null>(null);
-  const [isLoadingLocation, setIsLoadingLocation] = useState(false);
 
   useEffect(() => {
     // Set location based on user data
