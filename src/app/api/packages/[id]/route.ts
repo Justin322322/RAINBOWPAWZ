@@ -433,28 +433,10 @@ export async function PATCH(
           throw new Error('Package not found or no changes made');
         }
 
-        // Upsert supported pet types for this provider if provided
-        if (Array.isArray(body.supportedPetTypes) && (await hasServiceTypesProviderSchema())) {
-          // Deactivate all existing pet types
-          await transaction.query(
-            'UPDATE service_types SET is_active = 0 WHERE provider_id = ?',
-            [providerId]
-          );
-
-          for (const petType of body.supportedPetTypes) {
-            if (!petType || typeof petType !== 'string') continue;
-            try {
-              await transaction.query(
-                'INSERT INTO service_types (provider_id, pet_type, is_active) VALUES (?, ?, 1)',
-                [providerId, petType]
-              );
-            } catch {
-              await transaction.query(
-                'UPDATE service_types SET is_active = 1 WHERE provider_id = ? AND pet_type = ?',
-                [providerId, petType]
-              );
-            }
-          }
+        // Note: supportedPetTypes functionality is disabled due to service_types table schema mismatch
+        // The service_types table doesn't have provider_id column, so this feature needs to be redesigned
+        if (Array.isArray(body.supportedPetTypes)) {
+          console.warn('supportedPetTypes feature is disabled - service_types table schema needs to be updated');
         }
 
         // Update inclusions as JSON

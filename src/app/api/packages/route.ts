@@ -551,29 +551,10 @@ export async function POST(request: NextRequest) {
       // Images are now stored in JSON column during the main INSERT
       // No separate insertion needed - images are already processed and stored in the JSON column
 
-      // Upsert supported pet types for this provider if provided
+      // Note: supportedPetTypes functionality is disabled due to service_types table schema mismatch
+      // The service_types table doesn't have provider_id column, so this feature needs to be redesigned
       if (Array.isArray(body.supportedPetTypes)) {
-        // Deactivate all existing pet types
-        await transaction.query(
-          'UPDATE service_types SET is_active = 0 WHERE provider_id = ?',
-          [providerId]
-        );
-
-        for (const petType of body.supportedPetTypes) {
-          if (!petType || typeof petType !== 'string') continue;
-          // Try to insert; if duplicate, update is_active
-          try {
-            await transaction.query(
-              'INSERT INTO service_types (provider_id, pet_type, is_active) VALUES (?, ?, 1)',
-              [providerId, petType]
-            );
-          } catch {
-            await transaction.query(
-              'UPDATE service_types SET is_active = 1 WHERE provider_id = ? AND pet_type = ?',
-              [providerId, petType]
-            );
-          }
-        }
+        console.warn('supportedPetTypes feature is disabled - service_types table schema needs to be updated');
       }
 
       return { packageId };
