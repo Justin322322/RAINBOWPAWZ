@@ -781,6 +781,51 @@
   }
 }
 
+/* Smooth scrolling and video background fixes */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Prevent video background flash during navigation */
+#hero {
+  position: relative;
+  z-index: 1;
+}
+
+#hero video {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: -1;
+}
+
+/* Ensure all sections have proper background coverage */
+section[id] {
+  position: relative;
+  z-index: 20;
+  background-color: white;
+}
+
+/* Specific section background overrides */
+#services,
+#how-it-works,
+#promise,
+#responsive-showcase {
+  background-color: white !important;
+}
+
+#why-choose {
+  background-color: transparent;
+}
+
+/* Smooth transition for section backgrounds */
+section {
+  transition: background-color 0.3s ease;
+}
+
 /* Print styles */
 @media print {
   .mobile-hero-button,

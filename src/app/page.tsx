@@ -109,46 +109,22 @@ export default function Home() {
       target.style.transform = '';
     }, 100);
 
-    const navHeight = 80; // Height of your fixed navbar
-    const additionalOffset = -10; // Negative offset to bring title closer to navbar
-    const elementPosition = element.getBoundingClientRect().top;
-    const offsetPosition = elementPosition + window.pageYOffset - navHeight - additionalOffset;
-
     // Add subtle visual feedback - very light highlight
     element.style.transition = 'background-color 0.2s ease';
     element.style.backgroundColor = 'rgba(27, 77, 62, 0.02)';
 
-    // Custom smooth scroll with easing
-    const startPosition = window.pageYOffset;
-    const distance = offsetPosition - startPosition;
-    const duration = Math.min(Math.abs(distance) / 2, 1000); // Dynamic duration based on distance, max 1s
-    let startTime: number | null = null;
+    // Use native smooth scroll for better performance and to prevent video flash
+    element.scrollIntoView({
+      behavior: 'smooth',
+      block: 'start',
+      inline: 'nearest'
+    });
 
-    // Easing function for smoother animation
-    const easeInOutCubic = (t: number): number => {
-      return t < 0.5 ? 4 * t * t * t : (t - 1) * (2 * t - 2) * (2 * t - 2) + 1;
-    };
-
-    const animateScroll = (currentTime: number) => {
-      if (startTime === null) startTime = currentTime;
-      const timeElapsed = currentTime - startTime;
-      const progress = Math.min(timeElapsed / duration, 1);
-      const easedProgress = easeInOutCubic(progress);
-
-      window.scrollTo(0, startPosition + distance * easedProgress);
-
-      if (progress < 1) {
-        requestAnimationFrame(animateScroll);
-      } else {
-        // Remove highlight after scroll completes
-        setTimeout(() => {
-          element.style.backgroundColor = '';
-          element.style.transition = '';
-        }, 300);
-      }
-    };
-
-    requestAnimationFrame(animateScroll);
+    // Remove highlight after scroll completes
+    setTimeout(() => {
+      element.style.backgroundColor = '';
+      element.style.transition = '';
+    }, 800);
   };
 
   // Smooth scroll to top (hero section)
@@ -163,29 +139,11 @@ export default function Home() {
       target.style.transform = '';
     }, 100);
 
-    // Custom smooth scroll to top
-    const startPosition = window.pageYOffset;
-    const duration = Math.min(startPosition / 2, 1000); // Dynamic duration, max 1s
-    let startTime: number | null = null;
-
-    const easeInOutCubic = (t: number): number => {
-      return t < 0.5 ? 4 * t * t * t : (t - 1) * (2 * t - 2) * (2 * t - 2) + 1;
-    };
-
-    const animateScroll = (currentTime: number) => {
-      if (startTime === null) startTime = currentTime;
-      const timeElapsed = currentTime - startTime;
-      const progress = Math.min(timeElapsed / duration, 1);
-      const easedProgress = easeInOutCubic(progress);
-
-      window.scrollTo(0, startPosition * (1 - easedProgress));
-
-      if (progress < 1) {
-        requestAnimationFrame(animateScroll);
-      }
-    };
-
-    requestAnimationFrame(animateScroll);
+    // Use native smooth scroll to top
+    window.scrollTo({
+      top: 0,
+      behavior: 'smooth'
+    });
   };
 
   const openPersonalAccountModal = () => {
@@ -357,7 +315,7 @@ export default function Home() {
 
       {/* Hero Section */}
       <section id="hero" className="relative min-h-screen w-full overflow-hidden">
-        <div className="fixed inset-0 -z-10">
+        <div className="absolute inset-0 -z-10">
           <video
             autoPlay
             loop
@@ -430,7 +388,7 @@ export default function Home() {
       </section>
 
       {/* Services Section */}
-      <section id="services" className="scroll-mt-16 pt-16 pb-24 bg-white/95 backdrop-blur-sm relative z-10">
+      <section id="services" className="scroll-mt-16 pt-16 pb-24 bg-white relative z-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
             <h2 className="section-title">Memorial Services</h2>
@@ -480,7 +438,7 @@ export default function Home() {
       </section>
 
       {/* How It Works Section */}
-      <section id="how-it-works" className="scroll-mt-16 pt-16 pb-24 bg-white/90 backdrop-blur-sm relative z-10">
+      <section id="how-it-works" className="scroll-mt-16 pt-16 pb-24 bg-white relative z-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <h2 className="text-center text-2xl text-[var(--primary-green)] mb-16">How It Works</h2>
         </div>
@@ -526,7 +484,7 @@ export default function Home() {
       </section>
 
       {/* Our Promise Section - Add scroll margin to account for fixed header */}
-      <section id="promise" className="scroll-mt-16 pt-16 pb-24 md:pb-32 bg-white/95 backdrop-blur-sm relative overflow-hidden z-10">
+      <section id="promise" className="scroll-mt-16 pt-16 pb-24 md:pb-32 bg-white relative overflow-hidden z-20">
         <div className="absolute inset-0 bg-[url('/pattern.png')] opacity-5"></div>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative">
           <motion.div
@@ -573,7 +531,7 @@ export default function Home() {
       </section>
 
       {/* Responsive Design Showcase Section */}
-      <section id="responsive-showcase" className="scroll-mt-20 py-24 md:py-32 bg-white/90 backdrop-blur-sm relative z-10">
+      <section id="responsive-showcase" className="scroll-mt-20 py-24 md:py-32 bg-white relative z-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -647,7 +605,7 @@ export default function Home() {
       </section>
 
       {/* Why Choose Us Section */}
-      <section id="why-choose" className="scroll-mt-20 py-24 md:py-32 relative z-10">
+      <section id="why-choose" className="scroll-mt-20 py-24 md:py-32 relative z-20">
         <div className="absolute inset-0">
           <Image
             src="/images/bg.png"
