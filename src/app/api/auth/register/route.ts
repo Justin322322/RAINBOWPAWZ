@@ -274,6 +274,29 @@ export async function POST(request: Request) {
           throw insertError;
         }
 
+        // Create admin notification for all registrations (both personal and business)
+        try {
+          if (data.account_type === 'personal') {
+            // Create admin notification for personal account registration
+            const notificationResult = await createAdminNotification({
+              type: 'new_user_registration',
+              title: 'New Fur Parent Registration',
+              message: `${data.firstName} ${data.lastName} (${data.email}) has registered as a fur parent.`,
+              entityType: 'user',
+              entityId: userId
+            });
+
+            if (notificationResult.success) {
+              console.log('Admin notification created for personal registration');
+            } else {
+              console.error("Failed to create admin notification for personal registration:", notificationResult.error);
+            }
+          }
+        } catch (notificationError) {
+          console.error("Error creating admin notification for personal registration:", notificationError);
+          // Continue with registration even if notification creation fails
+        }
+
         // If it's a business account, also create an entry in the service_providers table
         console.log('Checking for business account creation:', {
           account_type: data.account_type,
@@ -466,6 +489,31 @@ export async function POST(request: Request) {
       } catch (emailError) {
         console.error("Error sending welcome email:", emailError);
         // Continue with registration even if email fails
+      }
+
+      // Create user notification for successful registration
+      try {
+        const { createNotification } = await import('@/utils/notificationService');
+        
+        const accountType = data.account_type === 'personal' ? 'fur parent' : 'business';
+        const notificationResult = await createNotification({
+          userId: userId,
+          title: 'Welcome to Rainbow Paws!',
+          message: `Your ${accountType} account has been successfully created. Welcome to our pet memorial services platform!`,
+          type: 'success',
+          link: data.account_type === 'personal' ? '/user/furparent_dashboard' : '/cremation/dashboard',
+          shouldSendEmail: false, // Welcome email is already sent above
+          category: 'system'
+        });
+
+        if (notificationResult.success) {
+          console.log('User notification created for successful registration');
+        } else {
+          console.error("Failed to create user notification:", notificationResult.error);
+        }
+      } catch (notificationError) {
+        console.error("Error creating user notification:", notificationError);
+        // Continue with registration even if notification creation fails
       }
 
       // Generate OTP for the new user, but skip for cremation centers

@@ -40,6 +40,14 @@ export async function createAdminNotification({
       if (entityId) {
         link = `/admin/applications/${entityId}`;
       }
+    } else if (type === 'new_user_registration') {
+      // Link to the users page for fur parents
+      link = '/admin/users/furparents';
+
+      // If we have a specific entity ID (user ID), add it as a parameter
+      if (entityId) {
+        link += `?userId=${entityId}`;
+      }
     } else if (type === 'new_appeal' || type === 'appeal_submitted') {
       // Link to the appropriate admin users page based on entity type
       if (entityType === 'furparent' || entityType === 'user') {

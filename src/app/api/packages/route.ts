@@ -461,8 +461,8 @@ export async function POST(request: NextRequest) {
           INSERT INTO service_packages
             (provider_id, name, description, category, cremation_type,
              processing_time, price, delivery_fee_per_km, conditions, is_active,
-             pricing_mode, overage_fee_per_kg)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, TRUE, ?, ?)
+             pricing_mode, overage_fee_per_kg, inclusions, addons, images)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, TRUE, ?, ?, ?, ?, ?)
           `,
           [
             providerId,
@@ -475,7 +475,10 @@ export async function POST(request: NextRequest) {
             Number(deliveryFeePerKm) || 0,
             conditions,
             pricingMode === 'by_size' ? 'by_size' : 'fixed',
-            Number(overageFeePerKg) || 0
+            Number(overageFeePerKg) || 0,
+            JSON.stringify(inclusions || []),
+            JSON.stringify(addOns || []),
+            JSON.stringify(images || [])
           ]
         )) as any;
       } catch (e: any) {
@@ -506,97 +509,47 @@ export async function POST(request: NextRequest) {
       }
       const packageId = pkgRes.insertId as number;
 
-      // Insert size-based pricing if provided
-      const normalizeSizeCategory = (val: string): string => {
-        const v = (val || '').toLowerCase();
-        if (v.includes('extra')) return 'extra_large';
-        if (v.includes('large')) return 'large';
-        if (v.includes('medium')) return 'medium';
-        if (v.includes('small')) return 'small';
-        return v as any;
-      };
+      // Store size-based pricing in JSON column if provided
       if (Array.isArray(sizePricing) && sizePricing.length > 0) {
-        for (const sp of sizePricing) {
-          if (!sp) continue;
-          const sizeCategory = normalizeSizeCategory(String(sp.sizeCategory || '').trim());
-          const min = Number(sp.weightRangeMin);
-          const max = sp.weightRangeMax == null ? null : Number(sp.weightRangeMax);
-          const p = Number(sp.price);
-          if (!sizeCategory || isNaN(min) || isNaN(p)) continue;
-          try {
-            await transaction.query(
-              `INSERT INTO service_packages
-                (package_id, size_category, weight_range_min, weight_range_max, price)
-               VALUES (?, ?, ?, ?, ?)`,
-              [packageId, sizeCategory, min, max, p]
-            );
-          } catch (e: any) {
-            if (e?.message?.includes('ER_NO_SUCH_TABLE') || e?.message?.includes('ER_BAD_FIELD_ERROR')) {
-              // Silently skip if table/columns not present
-            } else {
-              throw e;
-            }
-          }
-        }
-      }
-
-      // Insert inclusions
-      if (Array.isArray(inclusions) && inclusions.length > 0) {
-        for (const inc of inclusions) {
-          if (inc && typeof inc === 'string' && inc.trim()) {
-            await transaction.query(
-              'INSERT INTO package_data (package_id, description) VALUES (?, ?)',
-              [packageId, inc.trim()]
-            );
-          }
-        }
-      }
-
-      // Insert add-ons
-      if (Array.isArray(addOns) && addOns.length > 0) {
-        for (const addon of addOns) {
-          if (addon && addon.name && addon.name.trim()) {
-            // Note: Add-ons should now be stored as JSON in service_packages table
-            // This legacy code needs to be replaced with JSON storage approach
-            console.warn('Legacy add-on storage method - should use JSON columns instead');
-          }
-        }
-      }
-
-      // Insert images with proper display order; support base64 or file path
-      if (Array.isArray(images) && images.length > 0) {
-        const normalizePath = (p: string): string => {
-          if (!p) return p;
-          if (p.startsWith('data:image/')) return p; // keep base64
-          if (p.startsWith('/api/image/packages/')) {
-            return `/uploads/packages/${p.substring('/api/image/packages/'.length)}`;
-          }
-          if (p.startsWith('api/image/packages/')) {
-            return `/uploads/packages/${p.substring('api/image/packages/'.length)}`;
-          }
-          if (p.startsWith('uploads/')) return `/${p}`;
-          return p;
+        const normalizeSizeCategory = (val: string): string => {
+          const v = (val || '').toLowerCase();
+          if (v.includes('extra')) return 'extra_large';
+          if (v.includes('large')) return 'large';
+          if (v.includes('medium')) return 'medium';
+          if (v.includes('small')) return 'small';
+          return v as any;
         };
 
-        for (let i = 0; i < images.length; i++) {
-          const raw = images[i];
-          const img = typeof raw === 'string' ? raw : '';
-          if (!img) continue;
+        const processedSizePricing = sizePricing
+          .filter(sp => sp && sp.sizeCategory && sp.price != null)
+          .map(sp => ({
+            sizeCategory: normalizeSizeCategory(String(sp.sizeCategory || '').trim()),
+            weightRangeMin: Number(sp.weightRangeMin) || 0,
+            weightRangeMax: sp.weightRangeMax != null ? Number(sp.weightRangeMax) : null,
+            price: Number(sp.price)
+          }))
+          .filter(sp => sp.sizeCategory && !isNaN(sp.price));
 
-          if (img.startsWith('data:image/')) {
+        if (processedSizePricing.length > 0) {
+          try {
             await transaction.query(
-              'INSERT INTO package_data (package_id, image_path, display_order, image_data) VALUES (?, ?, ?, ?)',
-              [packageId, `package_${packageId}_${Date.now()}_${i}.jpg`, i + 1, img]
+              `UPDATE service_packages 
+               SET size_pricing = ? 
+               WHERE package_id = ?`,
+              [JSON.stringify(processedSizePricing), packageId]
             );
-          } else {
-            const path = normalizePath(img);
-            await transaction.query(
-              'INSERT INTO package_data (package_id, image_path, display_order) VALUES (?, ?, ?)',
-              [packageId, path, i + 1]
-            );
+          } catch (e: any) {
+            console.warn('Failed to store size pricing in JSON column:', e);
+            // Continue without size pricing if JSON column doesn't exist
           }
         }
       }
+
+      // Inclusions and add-ons are now stored in JSON columns during the main INSERT
+      // No separate insertion needed
+
+      // Images are now stored in JSON column during the main INSERT
+      // No separate insertion needed - images are already processed and stored in the JSON column
 
       // Upsert supported pet types for this provider if provided
       if (Array.isArray(body.supportedPetTypes)) {
