@@ -376,7 +376,7 @@ export async function PATCH(
           throw new Error('Missing required fields: name, description, and price are required');
         }
 
-        // update core
+        // update core fields
         const updateResult = await transaction.query(
           `UPDATE service_packages
            SET name=?, description=?, category=?, cremation_type=?, processing_time=?,
