@@ -9,33 +9,13 @@ import { createRefundRecord, logRefundAudit } from '@/lib/db/refunds';
 import { sendRefundProcessedNotification, sendRefundInitiatedNotification } from '@/utils/refundNotificationService';
 import { logAdminAction } from '@/utils/adminUtils';
 
-export interface CancellationRequest {
-  bookingId: number;
-  reason: string;
-  cancelledBy: number; // user ID who cancelled
-  cancelledByType: 'customer' | 'admin' | 'system' | 'provider';
-  notes?: string;
-  ipAddress?: string;
-  forceRefund?: boolean; // Force refund even if payment not confirmed
-}
-
-export interface CancellationResult {
-  success: boolean;
-  bookingCancelled: boolean;
-  refundInitiated: boolean;
-  refundId?: number;
-  refundType?: 'automatic' | 'manual';
-  refundInstructions?: string[];
-  message: string;
-  error?: string;
-}
 
 /**
  * Cancel booking with automatic refund processing
  */
 export async function cancelBookingWithRefund(
-  request: CancellationRequest
-): Promise<CancellationResult> {
+  request: any
+): Promise<any> {
   try {
     // Get booking details
     const bookingInfo = await getBookingInfo(request.bookingId);
@@ -495,23 +475,3 @@ function calculateRefundAmount(
   }
 }
 
-/**
- * Get cancellation policy info for display
- */
-export function getCancellationPolicy(): {
-  policy: string;
-  details: string[];
-} {
-  return {
-    policy: "Refund Policy for Cremation Services",
-    details: [
-      "Customer cancellations within 24 hours: 100% refund",
-      "Customer cancellations within 24-48 hours: 50% refund", 
-      "Customer cancellations after 48 hours: 25% refund",
-      "Provider or admin cancellations: 100% refund",
-      "Automatic refunds processed for electronic payments",
-      "Manual refunds required for cash or QR code payments",
-      "Refunds processed within 3-5 business days"
-    ]
-  };
-}

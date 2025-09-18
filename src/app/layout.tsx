@@ -6,7 +6,6 @@ import ToastWrapper from "@/components/providers/ToastWrapper";
 import NotificationProvider from "@/components/providers/NotificationProvider";
 import { LoadingProvider } from "@/contexts/LoadingContext";
 import { AuthStateProvider } from "@/contexts/AuthStateContext";
-import { LoadingOverlay } from "@/components/ui/LoadingOverlay";
 
 // Fonts
 const inter = Inter({
@@ -47,7 +46,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <NotificationProvider>
               <LoadingProvider>
                 {children}
-                <LoadingOverlay />
               </LoadingProvider>
             </NotificationProvider>
           </ClientToastProvider>

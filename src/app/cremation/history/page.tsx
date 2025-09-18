@@ -70,8 +70,6 @@ function CremationHistoryPage({ userData }: { userData: any }) {
     setError(null);
     
     try {
-      // Add minimum loading delay for better UX (same as admin)
-      const minLoadingTime = new Promise(resolve => setTimeout(resolve, 600));
       
       // Build query parameters including filters (provider scoped server-side)
       const queryParams = new URLSearchParams();
@@ -89,8 +87,7 @@ function CremationHistoryPage({ userData }: { userData: any }) {
         credentials: 'include'
       });
 
-      // Wait for both the minimum time and the data
-      const [, response] = await Promise.all([minLoadingTime, dataPromise]);
+      const response = await dataPromise;
 
       // Parse the JSON response regardless of status code
       let data;

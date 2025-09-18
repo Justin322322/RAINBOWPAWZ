@@ -41,9 +41,6 @@ function CartPage({ _userData }: CartPageProps) {
     // Simulate loading cart items
     const fetchCartItems = async () => {
       try {
-        // Simulate network delay
-        await new Promise(resolve => setTimeout(resolve, 1500));
-
         // In a real app, this would come from localStorage, context, or an API
         const mockCartItems: CartItem[] = [
           {

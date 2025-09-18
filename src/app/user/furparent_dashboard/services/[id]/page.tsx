@@ -17,6 +17,7 @@ import {
 
 import FurParentPageSkeleton from '@/components/ui/FurParentPageSkeleton';
 import { handleImageError } from '@/utils/imageUtils';
+import { useLoading } from '@/contexts/LoadingContext';
 import ReviewsList from '@/components/reviews/ReviewsList';
 import StaticMapComponent from '@/components/map/StaticMapComponent';
 // OTP verification is handled by the layout
@@ -38,7 +39,7 @@ function ServiceDetailPage({ userData }: ServiceDetailPageProps) {
   const providerId = params.id;
 
   const [provider, setProvider] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
+  const { isLoading: loading, startLoading, stopLoading } = useLoading();
   const [error, setError] = useState<string | null>(null);
   const [selectedService, setSelectedService] = useState<number | null>(null);
   const [selectedPet, setSelectedPet] = useState<number | null>(null);
@@ -70,72 +71,18 @@ function ServiceDetailPage({ userData }: ServiceDetailPageProps) {
   // Get user location from profile with coordinates support
   // Remove hardcoded default address
   const [userLocation, setUserLocation] = useState<LocationData | null>(null);
-  const [isLoadingLocation, setIsLoadingLocation] = useState(true);
 
   useEffect(() => {
-    const getLocation = () => {
-      setIsLoadingLocation(true);
+    // Set location based on user data
+    let location = null;
+    if (userData?.address && userData.address.trim() !== '') {
+      location = {
+        address: userData.address,
+        source: 'profile' as const
+      };
+    }
 
-      // Always get fresh data from session storage
-      let currentUserData = userData;
-
-      // Get the most recent data from session storage
-      if (typeof window !== 'undefined') {
-        const sessionUserData = sessionStorage.getItem('user_data');
-        if (sessionUserData) {
-          try {
-            const parsedData = JSON.parse(sessionUserData);
-            // Use session storage data if it's more recent or if userData prop is not available
-            currentUserData = parsedData;
-          } catch (error) {
-            console.error('Failed to parse user data from session storage:', error);
-          }
-        }
-      }
-
-      // Set location based on current user data
-      let location = null;
-      if (currentUserData?.address && currentUserData.address.trim() !== '') {
-        location = {
-          address: currentUserData.address,
-          source: 'profile' as const
-        };
-      }
-
-      setUserLocation(location);
-      setIsLoadingLocation(false);
-    };
-
-    // Run immediately
-    getLocation();
-
-    // Listen for custom events (when profile is updated)
-    const handleUserDataUpdate = (event: CustomEvent) => {
-      if (event.detail) {
-        // Update session storage with new data
-        try {
-          sessionStorage.setItem('user_data', JSON.stringify(event.detail));
-        } catch (error) {
-          console.error('Failed to update session storage:', error);
-        }
-
-        // Update location
-        if (event.detail.address && event.detail.address.trim() !== '') {
-          setUserLocation({
-            address: event.detail.address,
-            source: 'profile' as const
-          });
-        } else {
-          setUserLocation(null);
-        }
-      }
-    };
-
-    window.addEventListener('userDataUpdated', handleUserDataUpdate as EventListener);
-
-    return () => {
-      window.removeEventListener('userDataUpdated', handleUserDataUpdate as EventListener);
-    };
+    setUserLocation(location);
   }, [userData]);
 
   // Function to sort packages based on selected criteria
@@ -155,13 +102,8 @@ function ServiceDetailPage({ userData }: ServiceDetailPageProps) {
   };
 
   useEffect(() => {
-    // Wait for location loading to complete to ensure we have coordinates if available
-    if (isLoadingLocation) {
-      return;
-    }
-
     // Fetch real provider data
-    setLoading(true);
+    startLoading('Loading service details...');
 
     const fetchData = async () => {
       try {
@@ -225,14 +167,14 @@ function ServiceDetailPage({ userData }: ServiceDetailPageProps) {
         console.error('Error fetching service details:', error);
         setError('Failed to load provider details');
       } finally {
-        setLoading(false);
+        stopLoading();
       }
     };
 
-    if (providerId && !isLoadingLocation) {
+    if (providerId) {
       fetchData();
     }
-  }, [providerId, userLocation, isLoadingLocation, mockPets]);
+  }, [providerId, userLocation, mockPets, startLoading, stopLoading]);
 
   const handleNextPackage = () => {
     const sortedPackages = getSortedPackages();

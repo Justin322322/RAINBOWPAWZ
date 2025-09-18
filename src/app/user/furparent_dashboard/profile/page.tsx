@@ -98,14 +98,10 @@ function ProfilePage({ userData: initialUserData }: ProfilePageProps) {
   // Local userData state that can be updated independently
   const [userData, setUserData] = useState<UserData | undefined>(initialUserData);
 
-  // Skeleton loading state with minimum delay
-  const [showSkeleton, setShowSkeleton] = useState(!initialUserData); // Don't show skeleton if we have initial data
-  const [initialLoading, setInitialLoading] = useState(!initialUserData); // Don't show initial loading if we have data
+  // Simplified loading state - only show skeleton if no initial data
+  const [showSkeleton, setShowSkeleton] = useState(!initialUserData);
 
-  // Track if we've already initialized to prevent multiple renders
-  const [hasInitialized, setHasInitialized] = useState(false);
-
-  console.log('🔄 [Profile] Initialization state - hasInitialized:', hasInitialized, 'userData:', !!userData);
+  console.log('🔄 [Profile] Initialization state - userData:', !!userData);
 
   // Try to get user data from session storage if prop is missing
   useEffect(() => {
@@ -117,8 +113,7 @@ function ProfilePage({ userData: initialUserData }: ProfilePageProps) {
           const parsedData = JSON.parse(cachedUserData);
           console.log('💾 [Profile] Found user data in session storage:', parsedData);
           setUserData(parsedData);
-          setInitialLoading(false);
-          setHasInitialized(true);
+          setShowSkeleton(false);
           return;
         }
       } catch (error) {
@@ -160,40 +155,26 @@ function ProfilePage({ userData: initialUserData }: ProfilePageProps) {
   // Geolocation states
   const [isGettingLocation, setIsGettingLocation] = useState(false);
 
-  // Update local userData when prop changes - only run once
+  // Update local userData when prop changes
   useEffect(() => {
-    if (hasInitialized) {
-      console.log('🔄 [Profile] Already initialized, skipping');
-      return;
-    }
-
     if (initialUserData) {
       console.log('📥 [Profile] Received initial user data:', initialUserData);
       setUserData(initialUserData);
-      setInitialLoading(false);
-      setHasInitialized(true);
-      return; // Early return when we have data
+      setShowSkeleton(false);
+      return;
     }
 
-    console.log('⚠️ [Profile] No initial user data received, waiting...');
-    // If no initial data, wait a bit and then start the loading timeout
-    const timeout = setTimeout(() => {
-      if (!userData) {
-        console.log('⏰ [Profile] No user data after timeout, showing skeleton');
-        setInitialLoading(false);
-        setHasInitialized(true);
-      }
-    }, 1000); // Wait 1 second for user data to load
-
-    return () => clearTimeout(timeout);
-  }, [initialUserData, userData, hasInitialized]);
+    console.log('⚠️ [Profile] No initial user data received, showing skeleton immediately');
+    // Show skeleton immediately if no initial data
+    setShowSkeleton(true);
+  }, [initialUserData, userData]);
 
   // Additional effect to handle prop changes after initialization
   useEffect(() => {
     if (initialUserData && initialUserData !== userData) {
       console.log('🔄 [Profile] Prop changed after initialization, updating userData');
       setUserData(initialUserData);
-      setInitialLoading(false);
+      setShowSkeleton(false);
     }
   }, [initialUserData, userData]);
 
@@ -224,7 +205,7 @@ function ProfilePage({ userData: initialUserData }: ProfilePageProps) {
 
   // Initialize form data on first load
   useEffect(() => {
-    if (userData && initialLoading) {
+    if (userData) {
       console.log('🔧 [Profile] Initializing form data with user data:', userData);
       setPersonalInfo({
         firstName: userData.first_name || '',
@@ -247,14 +228,13 @@ function ProfilePage({ userData: initialUserData }: ProfilePageProps) {
         setProfilePictureTimestamp(Date.now());
       }
 
-      setInitialLoading(false);
       console.log('✅ [Profile] Initial loading complete');
     }
-  }, [userData, initialLoading]);
+  }, [userData]);
 
   // Update form data when userData changes (but not when editing)
   useEffect(() => {
-    if (userData && !initialLoading && !isEditingPersonal && !isEditingContact) {
+    if (userData && !isEditingPersonal && !isEditingContact) {
       setPersonalInfo({
         firstName: userData.first_name || '',
         lastName: userData.last_name || ''
@@ -271,60 +251,27 @@ function ProfilePage({ userData: initialUserData }: ProfilePageProps) {
         postalCode: parsedAddress.postalCode
       }));
     }
-  }, [userData, isEditingPersonal, isEditingContact, initialLoading]);
+  }, [userData, isEditingPersonal, isEditingContact]);
 
-  // Skeleton loading control with minimum delay (600-800ms for fur parent standards)
+  // Simplified skeleton loading control
   useEffect(() => {
-    let skeletonTimer: NodeJS.Timeout | null = null;
-    let fallbackTimer: NodeJS.Timeout | null = null;
-
     // Check if OTP verification is needed
     if (userData && userData.is_otp_verified === 0) {
       const otpVerifiedInSession = sessionStorage.getItem('otp_verified') === 'true';
       if (!otpVerifiedInSession) {
-        console.log('⚠️ [Profile] OTP verification needed, showing skeleton until verified');
         setShowSkeleton(true);
-        setInitialLoading(true);
         return;
       }
     }
 
-    // Show skeleton if we're still loading or don't have userData
-    if (initialLoading || !userData) {
+    // Show skeleton only if we don't have userData
+    if (!userData) {
       setShowSkeleton(true);
-      console.log('🔄 [Profile] Showing skeleton - initialLoading:', initialLoading, 'userData:', !!userData);
-
-      // Fallback: Force hide skeleton after 5 seconds to prevent infinite loading
-      fallbackTimer = setTimeout(() => {
-        console.log('⚠️ [Profile] Fallback: Force hiding skeleton after 5s timeout');
-        setShowSkeleton(false);
-        setInitialLoading(false);
-      }, 5000); // Reduced from 10s to 5s
-
-      return () => {
-        if (fallbackTimer) {
-          clearTimeout(fallbackTimer);
-        }
-      };
-    }
-
-    // Clear fallback timer if we have data
-    if (fallbackTimer) {
-      clearTimeout(fallbackTimer);
-    }
-
-    // Hide skeleton with a small delay for smooth transition
-    skeletonTimer = setTimeout(() => {
-      console.log('✅ [Profile] Hiding skeleton - userData available');
+    } else {
+      // Hide skeleton immediately when we have data
       setShowSkeleton(false);
-    }, 300); // Reduced delay for better responsiveness
-
-    return () => {
-      if (skeletonTimer) {
-        clearTimeout(skeletonTimer);
-      }
-    };
-  }, [initialLoading, userData]);
+    }
+  }, [userData]);
 
   // Listen for profile picture updates
   useEffect(() => {
@@ -344,7 +291,7 @@ function ProfilePage({ userData: initialUserData }: ProfilePageProps) {
     };
   }, []);
 
-  if (!userData || showSkeleton || initialLoading) {
+  if (!userData || showSkeleton) {
     return (
       <div className="min-h-screen bg-gray-50 py-8">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">

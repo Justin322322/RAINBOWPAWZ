@@ -45,8 +45,6 @@ interface ProfileData {
 function AdminProfilePage({ adminData }: AdminProfileProps) {
   const [profileData, setProfileData] = useState<ProfileData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  // Skeleton loading state - starts false to prevent initial animation
-  const [showSkeleton, setShowSkeleton] = useState(false);
 
   // Contact form state
   const [contactInfo, setContactInfo] = useState({
@@ -83,28 +81,9 @@ function AdminProfilePage({ adminData }: AdminProfileProps) {
       }
     };
 
-    // Show skeleton immediately when starting to load
-    setShowSkeleton(true);
     loadProfileData();
   }, []);
 
-  // Skeleton loading control with reduced delay for better UX
-  useEffect(() => {
-    let skeletonTimer: NodeJS.Timeout | null = null;
-
-    if (!isLoading && showSkeleton) {
-      // Reduced delay from 700ms to 300ms for faster perceived performance
-      skeletonTimer = setTimeout(() => {
-        setShowSkeleton(false);
-      }, 300);
-    }
-
-    return () => {
-      if (skeletonTimer) {
-        clearTimeout(skeletonTimer);
-      }
-    };
-  }, [isLoading, showSkeleton]);
 
 
 
@@ -130,11 +109,14 @@ function AdminProfilePage({ adminData }: AdminProfileProps) {
 
       if (response.ok) {
         setContactSuccess('Contact information updated successfully!');
-        // Reload profile data
-        const profileResponse = await fetch('/api/admin/profile');
-        if (profileResponse.ok) {
-          const data = await profileResponse.json();
-          setProfileData(data.profile);
+        // Update profile data locally instead of reloading
+        if (profileData) {
+          setProfileData({
+            ...profileData,
+            first_name: contactInfo.first_name,
+            last_name: contactInfo.last_name,
+            email: contactInfo.email
+          });
         }
       } else {
         const errorData = await response.json();
@@ -184,16 +166,16 @@ function AdminProfilePage({ adminData }: AdminProfileProps) {
         subtitle="Manage your administrator account settings and information"
         icon={<UserIcon className="h-8 w-8" />}
         className="p-6"
-        showSkeleton={showSkeleton || isLoading}
+        showSkeleton={isLoading}
       >
         {/* Profile Picture Section with Skeleton Loading */}
         <ProfileSection
           title="Profile Picture"
           subtitle="Upload and manage your profile picture"
-          showSkeleton={showSkeleton || isLoading}
+          showSkeleton={isLoading}
         >
           <ProfileCard>
-            {showSkeleton || isLoading ? (
+            {isLoading ? (
               /* Profile Picture Section Skeleton */
               <div className="w-full max-w-md mx-auto">
                 <div className="bg-gray-100 rounded-2xl p-8 border-2 border-dashed border-gray-200 animate-pulse">
@@ -230,10 +212,10 @@ function AdminProfilePage({ adminData }: AdminProfileProps) {
         <ProfileSection
           title="Account Information"
           subtitle="Read-only administrator account details"
-          showSkeleton={showSkeleton || isLoading}
+          showSkeleton={isLoading}
         >
           <ProfileCard>
-            {showSkeleton || isLoading ? (
+            {isLoading ? (
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 {[1, 2, 3].map((i) => (
                   <div key={i} className="space-y-2">
@@ -271,10 +253,10 @@ function AdminProfilePage({ adminData }: AdminProfileProps) {
         <ProfileSection
           title="Contact Information"
           subtitle="Update your personal contact details"
-          showSkeleton={showSkeleton || isLoading}
+          showSkeleton={isLoading}
         >
           <ProfileCard>
-            {showSkeleton || isLoading ? (
+            {isLoading ? (
               <div className="space-y-6">
                 {/* Form Group Header */}
                 <div>

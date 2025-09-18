@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { 
   CurrencyDollarIcon, 
   DocumentCheckIcon, 
@@ -15,6 +15,7 @@ import withBusinessVerification from '@/components/withBusinessVerification';
 import { StatsCardSkeleton } from '@/components/ui/LoadingComponents';
 import { Modal } from '@/components/ui/Modal';
 import { useToast } from '@/context/ToastContext';
+import { useLoading } from '@/contexts/LoadingContext';
 
 interface RefundRecord {
   id: number;
@@ -38,20 +39,16 @@ interface RefundRecord {
 
 function CremationRefundsPage({ userData }: { userData: any }) {
   const [refunds, setRefunds] = useState<RefundRecord[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const { isLoading, startLoading, stopLoading } = useLoading();
   const [error, setError] = useState<string | null>(null);
   const [selectedRefund, setSelectedRefund] = useState<RefundRecord | null>(null);
   const [filter, setFilter] = useState<'all' | 'pending' | 'manual' | 'completed'>('all');
   const [uploadingReceipt, setUploadingReceipt] = useState<number | null>(null);
   const { showToast } = useToast();
 
-  useEffect(() => {
-    fetchRefunds();
-  }, []);
-
-  const fetchRefunds = async () => {
+  const fetchRefunds = useCallback(async () => {
     try {
-      setIsLoading(true);
+      startLoading('Loading refunds...');
       setError(null);
       const response = await fetch('/api/cremation/refunds');
       if (response.ok) {
@@ -64,9 +61,13 @@ function CremationRefundsPage({ userData }: { userData: any }) {
       console.error('Error fetching refunds:', error);
       setError(error instanceof Error ? error.message : 'Failed to fetch refunds');
     } finally {
-      setIsLoading(false);
+      stopLoading();
     }
-  };
+  }, [startLoading, stopLoading]);
+
+  useEffect(() => {
+    fetchRefunds();
+  }, [fetchRefunds]);
 
   const handleFileUpload = async (refundId: number, file: File) => {
     if (!file) return;

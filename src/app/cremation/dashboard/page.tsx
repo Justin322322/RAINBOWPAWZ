@@ -14,6 +14,7 @@ import {
   ArchiveBoxIcon
 } from '@heroicons/react/24/outline';
 import { useToast } from '@/context/ToastContext';
+import { useLoading } from '@/contexts/LoadingContext';
 import { PackageImage } from '@/components/packages/PackageImage';
 import AvailabilityCalendar from '@/components/booking/AvailabilityCalendar';
 import { useRouter } from 'next/navigation';
@@ -24,7 +25,7 @@ import { SkeletonCard } from '@/components/ui/SkeletonLoader';
 function CremationDashboardPage({ userData }: { userData: any }) {
   const router = useRouter();
   const _userName = userData?.business_name || userData?.first_name || 'Cremation Provider';
-  const [isLoading, setIsLoading] = useState(true);
+  const { isLoading, startLoading, stopLoading } = useLoading();
   const [dashboardData, setDashboardData] = useState<any>({
     stats: [
       { name: 'Total Bookings', value: '0', change: '0%', changeType: 'increase' },
@@ -132,26 +133,20 @@ function CremationDashboardPage({ userData }: { userData: any }) {
         return;
       }
 
-      setIsLoading(true);
+      startLoading('Loading dashboard data...');
       setError(null);
 
       try {
-        // Add minimum loading delay for better UX (same as admin)
-        const minLoadingTime = new Promise(resolve => setTimeout(resolve, 800));
-        
         // Add the required providerId parameter like the original code
         const providerId = userData?.business_id || userData?.provider_id || 999;
         
         // Simplified API call with providerId
-        const dataPromise = fetch(`/api/cremation/dashboard?providerId=${providerId}`, {
+        const response = await fetch(`/api/cremation/dashboard?providerId=${providerId}`, {
           method: 'GET',
           headers: {
             'Cache-Control': 'no-cache'
           }
         });
-
-        // Wait for both the minimum time and the data
-        const [, response] = await Promise.all([minLoadingTime, dataPromise]);
 
         if (!response.ok) {
           throw new Error(`Failed to fetch dashboard data: ${response.status}`);
@@ -183,7 +178,7 @@ function CremationDashboardPage({ userData }: { userData: any }) {
         if (errorMessage.includes('401') || errorMessage.includes('Unauthorized')) {
           const isLoggingOut = typeof window !== 'undefined' && sessionStorage.getItem('is_logging_out') === 'true';
           if (isLoggingOut) {
-            setIsLoading(false);
+            stopLoading();
             return;
           }
         }
@@ -199,17 +194,17 @@ function CremationDashboardPage({ userData }: { userData: any }) {
           ]
         });
       } finally {
-        setIsLoading(false);
+        stopLoading();
       }
     };
 
     fetchDashboardData();
-  }, [userData]); // Add userData as dependency since we use it for providerId
+  }, [userData, startLoading, stopLoading]); // Add userData as dependency since we use it for providerId
 
-  // Check availability tables after initial loading
+  // Check availability tables after initial loading (simplified)
   useEffect(() => {
     const providerId = userData?.business_id || userData?.provider_id;
-    if (!providerId || isLoading) return;
+    if (!providerId) return;
 
     const checkAvailabilityTables = async () => {
       try {
@@ -229,7 +224,7 @@ function CremationDashboardPage({ userData }: { userData: any }) {
     };
 
     checkAvailabilityTables();
-  }, [userData, isLoading]);
+  }, [userData]);
 
   // Handle availability changes (called when calendar data is fetched or updated)
   const handleAvailabilityChange = (_availability: any) => {

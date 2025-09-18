@@ -222,9 +222,9 @@ class ServerCache {
       // Wait for current batch to complete before starting next batch
       await Promise.allSettled(preloadPromises);
       
-      // Small delay between batches to be respectful to routing APIs
+      // Minimal delay between batches to be respectful to routing APIs
       if (i + batchSize < providerCoordsList.length) {
-        await new Promise(resolve => setTimeout(resolve, 100));
+        await new Promise(resolve => setTimeout(resolve, 50));
       }
     }
     

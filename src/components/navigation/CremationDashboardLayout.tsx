@@ -31,21 +31,11 @@ export default function CremationDashboardLayout({
   // Content loading state for skeleton animation only
   const [contentLoading, setContentLoading] = useState(true);
 
-  // Effect to simulate content loading with a short delay
+  // Effect to hide content loading immediately when data is available
   useEffect(() => {
-    let timer: NodeJS.Timeout | null = null;
-
     if (userData) {
-      timer = setTimeout(() => {
-        setContentLoading(false);
-      }, 300);
+      setContentLoading(false);
     }
-
-    return () => {
-      if (timer) {
-        clearTimeout(timer);
-      }
-    };
   }, [userData]);
 
   // Get display name from user data - prioritize user's actual name over business name
