@@ -158,7 +158,9 @@ export async function GET(request: NextRequest) {
           }
           
           // Skip extremely long base64 strings that break Next.js optimization
-          if (img.startsWith('data:image/') && img.length > 100000) {
+          // Increased from 100KB to 1MB to accommodate higher quality images
+          const MAX_IMAGE_SIZE = 1000000; // 1MB in characters
+          if (img.startsWith('data:image/') && img.length > MAX_IMAGE_SIZE) {
             console.warn(`Package ${packageId} has oversized base64 image (${img.length} chars), skipping`);
             return null;
           }
@@ -169,8 +171,9 @@ export async function GET(request: NextRequest) {
           const dataUrl = img.data || null;
           
           if (dataUrl && typeof dataUrl === 'string' && dataUrl.startsWith('data:image/')) {
-            // Skip extremely long base64 strings
-            if (dataUrl.length > 100000) {
+            // Skip extremely long base64 strings - use same limit as above
+            const MAX_IMAGE_SIZE = 1000000; // 1MB in characters
+            if (dataUrl.length > MAX_IMAGE_SIZE) {
               console.warn(`Package ${packageId} has oversized base64 image (${dataUrl.length} chars), skipping`);
               return null;
             }
