@@ -1,4 +1,5 @@
 import mysql from "mysql2/promise";
+import { initializeDatabaseOptimizations } from "./schema";
 
 // Use environment variable for port, fallback to 3306 for MySQL
 export const MYSQL_PORT = parseInt(process.env.DB_PORT || "3306");
@@ -126,7 +127,10 @@ const productionConfig = {
 
 const _finalConfig = process.env.NODE_ENV === "production" ? productionConfig : dbConfig;
 
-type GlobalWithMysql = typeof globalThis & { __rainbowMysqlPool?: mysql.Pool };
+type GlobalWithMysql = typeof globalThis & {
+  __rainbowMysqlPool?: mysql.Pool;
+  __rainbowOptimizationsInitialized?: boolean;
+};
 const globalForMysql = globalThis as unknown as GlobalWithMysql;
 
 let _pool: mysql.Pool;
@@ -189,6 +193,18 @@ export function getPool(): mysql.Pool {
     _pool = cachedPool ?? initPool();
     if (process.env.NODE_ENV !== "production") {
       globalForMysql.__rainbowMysqlPool = _pool;
+    }
+
+    // Initialize database optimizations on first pool creation
+    if (process.env.NODE_ENV !== "production") {
+      // Only initialize once during development
+      if (!globalForMysql.__rainbowOptimizationsInitialized) {
+        initializeDatabaseOptimizations().catch(console.error);
+        globalForMysql.__rainbowOptimizationsInitialized = true;
+      }
+    } else {
+      // Initialize optimizations in production on startup
+      initializeDatabaseOptimizations().catch(console.error);
     }
   }
   return _pool;

@@ -46,6 +46,7 @@ export async function GET(request: NextRequest) {
     const limitInt = Math.max(1, Math.min(100, parseInt(String(limit)) || 10));
     const offsetInt = Math.max(0, parseInt(String(offset)) || 0);
 
+    // Optimized query using composite index (provider_id, created_at) for better performance
     const mainQuery = `
       SELECT
         package_id as id,
@@ -69,7 +70,7 @@ export async function GET(request: NextRequest) {
         updated_at
       FROM service_packages
       ${whereClause}
-      ORDER BY created_at DESC
+      ORDER BY ${providerId ? 'provider_id, created_at DESC' : 'created_at DESC'}
       LIMIT ${Number(limitInt)} OFFSET ${Number(offsetInt)}
     `;
 
