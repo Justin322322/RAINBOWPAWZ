@@ -277,20 +277,28 @@ export async function GET(request: NextRequest) {
 
     // Database fallback from package_data (convert base64 rows to streaming URLs)
     try {
-      for (const pkgId of packageIds) {
-        if (!imagesByPackage[pkgId] || imagesByPackage[pkgId].length === 0) {
-          const dbImgs = (await query(
-            `SELECT id, image_data FROM package_data WHERE package_id = ? ORDER BY display_order ASC LIMIT 12`,
-            [pkgId]
-          )) as Array<{ id: number; image_data: string | null }>;
-          const ids = dbImgs
-            .filter(r => typeof r.image_data === 'string' && r.image_data.startsWith('data:image/'))
-            .map(r => r.id);
-          if (ids.length > 0) {
-            imagesByPackage[pkgId] = ids.map((imgId) => `/api/image/package-data/${imgId}`);
-            console.log(`Package ${pkgId} using ${ids.length} images from package_data via streaming endpoints`);
+      const tableExistsRows = (await query(
+        `SELECT COUNT(*) AS cnt FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'package_data'`
+      )) as Array<{ cnt: number }>;
+      const hasPackageData = Array.isArray(tableExistsRows) && Number(tableExistsRows[0]?.cnt || 0) > 0;
+      if (hasPackageData) {
+        for (const pkgId of packageIds) {
+          if (!imagesByPackage[pkgId] || imagesByPackage[pkgId].length === 0) {
+            const dbImgs = (await query(
+              `SELECT id, image_data FROM package_data WHERE package_id = ? ORDER BY display_order ASC LIMIT 12`,
+              [pkgId]
+            )) as Array<{ id: number; image_data: string | null }>;
+            const ids = dbImgs
+              .filter(r => typeof r.image_data === 'string' && r.image_data.startsWith('data:image/'))
+              .map(r => r.id);
+            if (ids.length > 0) {
+              imagesByPackage[pkgId] = ids.map((imgId) => `/api/image/package-data/${imgId}`);
+              console.log(`Package ${pkgId} using ${ids.length} images from package_data via streaming endpoints`);
+            }
           }
         }
+      } else {
+        console.log('package_data table not found; skipping DB image fallback');
       }
     } catch (dbErr) {
       console.warn('package_data fallback failed:', dbErr);
