@@ -95,6 +95,12 @@ export const ProductionSafeImage: React.FC<ProductionSafeImageProps> = ({
       return imgSrc;
     }
 
+    // If it's a bare filename like "placeholder-pet.png" or "images/foo.png",
+    // try to serve from public by prefixing with '/'
+    if (!imgSrc.startsWith('http') && !imgSrc.startsWith('data:') && !imgSrc.startsWith('/')) {
+      return `/${imgSrc}`;
+    }
+
     // For any other case, use the fallback
     if (process.env.NODE_ENV === 'development') {
       console.warn('Unknown image source format:', imgSrc);
