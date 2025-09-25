@@ -268,6 +268,27 @@ export async function GET(request: NextRequest) {
       }, {});
     }
 
+    // Database fallback from package_data (convert base64 rows to streaming URLs)
+    try {
+      for (const pkgId of packageIds) {
+        if (!imagesByPackage[pkgId] || imagesByPackage[pkgId].length === 0) {
+          const dbImgs = (await query(
+            `SELECT id, image_data FROM package_data WHERE package_id = ? ORDER BY display_order ASC LIMIT 12`,
+            [pkgId]
+          )) as Array<{ id: number; image_data: string | null }>;
+          const ids = dbImgs
+            .filter(r => typeof r.image_data === 'string' && r.image_data.startsWith('data:image/'))
+            .map(r => r.id);
+          if (ids.length > 0) {
+            imagesByPackage[pkgId] = ids.map((imgId) => `/api/image/package-data/${imgId}`);
+            console.log(`Package ${pkgId} using ${ids.length} images from package_data via streaming endpoints`);
+          }
+        }
+      }
+    } catch (dbErr) {
+      console.warn('package_data fallback failed:', dbErr);
+    }
+
     // Filesystem fallback for packages with no valid images
     try {
       const fs = await import('fs');
