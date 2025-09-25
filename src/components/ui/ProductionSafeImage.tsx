@@ -33,18 +33,30 @@ export const ProductionSafeImage: React.FC<ProductionSafeImageProps> = ({
   const [imgSrc, setImgSrc] = useState<string>(src);
   const [error, setError] = useState<boolean>(false);
   const [loaded, setLoaded] = useState<boolean>(false);
+  const [triedInternalFallback, setTriedInternalFallback] = useState<boolean>(false);
 
   // Reset state when src changes
   useEffect(() => {
     setImgSrc(src);
     setError(false);
     setLoaded(false);
+    setTriedInternalFallback(false);
   }, [src]);
 
   // Handle image load error
   const handleError = () => {
     if (process.env.NODE_ENV === 'development') {
       console.warn('Image failed to load:', imgSrc);
+    }
+    // Try a one-time automatic fallback if none was provided or original failed
+    if (!triedInternalFallback) {
+      const fallback = fallbackSrc && fallbackSrc.trim().length > 0 ? fallbackSrc : '/placeholder-pet.png';
+      if (imgSrc !== fallback) {
+        setTriedInternalFallback(true);
+        setImgSrc(fallback);
+        setLoaded(false);
+        return;
+      }
     }
     setError(true);
   };
