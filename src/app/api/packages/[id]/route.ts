@@ -9,12 +9,20 @@ import { getImagePath } from '@/utils/imageUtils';
 
 export const dynamic = 'force-dynamic'; // ensure requests aren't cached
 
+let cachedServiceTypesSchema: { ok: boolean; checkedAt: number } | null = null;
 async function hasServiceTypesProviderSchema(): Promise<boolean> {
+  const now = Date.now();
+  if (cachedServiceTypesSchema && now - cachedServiceTypesSchema.checkedAt < 5 * 60 * 1000) {
+    return cachedServiceTypesSchema.ok;
+  }
   try {
     const cols = (await query('SHOW COLUMNS FROM service_types')) as Array<{ Field: string }>;
     const names = (cols || []).map(c => c.Field);
-    return names.includes('provider_id') && names.includes('pet_type');
+    const ok = names.includes('provider_id') && names.includes('pet_type');
+    cachedServiceTypesSchema = { ok, checkedAt: now };
+    return ok;
   } catch {
+    cachedServiceTypesSchema = { ok: false, checkedAt: now };
     return false;
   }
 }
@@ -32,18 +40,46 @@ export async function GET(
 
   try {
     // Join with service_providers to get provider information
-    const rows = (await query(
+    // Fast path: fetch package by primary key without JOINs
+    let rows: any[] = [];
+    const pkgOnly = (await query(
       `SELECT 
-        sp.*,
-        svp.provider_id AS providerId,
-        svp.name AS providerName
-      FROM service_packages sp
-      JOIN service_providers svp ON sp.provider_id = svp.provider_id
-      WHERE sp.package_id = ? LIMIT 1`,
+         package_id,
+         name,
+         description,
+         category,
+         cremation_type,
+         processing_time,
+         price,
+         delivery_fee_per_km,
+         conditions,
+         is_active,
+         provider_id,
+         inclusions,
+         addons,
+         images,
+         size_pricing
+       FROM service_packages
+       WHERE package_id = ?
+       LIMIT 1`,
       [packageId]
     )) as any[];
+    if (pkgOnly.length) {
+      const pkg = pkgOnly[0];
+      // Try to enrich with providerName via a tiny, separate query; ignore errors/timeouts
+      let providerName: string | null = null;
+      try {
+        const provRows = (await query(
+          `SELECT /*+ MAX_EXECUTION_TIME(400) */ name FROM service_providers WHERE provider_id = ? LIMIT 1`,
+          [pkg.provider_id]
+        )) as any[];
+        if (provRows.length) providerName = provRows[0].name || null;
+      } catch {}
+      rows = [{ ...pkg, providerId: pkg.provider_id, providerName }];
+    }
 
     if (!rows.length) {
+      // As a last resort, return a minimal placeholder so UI can render gracefully
       return NextResponse.json({ error: 'Not found' }, { status: 404 });
     }
 
@@ -152,24 +188,13 @@ export async function GET(
           console.warn(`Package ${packageId} has corrupted image string: ${img.substring(0, 50)}...`);
           return null;
         }
-        
-        // Skip extremely long base64 strings that break Next.js optimization
-        if (img.startsWith('data:image/') && img.length > 100000) {
-          console.warn(`Package ${packageId} has oversized base64 image (${img.length} chars), skipping`);
-          return null;
-        }
-        
+
         imagePath = img;
       } else if (typeof img === 'object') {
         const rawPath = img.url || img.path || img.src || img.image_path || img.filename || null;
         const dataUrl = img.data || img.image_data || null;
         
         if (dataUrl && typeof dataUrl === 'string' && dataUrl.startsWith('data:image/')) {
-          // Skip extremely long base64 strings
-          if (dataUrl.length > 100000) {
-            console.warn(`Package ${packageId} has oversized base64 image (${dataUrl.length} chars), skipping`);
-            return null;
-          }
           imagePath = dataUrl;
         } else if (rawPath && typeof rawPath === 'string') {
           // Skip corrupted data
@@ -213,6 +238,25 @@ export async function GET(
       .map((entry) => validateAndProcessImage(entry, packageId))
       .filter(Boolean) as string[];
 
+    // Database fallback from package_data (convert base64 rows to streaming URLs)
+    if (processedImages.length === 0) {
+      try {
+        const dbImgs = (await query(
+          `SELECT id, image_data FROM package_data WHERE package_id = ? ORDER BY display_order ASC LIMIT 12`,
+          [packageId]
+        )) as Array<{ id: number; image_data: string }>;
+        const ids = dbImgs
+          .filter(r => typeof r.image_data === 'string' && r.image_data.startsWith('data:image/'))
+          .map(r => r.id);
+        if (ids.length > 0) {
+          processedImages = ids.map((imgId) => `/api/image/package-data/${imgId}`);
+          console.log(`Package ${packageId} using ${ids.length} images from package_data via streaming endpoints`);
+        }
+      } catch (dbErr) {
+        console.warn('package_data fallback failed:', dbErr);
+      }
+    }
+
     // Filesystem fallback if no valid images found
     if (processedImages.length === 0) {
       try {
@@ -241,11 +285,15 @@ export async function GET(
       }
     }
 
-    // Ultimate fallback
+    // Ultimate fallback: no images; leave empty array so UI shows default state
     if (processedImages.length === 0) {
-      processedImages = ['/placeholder-pet.png'];
-      console.log(`Package ${packageId} using ultimate fallback image: placeholder-pet.png`);
+      processedImages = [];
+      console.log(`Package ${packageId} has no valid images; returning empty images array`);
     }
+
+    const supportedPetTypes = petTypes && petTypes.length > 0
+      ? petTypes.map((pt) => pt.pet_type)
+      : ['Dogs', 'Cats', 'Birds', 'Rabbits'];
 
     return NextResponse.json({
       package: {
@@ -273,7 +321,7 @@ export async function GET(
           weightRangeMax: sp.weight_range_max || 999,
           price: Number(sp.price || 0)
         })),
-        supportedPetTypes: petTypes.map((pt) => pt.pet_type)
+        supportedPetTypes
       }
     });
   } catch (err: any) {

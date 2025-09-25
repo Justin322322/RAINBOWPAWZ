@@ -80,6 +80,10 @@ export async function GET() {
     if (serviceProviderColumns.includes('city')) selectFields.push('sp.city');
     if (serviceProviderColumns.includes('zip')) selectFields.push('sp.zip');
     if (serviceProviderColumns.includes('service_description')) selectFields.push('sp.service_description');    // Handle status field - in the updated schema we only have application_status
+    // Include provider contact name/email if present for better owner fallback
+    if (serviceProviderColumns.includes('contact_first_name')) selectFields.push('sp.contact_first_name');
+    if (serviceProviderColumns.includes('contact_last_name')) selectFields.push('sp.contact_last_name');
+    if (serviceProviderColumns.includes('contact_email')) selectFields.push('sp.contact_email');
     if (serviceProviderColumns.includes('application_status')) {
       selectFields.push('sp.application_status');
     } else {
@@ -219,13 +223,24 @@ export async function GET() {
 
       const address = addressParts.length > 0 ? addressParts.join(', ') : 'No address provided';
 
+      // Determine owner with robust fallbacks
+      const ownerFromUser = (app.owner || '').trim();
+      const ownerFromProvider = [app.contact_first_name, app.contact_last_name]
+        .filter((p: string | undefined) => typeof p === 'string' && p.trim().length > 0)
+        .join(' ')
+        .trim();
+      const resolvedOwner = ownerFromUser || ownerFromProvider || 'Unknown Owner';
+
+      // Determine contact email fallback
+      const resolvedEmail = (app.email || app.contact_email || '').trim();
+
       // Return formatted application
       return {
         id: app.provider_id || '0',
         businessId: app.provider_id || '0',
         businessName: app.business_name || 'Unnamed Business',
-        owner: app.owner || 'Unknown Owner',
-        email: app.email || '',
+        owner: resolvedOwner,
+        email: resolvedEmail,
         address,
         submitDate,
         status: app.application_status || 'pending',

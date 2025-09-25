@@ -26,7 +26,7 @@ export const ProductionSafeImage: React.FC<ProductionSafeImageProps> = ({
   className = '',
   width,
   height,
-  fallbackSrc = '/bg_4.png',
+  fallbackSrc = '',
   priority = false,
   fill = false,
 }) => {
@@ -46,13 +46,7 @@ export const ProductionSafeImage: React.FC<ProductionSafeImageProps> = ({
     if (process.env.NODE_ENV === 'development') {
       console.warn('Image failed to load:', imgSrc);
     }
-    if (imgSrc !== fallbackSrc) {
-      if (process.env.NODE_ENV === 'development') {
-        console.log('Falling back to:', fallbackSrc);
-      }
-      setImgSrc(fallbackSrc);
-      setError(true);
-    }
+    setError(true);
   };
 
   // Determine the final source URL
@@ -120,6 +114,17 @@ export const ProductionSafeImage: React.FC<ProductionSafeImageProps> = ({
     console.log('ProductionSafeImage - Is API path:', imgSrc.startsWith('/api/'));
   }
 
+  // If the image errored or there is no usable src, render an inline SVG placeholder
+  if (error || !finalSrc || finalSrc === '/') {
+    return (
+      <div className={`flex items-center justify-center bg-gray-100 text-gray-400 ${fill ? 'w-full h-full' : ''} ${className}`} style={!fill ? { width: width || 400, height: height || 300 } : undefined}>
+        <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+        </svg>
+      </div>
+    );
+  }
+
   // Use Next.js Image component for better optimization
   return fill ? (
     <Image
@@ -127,7 +132,7 @@ export const ProductionSafeImage: React.FC<ProductionSafeImageProps> = ({
       alt={alt}
       fill
       className={`${className} ${loaded ? 'opacity-100' : 'opacity-0'} transition-opacity duration-300`}
-      onError={handleError}
+      onError={error ? undefined : handleError}
       onLoad={() => setLoaded(true)}
       priority={priority}
       unoptimized={finalSrc.startsWith('data:')} // Disable optimization for base64 data URLs
@@ -139,7 +144,7 @@ export const ProductionSafeImage: React.FC<ProductionSafeImageProps> = ({
       width={width || 400}
       height={height || 300}
       className={`${className} ${loaded ? 'opacity-100' : 'opacity-0'} transition-opacity duration-300`}
-      onError={handleError}
+      onError={error ? undefined : handleError}
       onLoad={() => setLoaded(true)}
       priority={priority}
       unoptimized={finalSrc.startsWith('data:')} // Disable optimization for base64 data URLs
