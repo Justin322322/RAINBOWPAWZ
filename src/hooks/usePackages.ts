@@ -50,7 +50,22 @@ export function usePackages({ userData }: UsePackagesProps) {
 
       const data = await response.json();
 
-      // Process the packages to ensure add-ons are properly formatted
+      // Helper: normalize image paths similar to Edit Package modal
+      const normalizeImagePath = (imagePath: string): string => {
+        if (!imagePath || typeof imagePath !== 'string') return '';
+        if (imagePath.startsWith('/api/image/')) return imagePath;
+        if (imagePath.startsWith('data:image/')) return imagePath;
+        if (imagePath.startsWith('/uploads/')) {
+          const uploadPath = imagePath.substring('/uploads/'.length);
+          return `/api/image/${uploadPath}`;
+        }
+        if (!imagePath.startsWith('/') && !imagePath.startsWith('http')) {
+          return `/${imagePath}`;
+        }
+        return imagePath;
+      };
+
+      // Process the packages to ensure add-ons and images are properly formatted
       const processedPackages = (data.packages || []).map((pkg: any) => {
         // Process add-ons to ensure they're in the correct format
         let processedAddOns = [];
@@ -85,9 +100,18 @@ export function usePackages({ userData }: UsePackagesProps) {
           });
         }
 
+        // Normalize images array
+        const normalizedImages = Array.isArray(pkg.images)
+          ? pkg.images
+              .map((img: any) => (typeof img === 'string' ? img : ''))
+              .map((p: string) => normalizeImagePath(p))
+              .filter((p: string) => !!p)
+          : [];
+
         return {
           ...pkg,
-          addOns: processedAddOns
+          addOns: processedAddOns,
+          images: normalizedImages,
         };
       });
 
