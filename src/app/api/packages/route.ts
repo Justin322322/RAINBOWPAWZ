@@ -261,8 +261,15 @@ export async function GET(request: NextRequest) {
         if (resolvedImages.length > 0) {
           acc[id] = resolvedImages;
         } else {
-          // If no valid images found, try to find filesystem images as fallback
-          console.log(`Package ${id} has no valid images, checking filesystem fallback...`);
+          // If we had base64 images but skipped due to size or validation, expose via streaming endpoint
+          const hadBase64 = Array.isArray(images) && images.some((im: any) => typeof im === 'string' && im.startsWith('data:image/'));
+          if (hadBase64) {
+            acc[id] = [`/api/image/packages/package_${id}_0.png`];
+            console.log(`Package ${id} exposing base64 via streaming endpoint /api/image/packages/package_${id}_0.png`);
+          } else {
+            // If no valid images found, try to find filesystem images as fallback
+            console.log(`Package ${id} has no valid images, checking filesystem fallback...`);
+          }
         }
         return acc;
       }, {});
