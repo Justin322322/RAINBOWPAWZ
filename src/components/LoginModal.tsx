@@ -3,7 +3,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Modal } from '@/components/ui/Modal';
-import { Input, Button, Checkbox, Alert } from '@/components/ui';
+import { Input, Button, Alert } from '@/components/ui';
 import { EyeIcon, EyeSlashIcon, ArrowRightIcon, XMarkIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
 import ForgotPasswordModal from './ForgotPasswordModal';
 import { redirectToDashboard } from '@/utils/auth';
@@ -252,14 +252,7 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onShowSignup }
                   }
                 />
 
-                <div className="flex items-center justify-between">
-                  <Checkbox
-                    id="remember-me"
-                    name="remember-me"
-                    label="Remember me"
-                    labelClassName="font-normal text-gray-600"
-                    checkboxSize="md"
-                  />
+                <div className="text-left">
                   <Button
                     type="button"
                     variant="link"
