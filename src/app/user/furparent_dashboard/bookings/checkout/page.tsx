@@ -1302,7 +1302,7 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
 
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Weight (kg) {bookingData?.package?.pricePerKg > 0 && <span className="text-red-500">*</span>}
+                            Weight (kg) {(bookingData?.package?.pricePerKg > 0 || bookingData?.package?.pricingMode === 'by_size') && <span className="text-red-500">*</span>}
                           </label>
                           <input
                             type="number"
@@ -1336,38 +1336,9 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
                             <p className="mt-1 text-sm text-red-600">{validationErrors.petWeight}</p>
                           )}
                           {bookingData?.package?.pricingMode === 'by_size' && (
-                            <div className="mt-2 text-sm">
-                              {!petWeight || isNaN(parseFloat(petWeight)) ? (
-                                <div className="space-y-3">
-                                  <p className="text-blue-600 bg-blue-50 p-2 rounded">
-                                    <strong>Note:</strong> This package uses pricing by pet size. Pet weight is required to determine the tier and any overage.
-                                  </p>
-                                  <div className="bg-gray-50 p-3 rounded border">
-                                    <h4 className="font-medium text-gray-800 mb-2">Pricing Tiers:</h4>
-                                    <div className="space-y-1">
-                                      {Array.isArray(bookingData.package.sizePricing) && bookingData.package.sizePricing.map((tier: any, index: number) => (
-                                        <div key={index} className="flex justify-between text-sm">
-                                          <span className="text-gray-600">
-                                            {tier.sizeCategory} ({tier.weightRangeMin}-{tier.weightRangeMax || '∞'}kg)
-                                          </span>
-                                          <span className="font-medium">₱{Number(tier.price).toLocaleString()}</span>
-                                        </div>
-                                      ))}
-                                      {Number(bookingData.package.overageFeePerKg || 0) > 0 && (
-                                        <div className="flex justify-between text-sm text-gray-500 border-t pt-1 mt-1">
-                                          <span>Overage per kg</span>
-                                          <span>₱{Number(bookingData.package.overageFeePerKg).toLocaleString()}</span>
-                                        </div>
-                                      )}
-                                    </div>
-                                  </div>
-                                </div>
-                              ) : (
-                                <p className="text-gray-600">
-                                  The final price will be based on the size tier and any per-kg overage beyond the selected tier.
-                                </p>
-                              )}
-                            </div>
+                            <p className="mt-2 text-sm text-gray-600">
+                              This package uses weight-based pricing. See the pricing breakdown in the Order Summary.
+                            </p>
                           )}
                         </div>
 
@@ -1860,7 +1831,7 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
                       </div>
                     )}
 
-                    {bookingData?.package?.pricingMode === 'by_size' && petWeight && !isNaN(parseFloat(petWeight)) && (() => {
+                    {bookingData?.package?.pricingMode === 'by_size' && (petWeight && !isNaN(parseFloat(petWeight)) ? (() => {
                       const weight = parseFloat(petWeight);
                       const tiers = Array.isArray(bookingData.package.sizePricing) ? bookingData.package.sizePricing : [];
                       const overage = Number(bookingData.package.overageFeePerKg || 0);
@@ -1918,7 +1889,17 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
                           )}
                         </div>
                       );
-                    })()}
+                    })() : (
+                      <div className="flex justify-between items-center py-2 px-3 bg-yellow-50 border border-yellow-200 rounded-md">
+                        <div className="flex items-center">
+                          <svg className="h-4 w-4 text-yellow-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                          </svg>
+                          <span className="text-yellow-800 text-sm font-medium">Weight required for pricing</span>
+                        </div>
+                        <span className="text-yellow-600 text-sm">Enter weight above</span>
+                      </div>
+                    ))}
 
                     {deliveryOption === 'delivery' && deliveryFee > 0 && (
                       <div className="flex justify-between">

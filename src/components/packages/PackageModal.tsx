@@ -890,27 +890,51 @@ const PackageModal: React.FC<PackageModalProps> = ({
                         <div className="space-y-4">
                           <h4 className="text-sm font-medium text-gray-700">Size Tier Prices</h4>
                           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                            {formData.sizePricing.map((sp, idx) => (
-                              <div key={idx} className="border rounded-md p-4">
-                                <div className="text-sm font-medium text-gray-800 mb-2">{sp.sizeCategory}</div>
-                                <input
-                                  type="number"
-                                  min="0"
-                                  step="any"
-                                  value={sp.price === 0 ? '' : sp.price}
-                                  onChange={(e) => {
-                                    const val = parseFloat(e.target.value) || 0;
-                                    setFormData((prev) => {
-                                      const next = [...prev.sizePricing];
-                                      next[idx] = { ...next[idx], price: val };
-                                      return { ...prev, sizePricing: next };
-                                    });
-                                  }}
-                                  className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)] text-sm"
-                                  placeholder="₱ Price (per tier)"
-                                />
-                              </div>
-                            ))}
+                            {formData.sizePricing.map((sp, idx) => {
+                              // Extract weight range from sizeCategory or use weightRangeMin/Max
+                              const getWeightRange = () => {
+                                if (sp.sizeCategory && sp.sizeCategory.includes('kg')) {
+                                  return sp.sizeCategory;
+                                }
+                                if (sp.weightRangeMin !== undefined && sp.weightRangeMax !== null) {
+                                  return `${sp.weightRangeMin}–${sp.weightRangeMax} kg`;
+                                } else if (sp.weightRangeMin !== undefined) {
+                                  return `${sp.weightRangeMin}+ kg`;
+                                }
+                                return sp.sizeCategory || 'Unknown weight range';
+                              };
+                              
+                              const weightRange = getWeightRange();
+                              
+                              return (
+                                <div key={idx} className="border rounded-md p-4">
+                                  <div className="text-sm font-medium text-gray-800 mb-2">{weightRange}</div>
+                                  <label htmlFor={`size-price-${idx}`} className="block text-xs text-gray-600 mb-1">
+                                    Price for this weight range
+                                  </label>
+                                  <div className="flex items-center border border-gray-300 rounded-md shadow-sm px-3 py-2 focus-within:ring-1 focus-within:ring-[var(--primary-green)] focus-within:border-[var(--primary-green)]">
+                                    <span className="text-gray-500 mr-1">₱</span>
+                                    <input
+                                      id={`size-price-${idx}`}
+                                      type="number"
+                                      min="0"
+                                      step="any"
+                                      value={sp.price === 0 ? '' : sp.price}
+                                      onChange={(e) => {
+                                        const val = parseFloat(e.target.value) || 0;
+                                        setFormData((prev) => {
+                                          const next = [...prev.sizePricing];
+                                          next[idx] = { ...next[idx], price: val };
+                                          return { ...prev, sizePricing: next };
+                                        });
+                                      }}
+                                      className="w-full focus:outline-none text-sm"
+                                      placeholder="0"
+                                    />
+                                  </div>
+                                </div>
+                              );
+                            })}
                           </div>
 
                           <div className="pt-2">

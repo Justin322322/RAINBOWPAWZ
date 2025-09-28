@@ -51,6 +51,8 @@ export async function GET(
          cremation_type,
          processing_time,
          price,
+         pricing_mode,
+         overage_fee_per_kg,
          delivery_fee_per_km,
          conditions,
          is_active,
@@ -316,9 +318,9 @@ export async function GET(
         images: processedImages,
         // New enhanced features
         sizePricing: sizePricing.map((sp) => ({
-          sizeCategory: sp.pet_size || sp.size_category,
-          weightRangeMin: sp.weight_range_min || 0,
-          weightRangeMax: sp.weight_range_max || 999,
+          sizeCategory: sp.sizeCategory || sp.pet_size || sp.size_category,
+          weightRangeMin: sp.weightRangeMin || sp.weight_range_min || 0,
+          weightRangeMax: sp.weightRangeMax !== undefined ? sp.weightRangeMax : (sp.weight_range_max !== undefined ? sp.weight_range_max : null),
           price: Number(sp.price || 0)
         })),
         supportedPetTypes
