@@ -447,7 +447,7 @@ export async function PATCH(
         ) as any;
         // Update size pricing as JSON
         let sizePricingJson = null;
-        if (Array.isArray(body.sizePricing) && body.sizePricing.length > 0) {
+        if (body.sizePricing && Array.isArray(body.sizePricing) && body.sizePricing.length > 0) {
           const normalizeSizeCategory = (val: string): string => {
             const v = (val || '').toLowerCase();
             if (v.includes('extra')) return 'extra_large';
@@ -472,10 +472,15 @@ export async function PATCH(
         }
 
         // Update size pricing in the JSON column
-        await transaction.query(
-          'UPDATE service_packages SET size_pricing = ? WHERE package_id = ?',
-          [sizePricingJson, packageId]
-        );
+        try {
+          await transaction.query(
+            'UPDATE service_packages SET size_pricing = ? WHERE package_id = ?',
+            [sizePricingJson, packageId]
+          );
+        } catch (error) {
+          console.error('Error updating size pricing:', error);
+          throw error;
+        }
 
         if (updateResult.affectedRows === 0) {
           throw new Error('Package not found or no changes made');

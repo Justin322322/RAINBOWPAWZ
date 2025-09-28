@@ -481,7 +481,7 @@ export async function POST(request: NextRequest) {
       deliveryFeePerKm = 0,
       pricingMode = 'fixed',
       overageFeePerKg = 0,
-      sizePricing = [],
+      sizePricing,
       conditions = '',
       inclusions = [],
       addOns = [],
@@ -550,7 +550,7 @@ export async function POST(request: NextRequest) {
       const packageId = pkgRes.insertId as number;
 
       // Store size-based pricing in JSON column if provided
-      if (Array.isArray(sizePricing) && sizePricing.length > 0) {
+      if (sizePricing && Array.isArray(sizePricing) && sizePricing.length > 0) {
         const normalizeSizeCategory = (val: string): string => {
           const v = (val || '').toLowerCase();
           if (v.includes('extra')) return 'extra_large';
@@ -579,7 +579,7 @@ export async function POST(request: NextRequest) {
               [JSON.stringify(processedSizePricing), packageId]
             );
           } catch (e: any) {
-            console.warn('Failed to store size pricing in JSON column:', e);
+            console.error('Failed to store size pricing in JSON column:', e);
             // Continue without size pricing if JSON column doesn't exist
           }
         }
