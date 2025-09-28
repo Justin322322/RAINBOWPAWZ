@@ -893,15 +893,43 @@ const PackageModal: React.FC<PackageModalProps> = ({
                             {formData.sizePricing.map((sp, idx) => {
                               // Extract weight range from sizeCategory or use weightRangeMin/Max
                               const getWeightRange = () => {
-                                if (sp.sizeCategory && sp.sizeCategory.includes('kg')) {
+                                // If sizeCategory already has proper format (e.g., "Small (0–10 kg)"), use it
+                                if (sp.sizeCategory && sp.sizeCategory.includes('(') && sp.sizeCategory.includes('kg')) {
                                   return sp.sizeCategory;
                                 }
-                                if (sp.weightRangeMin !== undefined && sp.weightRangeMax !== null) {
-                                  return `${sp.weightRangeMin}–${sp.weightRangeMax} kg`;
-                                } else if (sp.weightRangeMin !== undefined) {
-                                  return `${sp.weightRangeMin}+ kg`;
+                                
+                                // Generate proper tier name based on weight ranges
+                                const min = sp.weightRangeMin !== undefined ? sp.weightRangeMin : 0;
+                                const max = sp.weightRangeMax !== undefined ? sp.weightRangeMax : null;
+                                
+                                let tierName = '';
+                                let weightRange = '';
+                                
+                                // Determine tier name based on weight ranges
+                                if (min === 0 && max === 10) {
+                                  tierName = 'Small';
+                                } else if (min === 11 && max === 25) {
+                                  tierName = 'Medium';
+                                } else if (min === 26 && max === 40) {
+                                  tierName = 'Large';
+                                } else if (min === 41 && max === null) {
+                                  tierName = 'Extra Large';
+                                } else {
+                                  // Fallback for custom ranges
+                                  if (min <= 10) tierName = 'Small';
+                                  else if (min <= 25) tierName = 'Medium';
+                                  else if (min <= 40) tierName = 'Large';
+                                  else tierName = 'Extra Large';
                                 }
-                                return sp.sizeCategory || 'Unknown weight range';
+                                
+                                // Generate weight range string
+                                if (max !== null) {
+                                  weightRange = `${min}–${max} kg`;
+                                } else {
+                                  weightRange = `${min}+ kg`;
+                                }
+                                
+                                return `${tierName} (${weightRange})`;
                               };
                               
                               const weightRange = getWeightRange();

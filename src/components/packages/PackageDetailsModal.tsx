@@ -105,7 +105,14 @@ export const PackageDetailsModal: React.FC<PackageDetailsModalProps> = ({
                   </span>
                   <div>
                     <p className="text-xs text-emerald-900/80">Price</p>
-                    <p className="text-2xl font-bold text-emerald-900">₱{formatPrice(pkg.price)}</p>
+                    {pkg.pricingMode === 'by_size' ? (
+                      <div>
+                        <p className="text-lg font-bold text-blue-600">Weight-Based Pricing</p>
+                        <p className="text-xs text-blue-600">See tiers below</p>
+                      </div>
+                    ) : (
+                      <p className="text-2xl font-bold text-emerald-900">₱{formatPrice(pkg.price)}</p>
+                    )}
                   </div>
                 </div>
                 <Badge variant="info" size="sm" icon={<ClockIcon className="h-4 w-4" />}>{pkg.processingTime}</Badge>
@@ -143,6 +150,73 @@ export const PackageDetailsModal: React.FC<PackageDetailsModalProps> = ({
               </button>
             )}
           </div>
+
+          {/* Weight-based pricing details */}
+          {pkg.pricingMode === 'by_size' && pkg.sizePricing && Array.isArray(pkg.sizePricing) && pkg.sizePricing.length > 0 && (
+            <div className="rounded-lg border border-blue-200 bg-blue-50 p-4">
+              <SectionHeader icon={<CurrencyDollarIcon className="h-5 w-5 text-blue-600" />} title="Weight-Based Pricing" />
+              <div className="space-y-3">
+                {pkg.sizePricing.map((tier: any, index: number) => (
+                  <div key={index} className="flex items-center justify-between p-3 bg-white rounded-lg border border-blue-200">
+                    <div className="flex items-center">
+                      <span className="text-blue-600 text-sm mr-2">📏</span>
+                      <span className="text-gray-700">
+                        {(() => {
+                          // Generate proper tier name based on weight ranges
+                          const min = tier.weightRangeMin !== undefined ? tier.weightRangeMin : 0;
+                          const max = tier.weightRangeMax !== undefined ? tier.weightRangeMax : null;
+                          
+                          let tierName = '';
+                          
+                          // Determine tier name based on weight ranges
+                          if (min === 0 && max === 10) {
+                            tierName = 'Small';
+                          } else if (min === 11 && max === 25) {
+                            tierName = 'Medium';
+                          } else if (min === 26 && max === 40) {
+                            tierName = 'Large';
+                          } else if (min === 41 && max === null) {
+                            tierName = 'Extra Large';
+                          } else {
+                            // Fallback for custom ranges
+                            if (min <= 10) tierName = 'Small';
+                            else if (min <= 25) tierName = 'Medium';
+                            else if (min <= 40) tierName = 'Large';
+                            else tierName = 'Extra Large';
+                          }
+                          
+                          // Generate weight range string
+                          const weightRange = max !== null ? `${min}-${max}kg` : `${min}+kg`;
+                          
+                          return `${tierName} (${weightRange})`;
+                        })()}
+                      </span>
+                    </div>
+                    <span className="text-lg font-bold text-blue-700 bg-blue-100 px-3 py-1 rounded">
+                      ₱{formatPrice(Number(tier.price))}
+                    </span>
+                  </div>
+                ))}
+                {Number(pkg.overageFeePerKg || 0) > 0 && (
+                  <div className="flex items-center justify-between p-3 bg-orange-50 rounded-lg border border-orange-200">
+                    <div className="flex items-center">
+                      <span className="text-orange-600 text-sm mr-2">⚖️</span>
+                      <span className="text-gray-700">Overage fee per kg (if pet exceeds selected tier)</span>
+                    </div>
+                    <span className="text-sm font-bold text-orange-700 bg-orange-100 px-3 py-1 rounded">
+                      ₱{formatPrice(Number(pkg.overageFeePerKg))}/kg
+                    </span>
+                  </div>
+                )}
+              </div>
+              <div className="mt-3 p-2 bg-blue-100 rounded-md">
+                <p className="text-xs text-blue-800">
+                  <strong>How it works:</strong> Select the weight tier that matches your pet's weight. 
+                  If your pet exceeds the maximum weight for the selected tier, additional overage fees may apply.
+                </p>
+              </div>
+            </div>
+          )}
 
           {pkg.inclusions && pkg.inclusions.length > 0 && (
             <div className="rounded-lg border border-green-200 bg-green-50 p-4">

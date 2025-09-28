@@ -1063,7 +1063,13 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
     let base = 0;
     if (tier) {
       base = Number(tier.price) || 0;
+      // Check if pet exceeds this tier's maximum weight
+      const tierMax = tier.weightRangeMax == null ? Infinity : Number(tier.weightRangeMax);
+      if (weight > tierMax && isFinite(tierMax) && overage > 0) {
+        base += (weight - tierMax) * overage;
+      }
     } else {
+      // Pet weight exceeds all tiers - use highest tier as base and calculate overage
       const sorted = [...tiers].sort((a: any, b: any) => Number(a.weightRangeMin) - Number(b.weightRangeMin));
       const last = sorted[sorted.length - 1];
       if (last) {
@@ -1821,6 +1827,62 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
                       <span className="text-[var(--primary-green)] mr-2">✓</span>
                       {bookingData.package.category} • {bookingData.package.processingTime}
                     </div>
+                    
+                    {/* Show pricing information for size-based packages */}
+                    {bookingData?.package?.pricingMode === 'by_size' && (
+                      <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-md">
+                        <div className="flex items-center mb-2">
+                          <svg className="h-4 w-4 text-blue-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                          <span className="text-sm font-medium text-blue-800">Weight-Based Pricing</span>
+                        </div>
+                        <div className="space-y-1">
+                          {Array.isArray(bookingData.package.sizePricing) && bookingData.package.sizePricing.map((tier: any, index: number) => (
+                            <div key={index} className="flex justify-between text-xs">
+                              <span className="text-blue-700">
+                                {(() => {
+                                  // Generate proper tier name based on weight ranges
+                                  const min = tier.weightRangeMin !== undefined ? tier.weightRangeMin : 0;
+                                  const max = tier.weightRangeMax !== undefined ? tier.weightRangeMax : null;
+                                  
+                                  let tierName = '';
+                                  
+                                  // Determine tier name based on weight ranges
+                                  if (min === 0 && max === 10) {
+                                    tierName = 'Small';
+                                  } else if (min === 11 && max === 25) {
+                                    tierName = 'Medium';
+                                  } else if (min === 26 && max === 40) {
+                                    tierName = 'Large';
+                                  } else if (min === 41 && max === null) {
+                                    tierName = 'Extra Large';
+                                  } else {
+                                    // Fallback for custom ranges
+                                    if (min <= 10) tierName = 'Small';
+                                    else if (min <= 25) tierName = 'Medium';
+                                    else if (min <= 40) tierName = 'Large';
+                                    else tierName = 'Extra Large';
+                                  }
+                                  
+                                  // Generate weight range string
+                                  const weightRange = max !== null ? `${min}-${max}kg` : `${min}+kg`;
+                                  
+                                  return `${tierName} (${weightRange})`;
+                                })()}
+                              </span>
+                              <span className="font-medium text-blue-800">₱{Number(tier.price).toLocaleString()}</span>
+                            </div>
+                          ))}
+                          {Number(bookingData.package.overageFeePerKg || 0) > 0 && (
+                            <div className="flex justify-between text-xs text-blue-600 border-t border-blue-200 pt-1 mt-1">
+                              <span>Overage per kg</span>
+                              <span>₱{Number(bookingData.package.overageFeePerKg).toLocaleString()}</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   <div className="space-y-3 mb-6">
@@ -1850,7 +1912,25 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
                       
                       if (tier) {
                         basePrice = Number(tier.price) || 0;
-                        tierName = tier.sizeCategory || 'Selected Tier';
+                        // Generate proper tier name
+                        const min = tier.weightRangeMin !== undefined ? tier.weightRangeMin : 0;
+                        const max = tier.weightRangeMax !== undefined ? tier.weightRangeMax : null;
+                        
+                        let tierName = '';
+                        if (min === 0 && max === 10) {
+                          tierName = 'Small';
+                        } else if (min === 11 && max === 25) {
+                          tierName = 'Medium';
+                        } else if (min === 26 && max === 40) {
+                          tierName = 'Large';
+                        } else if (min === 41 && max === null) {
+                          tierName = 'Extra Large';
+                        } else {
+                          if (min <= 10) tierName = 'Small';
+                          else if (min <= 25) tierName = 'Medium';
+                          else if (min <= 40) tierName = 'Large';
+                          else tierName = 'Extra Large';
+                        }
                         const tierMax = tier.weightRangeMax == null ? Infinity : Number(tier.weightRangeMax);
                         if (weight > tierMax && isFinite(tierMax) && overage > 0) {
                           overagePrice = (weight - tierMax) * overage;
@@ -1862,7 +1942,25 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
                         const last = sorted[sorted.length - 1];
                         if (last) {
                           basePrice = Number(last.price) || 0;
-                          tierName = last.sizeCategory || 'Base Tier';
+                          // Generate proper tier name for highest tier
+                          const min = last.weightRangeMin !== undefined ? last.weightRangeMin : 0;
+                          const max = last.weightRangeMax !== undefined ? last.weightRangeMax : null;
+                          
+                          let tierName = '';
+                          if (min === 0 && max === 10) {
+                            tierName = 'Small';
+                          } else if (min === 11 && max === 25) {
+                            tierName = 'Medium';
+                          } else if (min === 26 && max === 40) {
+                            tierName = 'Large';
+                          } else if (min === 41 && max === null) {
+                            tierName = 'Extra Large';
+                          } else {
+                            if (min <= 10) tierName = 'Small';
+                            else if (min <= 25) tierName = 'Medium';
+                            else if (min <= 40) tierName = 'Large';
+                            else tierName = 'Extra Large';
+                          }
                           const lastMax = last.weightRangeMax == null ? Infinity : Number(last.weightRangeMax);
                           if (weight > lastMax && isFinite(lastMax) && overage > 0) {
                             overagePrice = (weight - lastMax) * overage;
@@ -1875,7 +1973,7 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
                         <div className="space-y-2">
                           <div className="flex justify-between">
                             <span className="text-gray-600">
-                              {tierName} ({weight.toFixed(1)}kg)
+                              {tierName.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())} ({weight.toFixed(1)}kg)
                             </span>
                             <span className="font-medium">₱{basePrice.toLocaleString()}</span>
                           </div>
@@ -1897,7 +1995,6 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
                           </svg>
                           <span className="text-yellow-800 text-sm font-medium">Weight required for pricing</span>
                         </div>
-                        <span className="text-yellow-600 text-sm">Enter weight above</span>
                       </div>
                     ))}
 

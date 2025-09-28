@@ -72,7 +72,14 @@ const PackageCard = React.memo<{
       <div className="p-5 xs:p-4 sm:p-4">
         <div className="flex justify-between mb-2">
           <h3 className="text-lg font-medium text-gray-800">{pkg.name}</h3>
-          <span className="text-lg font-semibold text-gray-800">₱{formatPrice(pkg.price)}</span>
+          {pkg.pricingMode === 'by_size' ? (
+            <div className="text-right">
+              <div className="text-sm text-blue-600 font-medium">Weight-Based</div>
+              <div className="text-xs text-gray-500">See details</div>
+            </div>
+          ) : (
+            <span className="text-lg font-semibold text-gray-800">₱{formatPrice(pkg.price)}</span>
+          )}
         </div>
 
         {/* Category and Cremation Type */}
@@ -90,6 +97,36 @@ const PackageCard = React.memo<{
 
         {/* Description */}
         <p className="text-sm text-gray-600 mb-3 line-clamp-2">{pkg.description}</p>
+
+        {/* Weight-based pricing info */}
+        {pkg.pricingMode === 'by_size' && pkg.sizePricing && Array.isArray(pkg.sizePricing) && pkg.sizePricing.length > 0 && (
+          <div className="mb-3 p-2 bg-blue-50 border border-blue-200 rounded-md">
+            <div className="flex items-center mb-1">
+              <svg className="h-3 w-3 text-blue-600 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <span className="text-xs font-medium text-blue-800">Weight-Based Pricing</span>
+            </div>
+            <div className="space-y-1">
+              {pkg.sizePricing.slice(0, 2).map((tier: any, index: number) => (
+                <div key={index} className="flex justify-between text-xs">
+                  <span className="text-blue-700">
+                    {tier.sizeCategory} ({tier.weightRangeMin}-{tier.weightRangeMax || '∞'}kg)
+                  </span>
+                  <span className="font-medium text-blue-800">₱{formatPrice(Number(tier.price))}</span>
+                </div>
+              ))}
+              {pkg.sizePricing.length > 2 && (
+                <div className="text-xs text-blue-600">+{pkg.sizePricing.length - 2} more tiers</div>
+              )}
+              {Number(pkg.overageFeePerKg || 0) > 0 && (
+                <div className="text-xs text-blue-600 border-t border-blue-200 pt-1">
+                  Overage: ₱{formatPrice(Number(pkg.overageFeePerKg))}/kg
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Inclusions */}
         {pkg.inclusions && pkg.inclusions.length > 0 && (
