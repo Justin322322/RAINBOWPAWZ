@@ -211,7 +211,7 @@ export const PackageDetailsModal: React.FC<PackageDetailsModalProps> = ({
               </div>
               <div className="mt-3 p-2 bg-blue-100 rounded-md">
                 <p className="text-xs text-blue-800">
-                  <strong>How it works:</strong> Select the weight tier that matches your pet's weight. 
+                  <strong>How it works:</strong> Select the weight tier that matches your pet&apos;s weight. 
                   If your pet exceeds the maximum weight for the selected tier, additional overage fees may apply.
                 </p>
               </div>

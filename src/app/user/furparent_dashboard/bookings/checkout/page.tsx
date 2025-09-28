@@ -1916,20 +1916,20 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
                         const min = tier.weightRangeMin !== undefined ? tier.weightRangeMin : 0;
                         const max = tier.weightRangeMax !== undefined ? tier.weightRangeMax : null;
                         
-                        let tierName = '';
+                        let _tierName = '';
                         if (min === 0 && max === 10) {
-                          tierName = 'Small';
+                          _tierName = 'Small';
                         } else if (min === 11 && max === 25) {
-                          tierName = 'Medium';
+                          _tierName = 'Medium';
                         } else if (min === 26 && max === 40) {
-                          tierName = 'Large';
+                          _tierName = 'Large';
                         } else if (min === 41 && max === null) {
-                          tierName = 'Extra Large';
+                          _tierName = 'Extra Large';
                         } else {
-                          if (min <= 10) tierName = 'Small';
-                          else if (min <= 25) tierName = 'Medium';
-                          else if (min <= 40) tierName = 'Large';
-                          else tierName = 'Extra Large';
+                          if (min <= 10) _tierName = 'Small';
+                          else if (min <= 25) _tierName = 'Medium';
+                          else if (min <= 40) _tierName = 'Large';
+                          else _tierName = 'Extra Large';
                         }
                         const tierMax = tier.weightRangeMax == null ? Infinity : Number(tier.weightRangeMax);
                         if (weight > tierMax && isFinite(tierMax) && overage > 0) {
@@ -1946,20 +1946,20 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
                           const min = last.weightRangeMin !== undefined ? last.weightRangeMin : 0;
                           const max = last.weightRangeMax !== undefined ? last.weightRangeMax : null;
                           
-                          let tierName = '';
+                          let _tierName = '';
                           if (min === 0 && max === 10) {
-                            tierName = 'Small';
+                            _tierName = 'Small';
                           } else if (min === 11 && max === 25) {
-                            tierName = 'Medium';
+                            _tierName = 'Medium';
                           } else if (min === 26 && max === 40) {
-                            tierName = 'Large';
+                            _tierName = 'Large';
                           } else if (min === 41 && max === null) {
-                            tierName = 'Extra Large';
+                            _tierName = 'Extra Large';
                           } else {
-                            if (min <= 10) tierName = 'Small';
-                            else if (min <= 25) tierName = 'Medium';
-                            else if (min <= 40) tierName = 'Large';
-                            else tierName = 'Extra Large';
+                            if (min <= 10) _tierName = 'Small';
+                            else if (min <= 25) _tierName = 'Medium';
+                            else if (min <= 40) _tierName = 'Large';
+                            else _tierName = 'Extra Large';
                           }
                           const lastMax = last.weightRangeMax == null ? Infinity : Number(last.weightRangeMax);
                           if (weight > lastMax && isFinite(lastMax) && overage > 0) {
