@@ -104,6 +104,7 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onShowSignup }
       const userId = data.user.id;
       const accountType = data.account_type;
       const isRestricted = data.isRestricted;
+      const verificationStatus = data.user.verification_status || data.user.application_status;
       // Note: No token in response - using secure httpOnly cookies instead
       const firstName = data.user.first_name || '';
       const lastName = data.user.last_name || '';
@@ -138,6 +139,9 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onShowSignup }
           } else {
             redirectUrl = '/restricted';
           }
+        } else if (accountType === 'business' && verificationStatus && verificationStatus.toLowerCase() !== 'approved') {
+          // Redirect pending business users to pending verification page
+          redirectUrl = '/cremation/pending-verification';
         } else {
           // Normal dashboard redirect for non-restricted users
           redirectUrl = redirectToDashboard(accountType);

@@ -195,17 +195,8 @@ export async function POST(request: Request) {
               if (businessResult && businessResult.length > 0) {
                 const business = businessResult[0];
 
-                // Block login for non-approved business accounts
-                if (business.verification_status && String(business.verification_status).toLowerCase() !== 'approved') {
-                  return NextResponse.json({
-                    error: 'Account pending approval',
-                    message: 'Your business application is not approved yet. Please wait for verification.',
-                    status: String(business.verification_status).toLowerCase(),
-                  }, {
-                    status: 403,
-                    headers
-                  });
-                }
+                // Allow login for all business accounts but track their status
+                // Pending users will be redirected to appropriate pages by the frontend
 
                 // Merge business details with user data
                 const businessUser = {
@@ -216,7 +207,8 @@ export async function POST(request: Request) {
                   business_address: business.business_address,
                   business_id: business.provider_id,
                   user_type: 'business', // For backward compatibility
-                  verification_status: business.verification_status || 'approved', // Use the status from DB or default
+                  verification_status: business.verification_status || 'pending', // Use the actual status from DB
+                  application_status: business.verification_status || 'pending', // Also include as application_status for consistency
                   id: user.user_id // Ensure id field is present
                 };
 
