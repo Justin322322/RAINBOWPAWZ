@@ -1313,7 +1313,10 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
 
                               // Live price feedback for size-based pricing
                               if (!isNaN(weight) && bookingData?.package?.pricingMode === 'by_size') {
-                                setCalculatedPrice(calculateTotalPrice());
+                                // Force a re-render by updating state
+                                setTimeout(() => {
+                                  setCalculatedPrice(calculateTotalPrice());
+                                }, 0);
                               }
                             }}
                             onBlur={() => {
@@ -1335,9 +1338,30 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
                           {bookingData?.package?.pricingMode === 'by_size' && (
                             <div className="mt-2 text-sm">
                               {!petWeight || isNaN(parseFloat(petWeight)) ? (
-                                <p className="text-blue-600 bg-blue-50 p-2 rounded">
-                                  <strong>Note:</strong> This package uses pricing by pet size. Pet weight is required to determine the tier and any overage.
-                                </p>
+                                <div className="space-y-3">
+                                  <p className="text-blue-600 bg-blue-50 p-2 rounded">
+                                    <strong>Note:</strong> This package uses pricing by pet size. Pet weight is required to determine the tier and any overage.
+                                  </p>
+                                  <div className="bg-gray-50 p-3 rounded border">
+                                    <h4 className="font-medium text-gray-800 mb-2">Pricing Tiers:</h4>
+                                    <div className="space-y-1">
+                                      {Array.isArray(bookingData.package.sizePricing) && bookingData.package.sizePricing.map((tier: any, index: number) => (
+                                        <div key={index} className="flex justify-between text-sm">
+                                          <span className="text-gray-600">
+                                            {tier.sizeCategory} ({tier.weightRangeMin}-{tier.weightRangeMax || '∞'}kg)
+                                          </span>
+                                          <span className="font-medium">₱{Number(tier.price).toLocaleString()}</span>
+                                        </div>
+                                      ))}
+                                      {Number(bookingData.package.overageFeePerKg || 0) > 0 && (
+                                        <div className="flex justify-between text-sm text-gray-500 border-t pt-1 mt-1">
+                                          <span>Overage per kg</span>
+                                          <span>₱{Number(bookingData.package.overageFeePerKg).toLocaleString()}</span>
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
                               ) : (
                                 <p className="text-gray-600">
                                   The final price will be based on the size tier and any per-kg overage beyond the selected tier.
@@ -1829,19 +1853,72 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
                   </div>
 
                   <div className="space-y-3 mb-6">
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Base Package Price</span>
-                      <span className="font-medium">₱{bookingData.package.price.toLocaleString()}</span>
-                    </div>
-
-                    {bookingData?.package?.pricingMode === 'by_size' && petWeight && !isNaN(parseFloat(petWeight)) && (
+                    {bookingData?.package?.pricingMode !== 'by_size' && (
                       <div className="flex justify-between">
-                        <span className="text-gray-600">
-                          Weight Price ({parseFloat(petWeight).toFixed(1)}kg × ₱{Number(bookingData.package.overageFeePerKg || 0).toLocaleString()}/kg)
-                        </span>
-                        <span className="font-medium">₱{(parseFloat(petWeight) * Number(bookingData.package.overageFeePerKg || 0)).toLocaleString()}</span>
+                        <span className="text-gray-600">Base Package Price</span>
+                        <span className="font-medium">₱{bookingData.package.price.toLocaleString()}</span>
                       </div>
                     )}
+
+                    {bookingData?.package?.pricingMode === 'by_size' && petWeight && !isNaN(parseFloat(petWeight)) && (() => {
+                      const weight = parseFloat(petWeight);
+                      const tiers = Array.isArray(bookingData.package.sizePricing) ? bookingData.package.sizePricing : [];
+                      const overage = Number(bookingData.package.overageFeePerKg || 0);
+                      
+                      // Find the appropriate tier
+                      const tier = tiers.find((t: any) => {
+                        const min = Number(t.weightRangeMin);
+                        const max = t.weightRangeMax == null ? Infinity : Number(t.weightRangeMax);
+                        return weight >= min && weight <= max;
+                      });
+                      
+                      let basePrice = 0;
+                      let overagePrice = 0;
+                      let tierName = '';
+                      let overageWeight = 0;
+                      
+                      if (tier) {
+                        basePrice = Number(tier.price) || 0;
+                        tierName = tier.sizeCategory || 'Selected Tier';
+                        const tierMax = tier.weightRangeMax == null ? Infinity : Number(tier.weightRangeMax);
+                        if (weight > tierMax && isFinite(tierMax) && overage > 0) {
+                          overagePrice = (weight - tierMax) * overage;
+                          overageWeight = weight - tierMax;
+                        }
+                      } else {
+                        // Use the highest tier as base and calculate overage
+                        const sorted = [...tiers].sort((a: any, b: any) => Number(a.weightRangeMin) - Number(b.weightRangeMin));
+                        const last = sorted[sorted.length - 1];
+                        if (last) {
+                          basePrice = Number(last.price) || 0;
+                          tierName = last.sizeCategory || 'Base Tier';
+                          const lastMax = last.weightRangeMax == null ? Infinity : Number(last.weightRangeMax);
+                          if (weight > lastMax && isFinite(lastMax) && overage > 0) {
+                            overagePrice = (weight - lastMax) * overage;
+                            overageWeight = weight - lastMax;
+                          }
+                        }
+                      }
+                      
+                      return (
+                        <div className="space-y-2">
+                          <div className="flex justify-between">
+                            <span className="text-gray-600">
+                              {tierName} ({weight.toFixed(1)}kg)
+                            </span>
+                            <span className="font-medium">₱{basePrice.toLocaleString()}</span>
+                          </div>
+                          {overagePrice > 0 && (
+                            <div className="flex justify-between text-sm text-gray-500">
+                              <span>
+                                Overage ({overageWeight.toFixed(1)}kg × ₱{overage.toLocaleString()}/kg)
+                              </span>
+                              <span>₱{overagePrice.toLocaleString()}</span>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })()}
 
                     {deliveryOption === 'delivery' && deliveryFee > 0 && (
                       <div className="flex justify-between">

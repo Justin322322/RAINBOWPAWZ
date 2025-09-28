@@ -311,7 +311,7 @@ const PackageModal: React.FC<PackageModalProps> = ({
         cremationType: pkg.cremationType || 'Standard',
         processingTime: pkg.processingTime || '1-2 days',
         price: pkg.price || 0,
-        pricingMode: pkg.pricingMode || (pkg.hasSizePricing ? 'by_size' : 'fixed'),
+        pricingMode: pkg.pricingMode || (pkg.sizePricing && pkg.sizePricing.length > 0 ? 'by_size' : 'fixed'),
         overageFeePerKg: pkg.overageFeePerKg || 0,
         deliveryFeePerKm: pkg.deliveryFeePerKm || 0,
         inclusions: pkg.inclusions || [],
@@ -928,7 +928,7 @@ const PackageModal: React.FC<PackageModalProps> = ({
                                     inputMode="decimal"
                                     min="0"
                                     step="0.01"
-                                    value={formData.overageFeePerKg === 0 ? '' : formData.overageFeePerKg}
+                                    value={formData.overageFeePerKg || ''}
                                     onChange={handleInputChange}
                                     placeholder="e.g., 50"
                                     className="w-full focus:outline-none sm:text-sm"
