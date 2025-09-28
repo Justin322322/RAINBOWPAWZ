@@ -528,13 +528,14 @@ function ServiceDetailPage({ userData }: ServiceDetailPageProps) {
                                   onError={(e) => handleImageError(e)}
                                 />
                               ) : (
-                                <Image
-                                  src={`/bg_4.png`}
-                                  alt={pkg.name}
-                                  fill
-                                  className="object-cover"
-                                  onError={(e) => handleImageError(e)}
-                                />
+                                <div className="absolute inset-0 flex items-center justify-center bg-gray-100">
+                                  <div className="text-center p-4">
+                                    <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                    </svg>
+                                    <p className="mt-2 text-sm text-gray-500">No image available</p>
+                                  </div>
+                                </div>
                               )}
 
                               {/* Navigation arrows - only show if there are multiple images */}
@@ -585,7 +586,7 @@ function ServiceDetailPage({ userData }: ServiceDetailPageProps) {
                               <div className="absolute top-3 right-3 bg-white/95 backdrop-blur-sm px-3 py-1 rounded-full shadow-sm">
                                 <span className="text-[var(--primary-green)] font-bold text-lg">
                                   ₱{formatPrice(pkg.price)}
-                                  {pkg.pricePerKg > 0 && <span className="text-xs">+/kg</span>}
+                                  {pkg.overageFeePerKg > 0 && <span className="text-xs">+/kg</span>}
                                 </span>
                               </div>
                             </div>
@@ -597,17 +598,17 @@ function ServiceDetailPage({ userData }: ServiceDetailPageProps) {
                               {/* Package Tags */}
                               <div className="flex flex-wrap gap-2 mb-3">
                                 {pkg.category && (
-                                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
                                     {pkg.category}
                                   </span>
                                 )}
                                 {pkg.cremationType && (
-                                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
                                     {pkg.cremationType}
                                   </span>
                                 )}
                                 {pkg.processingTime && (
-                                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
+                                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
                                     <ClockIcon className="w-3 h-3 mr-1" />
                                     {pkg.processingTime}
                                   </span>
@@ -663,14 +664,50 @@ function ServiceDetailPage({ userData }: ServiceDetailPageProps) {
                                 </div>
                               )}
 
-                              {/* Price Per Kg Indicator */}
-                              {pkg.pricePerKg > 0 && (
-                                <div className="mb-4 p-2 bg-blue-50 rounded-lg">
-                                  <div className="flex items-center text-xs text-blue-700">
-                                    <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                                      <path fillRule="evenodd" d="M3 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clipRule="evenodd" />
+                              {/* Weight-Based Pricing */}
+                              {pkg.pricingMode === 'by_size' && pkg.sizePricing && Array.isArray(pkg.sizePricing) && pkg.sizePricing.length > 0 && (
+                                <div className="mb-4 p-3 bg-gray-50 rounded-lg border border-gray-200">
+                                  <div className="flex items-center mb-2">
+                                    <svg className="h-4 w-4 text-gray-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
                                     </svg>
-                                    <span>₱{formatPrice(pkg.pricePerKg)}/kg additional</span>
+                                    <span className="text-sm font-semibold text-gray-800">Weight-Based Pricing</span>
+                                  </div>
+                                  <div className="space-y-2">
+                                    {pkg.sizePricing.map((tier: any, index: number) => (
+                                      <div key={index} className="flex items-center justify-between text-xs">
+                                        <span className="text-gray-700">
+                                          {tier.sizeCategory === 'small' ? 'Small' : 
+                                           tier.sizeCategory === 'medium' ? 'Medium' :
+                                           tier.sizeCategory === 'large' ? 'Large' :
+                                           tier.sizeCategory === 'extra_large' ? 'Extra Large' : 
+                                           tier.sizeCategory} ({tier.weightRangeMin}-{tier.weightRangeMax || '∞'}kg)
+                                        </span>
+                                        <span className="font-semibold text-gray-900">₱{formatPrice(Number(tier.price))}</span>
+                                      </div>
+                                    ))}
+                                    {Number(pkg.overageFeePerKg || 0) > 0 && (
+                                      <div className="flex items-center justify-between text-xs border-t border-gray-200 pt-2">
+                                        <span className="text-gray-700">Overage fee per kg</span>
+                                        <span className="font-semibold text-gray-900">₱{formatPrice(Number(pkg.overageFeePerKg))}/kg</span>
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              )}
+
+                              {/* Kg Price (for non-weight-based pricing) */}
+                              {pkg.pricingMode !== 'by_size' && (
+                                <div className="mb-4 p-2 bg-gray-50 rounded-lg">
+                                  <div className="flex items-center justify-between text-xs">
+                                    <span className="text-gray-600 font-medium">Kg Price:</span>
+                                    <span className="text-gray-900 font-semibold">
+                                      {Number(pkg.overageFeePerKg || 0) > 0 ? (
+                                        <>₱{formatPrice(Number(pkg.overageFeePerKg))}/kg</>
+                                      ) : (
+                                        <span className="text-gray-500">Not applicable</span>
+                                      )}
+                                    </span>
                                   </div>
                                 </div>
                               )}

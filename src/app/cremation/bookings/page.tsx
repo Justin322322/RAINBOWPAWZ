@@ -462,7 +462,7 @@ function CremationBookingsPage({ userData }: { userData: any }) {
                       <div className="flex justify-end space-x-2">
                         <button
                           onClick={() => handleViewDetails(booking)}
-                          className="inline-flex items-center px-2.5 py-1.5 border border-gray-300 text-xs font-medium rounded text-gray-700 bg-white hover:bg-gray-50"
+                          className="inline-flex items-center px-2.5 py-1.5 text-xs font-medium rounded text-white bg-gray-600 hover:bg-gray-700"
                         >
                           <EyeIcon className="h-4 w-4 mr-1" />
                           View
@@ -470,7 +470,7 @@ function CremationBookingsPage({ userData }: { userData: any }) {
                         {booking.paymentStatus === 'awaiting_payment_confirmation' && booking.paymentReceipt && (
                           <button
                             onClick={() => handleConfirmPayment(booking)}
-                            className="inline-flex items-center px-2.5 py-1.5 border border-green-300 text-xs font-medium rounded text-green-700 bg-green-50 hover:bg-green-100"
+                            className="inline-flex items-center px-2.5 py-1.5 text-xs font-medium rounded text-white bg-green-600 hover:bg-green-700"
                           >
                             <CheckCircleIcon className="h-4 w-4 mr-1" />
                             Confirm Payment
@@ -478,7 +478,7 @@ function CremationBookingsPage({ userData }: { userData: any }) {
                         )}
                         <Link
                           href={`/cremation/bookings/${booking.id}`}
-                          className="inline-flex items-center px-2.5 py-1.5 border border-gray-300 text-xs font-medium rounded text-gray-700 bg-white hover:bg-gray-50"
+                          className="inline-flex items-center px-2.5 py-1.5 text-xs font-medium rounded text-white bg-blue-600 hover:bg-blue-700"
                         >
                           <PencilSquareIcon className="h-4 w-4 mr-1" />
                           Manage

@@ -862,7 +862,7 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
           price: addon.price
         })),
         // Price per kg information
-        pricePerKg: bookingData?.package?.pricePerKg || 0
+        pricePerKg: bookingData?.package?.overageFeePerKg || 0
       };
 
 
@@ -1308,7 +1308,7 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
 
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Weight (kg) {(bookingData?.package?.pricePerKg > 0 || bookingData?.package?.pricingMode === 'by_size') && <span className="text-red-500">*</span>}
+                            Weight (kg) {(bookingData?.package?.overageFeePerKg > 0 || bookingData?.package?.pricingMode === 'by_size') && <span className="text-red-500">*</span>}
                           </label>
                           <input
                             type="number"
@@ -1831,12 +1831,11 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
                   </div>
 
                   <div className="space-y-3 mb-6">
-                    {bookingData?.package?.pricingMode !== 'by_size' && (
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">Base Package Price</span>
-                        <span className="font-medium">₱{bookingData.package.price.toLocaleString()}</span>
-                      </div>
-                    )}
+                    {/* Always show base package price */}
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Base Package Price</span>
+                      <span className="font-medium">₱{bookingData.package.price.toLocaleString()}</span>
+                    </div>
 
                     {bookingData?.package?.pricingMode === 'by_size' && (petWeight && !isNaN(parseFloat(petWeight)) ? (() => {
                       const weight = parseFloat(petWeight);

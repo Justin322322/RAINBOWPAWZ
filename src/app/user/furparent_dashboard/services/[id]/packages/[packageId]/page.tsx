@@ -78,6 +78,17 @@ function PackageDetailPage({ userData: _userData }: PackageDetailPageProps) {
           throw new Error('Package data is invalid or empty');
         }
 
+        // Debug: Log pricing information
+        console.log('Package pricing info:', {
+          pricingMode: packageData.package.pricing_mode,
+          sizePricing: packageData.package.sizePricing,
+          size_pricing: packageData.package.size_pricing,
+          price: packageData.package.price,
+          overageFeePerKg: packageData.package.overageFeePerKg,
+          overage_fee_per_kg: packageData.package.overage_fee_per_kg,
+          fullPackage: packageData.package
+        });
+
         // Images are already included in the package data from the API
         console.log('Package images:', packageData.package.images);
         setPackageData(packageData.package);
@@ -242,22 +253,29 @@ function PackageDetailPage({ userData: _userData }: PackageDetailPageProps) {
                         </p>
                       </div>
                       <div>
-                        <p className="text-sm text-gray-500">Base Price</p>
+                        <p className="text-sm text-gray-500">
+                          {packageData.pricing_mode === 'by_size' ? 'Weight-Based Pricing' : 'Base Price'}
+                        </p>
                         <p className="font-medium flex items-center">
                           <span className="text-[var(--primary-green)] mr-2">✓</span>
-                          ₱{packageData.price.toLocaleString()}
+                          {packageData.pricing_mode === 'by_size' ? (
+                            <span className="text-blue-600">See tiers below</span>
+                          ) : (
+                            <>₱{packageData.price.toLocaleString()}</>
+                          )}
                         </p>
                       </div>
-
-                      {packageData.pricePerKg > 0 && (
-                        <div>
-                          <p className="text-sm text-gray-500">Price Per Kg</p>
-                          <p className="font-medium flex items-center">
-                            <span className="text-[var(--primary-green)] mr-2">✓</span>
-                            ₱{packageData.pricePerKg.toLocaleString()}/kg
-                          </p>
-                        </div>
-                      )}
+                      <div>
+                        <p className="text-sm text-gray-500">Kg Price</p>
+                        <p className="font-medium flex items-center">
+                          <span className="text-[var(--primary-green)] mr-2">✓</span>
+                          {Number(packageData.overageFeePerKg || 0) > 0 ? (
+                            <>₱{Number(packageData.overageFeePerKg).toLocaleString()}/kg</>
+                          ) : (
+                            <span className="text-gray-500">Not applicable</span>
+                          )}
+                        </p>
+                      </div>
                     </div>
 
 
@@ -305,6 +323,53 @@ function PackageDetailPage({ userData: _userData }: PackageDetailPageProps) {
                         ))}
                       </ul>
                     </div>
+
+                    {/* Weight-based pricing details - Simplified version */}
+                    {packageData.sizePricing && Array.isArray(packageData.sizePricing) && packageData.sizePricing.length > 0 && (
+                      <div className="mb-4 p-3 bg-gray-50 rounded-lg border border-gray-200">
+                        <div className="flex items-center mb-2">
+                          <svg className="h-4 w-4 text-gray-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3" />
+                          </svg>
+                          <span className="text-sm font-semibold text-gray-800">Weight-Based Pricing</span>
+                        </div>
+                        <div className="space-y-2">
+                          {packageData.sizePricing.map((tier: any, index: number) => (
+                            <div key={index} className="flex items-center justify-between text-xs">
+                              <span className="text-gray-700">
+                                {(() => {
+                                  const sizeCategory = tier.sizeCategory || 'unknown';
+                                  const min = tier.weightRangeMin || 0;
+                                  const max = tier.weightRangeMax;
+                                  
+                                  let tierName = '';
+                                  if (sizeCategory === 'small') tierName = 'Small';
+                                  else if (sizeCategory === 'medium') tierName = 'Medium';
+                                  else if (sizeCategory === 'large') tierName = 'Large';
+                                  else if (sizeCategory === 'extra_large') tierName = 'Extra Large';
+                                  else {
+                                    if (min <= 10) tierName = 'Small';
+                                    else if (min <= 25) tierName = 'Medium';
+                                    else if (min <= 40) tierName = 'Large';
+                                    else tierName = 'Extra Large';
+                                  }
+                                  
+                                  const weightRange = max !== null && max !== undefined ? `${min}-${max}kg` : `${min}+kg`;
+                                  return `${tierName} (${weightRange})`;
+                                })()}
+                              </span>
+                              <span className="font-semibold text-gray-900">₱{Number(tier.price).toLocaleString()}</span>
+                            </div>
+                          ))}
+                          {Number(packageData.overageFeePerKg || 0) > 0 && (
+                            <div className="flex items-center justify-between text-xs border-t border-gray-200 pt-2">
+                              <span className="text-gray-700">Overage fee per kg</span>
+                              <span className="font-semibold text-gray-900">₱{Number(packageData.overageFeePerKg).toLocaleString()}/kg</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
 
                     <div>
                       <p className="text-sm text-gray-500">Package Conditions</p>

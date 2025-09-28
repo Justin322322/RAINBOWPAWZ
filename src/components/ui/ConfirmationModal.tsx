@@ -37,7 +37,7 @@ export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
   const variantToButtonVariant = {
     default: 'primary',
     danger: 'danger',
-    warning: 'primary',
+    warning: 'warning',
     success: 'primary',
     info: 'primary',
   } as const;

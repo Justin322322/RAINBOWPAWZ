@@ -34,7 +34,7 @@ export const PackageList: React.FC<PackageListProps> = ({
       case 'private':
         return 'bg-green-100 text-green-800';
       case 'communal':
-        return 'bg-blue-100 text-blue-800';
+        return 'bg-gray-100 text-gray-800';
       case 'premium':
         return 'bg-purple-100 text-purple-800';
       case 'memorial':
@@ -122,7 +122,7 @@ export const PackageList: React.FC<PackageListProps> = ({
                     {onDetails && (
                       <button
                         onClick={() => onDetails(pkg.id)}
-                        className="inline-flex items-center px-2 py-1 text-xs text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded transition-colors"
+                        className="inline-flex items-center px-2 py-1 text-xs text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded transition-colors border border-gray-400"
                       >
                         <InformationCircleIcon className="h-4 w-4 mr-1" />
                         Details
@@ -131,7 +131,7 @@ export const PackageList: React.FC<PackageListProps> = ({
 
                     <button
                       onClick={() => onEdit(pkg.id)}
-                      className="inline-flex items-center px-2 py-1 text-xs text-blue-600 hover:text-blue-900 hover:bg-blue-50 rounded transition-colors"
+                      className="inline-flex items-center px-2 py-1 text-xs text-white bg-blue-600 hover:bg-blue-700 rounded transition-colors"
                     >
                       <PencilIcon className="h-4 w-4 mr-1" />
                       Edit
@@ -139,7 +139,7 @@ export const PackageList: React.FC<PackageListProps> = ({
 
                     <button
                       onClick={() => onDelete(pkg.id)}
-                      className="inline-flex items-center px-2 py-1 text-xs text-red-600 hover:text-red-900 hover:bg-red-50 rounded transition-colors"
+                      className="inline-flex items-center px-2 py-1 text-xs text-white bg-red-600 hover:bg-red-700 rounded transition-colors"
                     >
                       <TrashIcon className="h-4 w-4 mr-1" />
                       Delete
@@ -149,10 +149,10 @@ export const PackageList: React.FC<PackageListProps> = ({
                       <button
                         onClick={() => onToggleActive(pkg.id, pkg.isActive)}
                         disabled={toggleLoading === pkg.id}
-                        className={`inline-flex items-center px-2 py-1 text-xs rounded transition-colors ${
+                        className={`inline-flex items-center px-2 py-1 text-xs text-white rounded transition-colors ${
                           pkg.isActive
-                            ? 'text-amber-600 hover:text-amber-900 hover:bg-amber-50'
-                            : 'text-green-600 hover:text-green-900 hover:bg-green-50'
+                            ? 'bg-orange-600 hover:bg-orange-700'
+                            : 'bg-green-600 hover:bg-green-700'
                         }`}
                       >
                         {toggleLoading === pkg.id ? (

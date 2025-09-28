@@ -340,6 +340,7 @@ export async function GET(request: NextRequest) {
       // Parse JSON fields safely
       let inclusions: string[] = [];
       let addOns: any[] = [];
+      let sizePricing: any[] = [];
       
       try {
         if (p.inclusions) {
@@ -407,6 +408,36 @@ export async function GET(request: NextRequest) {
         addOns = [];
       }
       
+      // Parse sizePricing JSON field
+      try {
+        if (p.sizePricing) {
+          if (typeof p.sizePricing === 'string') {
+            // Handle corrupted [object Object] data
+            if (p.sizePricing.includes('[object Object]')) {
+              console.warn(`Corrupted sizePricing data for package ${p.id}, defaulting to empty array`);
+              sizePricing = [];
+            } else {
+              sizePricing = JSON.parse(p.sizePricing);
+            }
+          } else {
+            sizePricing = p.sizePricing;
+          }
+          
+          if (!Array.isArray(sizePricing)) sizePricing = [];
+          
+          // Ensure all sizePricing entries have proper structure
+          sizePricing = sizePricing.map((sp: any) => ({
+            sizeCategory: sp.sizeCategory || sp.pet_size || sp.size_category || 'unknown',
+            weightRangeMin: Number(sp.weightRangeMin || sp.weight_range_min || 0),
+            weightRangeMax: sp.weightRangeMax !== undefined ? Number(sp.weightRangeMax) : (sp.weight_range_max !== undefined ? Number(sp.weight_range_max) : null),
+            price: Number(sp.price || 0)
+          })).filter((sp: any) => sp.sizeCategory && !isNaN(sp.price));
+        }
+      } catch (e) {
+        console.warn(`Failed to parse sizePricing for package ${p.id}:`, e);
+        sizePricing = [];
+      }
+      
       // Use fallback image if no images found
       let finalImages = imagesByPackage[p.id] || [];
       if (finalImages.length === 0) {
@@ -419,6 +450,7 @@ export async function GET(request: NextRequest) {
         inclusions,
         addOns,
         images: finalImages,
+        sizePricing,
         supportedPetTypes: []
       };
     });

@@ -29,7 +29,6 @@ interface PackageFormData {
   images: string[];
   packageId?: number;
   // Enhanced features
-  pricePerKg: number;
   usesCustomOptions: boolean;
   customCategories: string[];
   customCremationTypes: string[];
@@ -75,7 +74,6 @@ const PackageModal: React.FC<PackageModalProps> = ({
     images: [],
     packageId: packageId,
     // Enhanced features
-    pricePerKg: 0,
     usesCustomOptions: false,
     customCategories: [],
     customCremationTypes: [],
@@ -232,7 +230,6 @@ const PackageModal: React.FC<PackageModalProps> = ({
       conditions: '',
       images: [],
       packageId: undefined,
-      pricePerKg: 0,
       usesCustomOptions: false,
       customCategories: [],
       customCremationTypes: [],
@@ -319,7 +316,6 @@ const PackageModal: React.FC<PackageModalProps> = ({
         conditions: pkg.conditions || '',
         images: processedImages,
         packageId: pkg.id,
-        pricePerKg: pkg.pricePerKg || 0,
         usesCustomOptions: pkg.usesCustomOptions || false,
         customCategories: pkg.customCategories || [],
         customCremationTypes: pkg.customCremationTypes || [],
@@ -397,7 +393,7 @@ const PackageModal: React.FC<PackageModalProps> = ({
     if (errors[name]) setErrors(prev => { const err = { ...prev }; delete err[name]; return err; });
     setFormData(prev => ({
       ...prev,
-      [name]: name === 'price' || name === 'deliveryFeePerKm' || name === 'pricePerKg' || name === 'overageFeePerKg'
+      [name]: name === 'price' || name === 'deliveryFeePerKm' || name === 'overageFeePerKg'
         ? parseFloat(value) || 0 
         : value
     }));
@@ -656,7 +652,7 @@ const PackageModal: React.FC<PackageModalProps> = ({
     if (formData.supportedPetTypes.length === 0) newErrors.supportedPetTypes = 'Please select at least one pet type';
 
     // Optional field validation
-    if (formData.pricePerKg < 0) newErrors.pricePerKg = 'Price per kg cannot be negative';
+    if (formData.overageFeePerKg < 0) newErrors.overageFeePerKg = 'Overage fee per kg cannot be negative';
     if (formData.deliveryFeePerKm < 0) newErrors.deliveryFeePerKm = 'Delivery fee cannot be negative';
 
     setErrors(newErrors);

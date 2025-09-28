@@ -24,6 +24,15 @@ const PackageCard = React.memo<{
   onDetails?: (id: number) => void;
   toggleLoading: number | null;
 }>(({ pkg, onEdit, onDelete, onToggleActive, onDetails, toggleLoading }) => {
+  // Debug: Log package data to see what we're receiving
+  console.log('PackageCard received package data:', {
+    id: pkg.id,
+    name: pkg.name,
+    pricingMode: pkg.pricingMode,
+    sizePricing: pkg.sizePricing,
+    price: pkg.price
+  });
+
   // Memoized handlers to prevent re-renders
   const handleEdit = useCallback(() => onEdit(pkg.id), [onEdit, pkg.id]);
   const handleDelete = useCallback(() => onDelete(pkg.id), [onDelete, pkg.id]);
@@ -74,7 +83,7 @@ const PackageCard = React.memo<{
           <h3 className="text-lg font-medium text-gray-800">{pkg.name}</h3>
           {pkg.pricingMode === 'by_size' ? (
             <div className="text-right">
-              <div className="text-sm text-blue-600 font-medium">Weight-Based</div>
+              <div className="text-sm text-gray-600 font-medium">Weight-Based</div>
               <div className="text-xs text-gray-500">See details</div>
             </div>
           ) : (
@@ -84,13 +93,13 @@ const PackageCard = React.memo<{
 
         {/* Category and Cremation Type */}
         <div className="flex flex-wrap gap-2 mb-2">
-          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
             {pkg.category}
           </span>
-          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
             {pkg.cremationType}
           </span>
-          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
+          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
             {pkg.processingTime}
           </span>
         </div>
@@ -100,27 +109,27 @@ const PackageCard = React.memo<{
 
         {/* Weight-based pricing info */}
         {pkg.pricingMode === 'by_size' && pkg.sizePricing && Array.isArray(pkg.sizePricing) && pkg.sizePricing.length > 0 && (
-          <div className="mb-3 p-2 bg-blue-50 border border-blue-200 rounded-md">
+          <div className="mb-3 p-2 bg-gray-50 border border-gray-200 rounded-md">
             <div className="flex items-center mb-1">
-              <svg className="h-3 w-3 text-blue-600 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="h-3 w-3 text-gray-600 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
-              <span className="text-xs font-medium text-blue-800">Weight-Based Pricing</span>
+              <span className="text-xs font-medium text-gray-800">Weight-Based Pricing</span>
             </div>
             <div className="space-y-1">
               {pkg.sizePricing.slice(0, 2).map((tier: any, index: number) => (
                 <div key={index} className="flex justify-between text-xs">
-                  <span className="text-blue-700">
+                  <span className="text-gray-700">
                     {tier.sizeCategory} ({tier.weightRangeMin}-{tier.weightRangeMax || '∞'}kg)
                   </span>
-                  <span className="font-medium text-blue-800">₱{formatPrice(Number(tier.price))}</span>
+                  <span className="font-medium text-gray-800">₱{formatPrice(Number(tier.price))}</span>
                 </div>
               ))}
               {pkg.sizePricing.length > 2 && (
-                <div className="text-xs text-blue-600">+{pkg.sizePricing.length - 2} more tiers</div>
+                <div className="text-xs text-gray-600">+{pkg.sizePricing.length - 2} more tiers</div>
               )}
               {Number(pkg.overageFeePerKg || 0) > 0 && (
-                <div className="text-xs text-blue-600 border-t border-blue-200 pt-1">
+                <div className="text-xs text-gray-600 border-t border-gray-200 pt-1">
                   Overage: ₱{formatPrice(Number(pkg.overageFeePerKg))}/kg
                 </div>
               )}
@@ -168,7 +177,7 @@ const PackageCard = React.memo<{
             {onDetails && (
               <button
                 onClick={handleDetails}
-                className="flex items-center px-3 py-2 text-sm text-gray-600 hover:bg-gray-50 rounded-md transition-colors border border-gray-200"
+                className="flex items-center px-3 py-2 text-sm text-gray-600 hover:bg-gray-50 rounded-md transition-colors border border-gray-400"
               >
                 <InformationCircleIcon className="h-4 w-4 mr-1" />
                 Details
@@ -177,7 +186,7 @@ const PackageCard = React.memo<{
 
             <button
               onClick={handleEdit}
-              className="flex items-center px-3 py-2 text-sm text-blue-600 hover:bg-blue-50 rounded-md transition-colors border border-blue-200"
+              className="flex items-center px-3 py-2 text-sm text-white bg-blue-600 hover:bg-blue-700 rounded-md transition-colors"
             >
               <PencilIcon className="h-4 w-4 mr-1" />
               Edit
@@ -185,7 +194,7 @@ const PackageCard = React.memo<{
 
             <button
               onClick={handleDelete}
-              className="flex items-center px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded-md transition-colors border border-red-200"
+              className="flex items-center px-3 py-2 text-sm text-white bg-red-600 hover:bg-red-700 rounded-md transition-colors"
             >
               <TrashIcon className="h-4 w-4 mr-1" />
               Delete
@@ -196,10 +205,10 @@ const PackageCard = React.memo<{
           <button
             onClick={handleToggleActive}
             disabled={toggleLoading === pkg.id}
-            className={`flex items-center justify-center px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+            className={`flex items-center justify-center px-3 py-2 rounded-md text-sm font-medium text-white transition-colors ${
               pkg.isActive
-                ? 'bg-red-50 text-red-700 hover:bg-red-100 border border-red-200'
-                : 'bg-green-50 text-green-700 hover:bg-green-100 border border-green-200'
+                ? 'bg-orange-600 hover:bg-orange-700'
+                : 'bg-green-600 hover:bg-green-700'
             }`}
           >
             {toggleLoading === pkg.id ? (
