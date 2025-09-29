@@ -224,7 +224,7 @@ export default function MapComponent({
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
         maxZoom: 18,
-        minZoom: 10,
+        minZoom: 1, // Allow zooming out much further to see distant providers
         updateWhenIdle: true,
         keepBuffer: 2
       }).addTo(mapRef.current);
@@ -410,7 +410,7 @@ export default function MapComponent({
     // Use padding to ensure markers aren't right at the edge
     mapRef.current.fitBounds(bounds, {
       padding: [20, 20], // 20px padding on all sides
-      maxZoom: 15 // Don't zoom in too much even if markers are close
+      maxZoom: 12 // Allow zooming out further to accommodate distant providers
     });
   }, [userCoordinates, providerCoordinates, serviceProviders, filteredProviders]);
 
@@ -431,8 +431,12 @@ export default function MapComponent({
       zoomLevel = 11; // Very wide zoom for 50km
     } else if (maxDistance <= 100) {
       zoomLevel = 10; // Ultra wide zoom for 100km
+    } else if (maxDistance <= 200) {
+      zoomLevel = 8; // Very wide zoom for 200km
+    } else if (maxDistance <= 500) {
+      zoomLevel = 7; // Extremely wide zoom for 500km
     } else {
-      zoomLevel = 9; // Default very wide zoom
+      zoomLevel = 6; // Maximum zoom out for very distant providers
     }
 
     // Set view to user location with calculated zoom

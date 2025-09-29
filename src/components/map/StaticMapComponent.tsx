@@ -69,7 +69,7 @@ export default function StaticMapComponent({
         // Add OpenStreetMap tiles
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
           maxZoom: 18,
-          minZoom: 10
+          minZoom: 1 // Allow zooming out much further to see distant providers
         }).addTo(mapRef.current);
 
         // Add provider marker with Pawrest branding

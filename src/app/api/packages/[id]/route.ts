@@ -42,30 +42,67 @@ export async function GET(
     // Join with service_providers to get provider information
     // Fast path: fetch package by primary key without JOINs
     let rows: any[] = [];
-    const pkgOnly = (await query(
-      `SELECT 
-         package_id,
-         name,
-         description,
-         category,
-         cremation_type,
-         processing_time,
-         price,
-         pricing_mode,
-         overage_fee_per_kg,
-         delivery_fee_per_km,
-         conditions,
-         is_active,
-         provider_id,
-         inclusions,
-         addons,
-         images,
-         size_pricing
-       FROM service_packages
-       WHERE package_id = ?
-       LIMIT 1`,
-      [packageId]
-    )) as any[];
+    let pkgOnly: any[] = [];
+    
+    try {
+      // Try to fetch with supported_pet_types column
+      pkgOnly = (await query(
+        `SELECT 
+           package_id,
+           name,
+           description,
+           category,
+           cremation_type,
+           processing_time,
+           price,
+           pricing_mode,
+           overage_fee_per_kg,
+           delivery_fee_per_km,
+           conditions,
+           is_active,
+           provider_id,
+           inclusions,
+           addons,
+           images,
+           size_pricing,
+           supported_pet_types
+         FROM service_packages
+         WHERE package_id = ?
+         LIMIT 1`,
+        [packageId]
+      )) as any[];
+    } catch (columnError: any) {
+      // If supported_pet_types column doesn't exist, fall back to query without it
+      if (columnError.code === 'ER_BAD_FIELD_ERROR' && columnError.message.includes('supported_pet_types')) {
+        console.warn('supported_pet_types column not found, falling back to query without it');
+        pkgOnly = (await query(
+          `SELECT 
+             package_id,
+             name,
+             description,
+             category,
+             cremation_type,
+             processing_time,
+             price,
+             pricing_mode,
+             overage_fee_per_kg,
+             delivery_fee_per_km,
+             conditions,
+             is_active,
+             provider_id,
+             inclusions,
+             addons,
+             images,
+             size_pricing
+           FROM service_packages
+           WHERE package_id = ?
+           LIMIT 1`,
+          [packageId]
+        )) as any[];
+      } else {
+        throw columnError; // Re-throw if it's a different error
+      }
+    }
     if (pkgOnly.length) {
       const pkg = pkgOnly[0];
       // Try to enrich with providerName via a tiny, separate query; ignore errors/timeouts
@@ -164,17 +201,30 @@ export async function GET(
       // Default to empty arrays if JSON parsing fails
     }
 
-    // Get supported pet types only if legacy schema exists; otherwise fallback to []
-    let petTypes: any[] = [];
+    // Get supported pet types from the package data
+    let supportedPetTypes: string[] = [];
     try {
-      if (await hasServiceTypesProviderSchema()) {
-        petTypes = (await query(
-          `SELECT pet_type FROM service_types WHERE provider_id = ? AND is_active = 1`,
-          [pkg.provider_id]
-        )) as any[];
+      if (pkg.supported_pet_types !== undefined) {
+        let petTypesData;
+        if (typeof pkg.supported_pet_types === 'string') {
+          // Handle corrupted data
+          if (pkg.supported_pet_types.includes('[object Object]')) {
+            console.warn(`Corrupted supported_pet_types data for package ${packageId}, defaulting to empty array`);
+            petTypesData = [];
+          } else {
+            petTypesData = JSON.parse(pkg.supported_pet_types);
+          }
+        } else {
+          petTypesData = pkg.supported_pet_types;
+        }
+        
+        if (Array.isArray(petTypesData) && petTypesData.length > 0) {
+          supportedPetTypes = petTypesData;
+        }
       }
-    } catch {
-      petTypes = [];
+    } catch (error) {
+      console.error('Error parsing supported_pet_types for package:', packageId, error);
+      supportedPetTypes = [];
     }
 
     // Helper function to validate and process images
@@ -293,9 +343,8 @@ export async function GET(
       console.log(`Package ${packageId} has no valid images; returning empty images array`);
     }
 
-    const supportedPetTypes = petTypes && petTypes.length > 0
-      ? petTypes.map((pt) => pt.pet_type)
-      : ['Dogs', 'Cats', 'Birds', 'Rabbits'];
+    // Use the supported pet types from the package data, or return empty array if none specified
+    // This allows the frontend to handle the fallback display logic
 
     return NextResponse.json({
       package: {
