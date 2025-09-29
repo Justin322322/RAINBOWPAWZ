@@ -42,7 +42,7 @@ function CremationRefundsPage({ userData }: { userData: any }) {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedRefund, setSelectedRefund] = useState<RefundRecord | null>(null);
-  const [filter, setFilter] = useState<'all' | 'pending' | 'manual' | 'completed'>('all');
+  const [filter, setFilter] = useState<'all' | 'pending' | 'completed'>('all');
   const [uploadingReceipt, setUploadingReceipt] = useState<number | null>(null);
   const { showToast } = useToast();
 
@@ -164,8 +164,6 @@ function CremationRefundsPage({ userData }: { userData: any }) {
     switch (filter) {
       case 'pending':
         return refund.status === 'pending' || refund.status === 'pending_approval';
-      case 'manual':
-        return refund.refund_type === 'manual';
       case 'completed':
         return refund.status === 'completed';
       default:
@@ -267,7 +265,6 @@ function CremationRefundsPage({ userData }: { userData: any }) {
                 {[
                   { key: 'all', label: 'All Refunds' },
                   { key: 'pending', label: 'Pending' },
-                  { key: 'manual', label: 'Manual Processing' },
                   { key: 'completed', label: 'Completed' }
                 ].map(({ key, label }) => (
                   <button
