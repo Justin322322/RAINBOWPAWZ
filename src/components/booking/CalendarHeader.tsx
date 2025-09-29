@@ -1,6 +1,6 @@
 'use client';
 
-import { CalendarIcon, CalendarDaysIcon, ChevronLeftIcon, ChevronRightIcon, ArrowPathIcon, DocumentDuplicateIcon, SparklesIcon } from '@heroicons/react/24/outline';
+import { CalendarIcon, CalendarDaysIcon, ChevronLeftIcon, ChevronRightIcon, ArrowPathIcon, SparklesIcon } from '@heroicons/react/24/outline';
 import React from 'react';
 
 interface CalendarHeaderProps {
@@ -16,7 +16,6 @@ interface CalendarHeaderProps {
   isDisabled: boolean;
   showQuickPresets: boolean;
   setShowQuickPresets: (show: boolean) => void;
-  onShowCopyMonth: () => void;
   onRefresh: () => void;
 }
 
@@ -33,7 +32,6 @@ export default function CalendarHeader({
   isDisabled,
   showQuickPresets,
   setShowQuickPresets,
-  onShowCopyMonth,
   onRefresh,
 }: CalendarHeaderProps) {
   return (
@@ -73,16 +71,6 @@ export default function CalendarHeader({
           >
             <SparklesIcon className="h-4 w-4 inline mr-1" />
             Quick Setup
-          </button>
-          <button
-            type="button"
-            onClick={onShowCopyMonth}
-            className="px-3 py-1 bg-purple-50 text-purple-700 rounded-md text-xs font-medium hover:bg-purple-100 transition-colors"
-            disabled={isDisabled}
-          >
-            <DocumentDuplicateIcon className="h-4 w-4 inline mr-1" />
-            <span className="hidden sm:inline">Copy Month</span>
-            <span className="sm:hidden">Copy</span>
           </button>
           <button
             type="button"

@@ -13,8 +13,7 @@ import {
   HomeIcon,
   CogIcon,
   CalendarDaysIcon,
-  ArrowRightOnRectangleIcon,
-  CurrencyDollarIcon
+  ArrowRightStartOnRectangleIcon
 } from '@heroicons/react/24/outline';
 import LogoutModal from '@/components/LogoutModal';
 import CartDropdown from '@/components/cart/CartDropdown';
@@ -372,13 +371,6 @@ export default function FurParentNavbar({ activePage: propActivePage, userName =
             >
               Bookings
             </Link>
-            <Link
-              href="/user/furparent_dashboard/refunds"
-              className={`text-base modern-text text-white hover:text-white transition-all duration-300 relative after:content-[''] after:absolute after:-bottom-2 after:left-0 ${activePage === 'refunds' ? 'after:w-full font-medium' : 'after:w-0'} after:h-0.5 after:bg-white after:transition-all after:duration-300 hover:after:w-full cursor-pointer`}
-              onClick={() => setActivePage('refunds')}
-            >
-              Refunds
-            </Link>
           </div>
           <div className="flex items-center space-x-2 md:space-x-4">
             {/* Notification Bell - visible on all screen sizes */}
@@ -533,20 +525,6 @@ export default function FurParentNavbar({ activePage: propActivePage, userName =
                 <span className="modern-text text-base">Bookings</span>
               </Link>
 
-              <Link
-                href="/user/furparent_dashboard/refunds"
-                className={`flex items-center px-4 py-4 rounded-lg text-white hover:bg-white/10 transition-all duration-300 ${
-                  activePage === 'refunds' ? 'bg-white/20 font-medium' : ''
-                }`}
-                onClick={() => {
-                  setActivePage('refunds');
-                  setIsMobileMenuOpen(false);
-                }}
-              >
-                <CurrencyDollarIcon className="h-6 w-6 mr-4" />
-                <span className="modern-text text-base">Refunds</span>
-              </Link>
-
               {/* Divider */}
               <div className="border-t border-white/20 my-3"></div>
 
@@ -576,7 +554,7 @@ export default function FurParentNavbar({ activePage: propActivePage, userName =
                   handleLogoutClick();
                 }}
               >
-                <ArrowRightOnRectangleIcon className="h-6 w-6 mr-4" />
+                <ArrowRightStartOnRectangleIcon className="h-6 w-6 mr-4" />
                 <span className="modern-text text-base">Logout</span>
               </button>
             </div>

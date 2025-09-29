@@ -10,8 +10,7 @@ import {
   XCircleIcon,
   CloudArrowUpIcon,
   PlusIcon,
-  ArrowPathIcon,
-  EnvelopeIcon
+  ArrowPathIcon
 } from '@heroicons/react/24/outline';
 import CremationDashboardLayout from '@/components/navigation/CremationDashboardLayout';
 import withBusinessVerification from '@/components/withBusinessVerification';
@@ -53,7 +52,6 @@ function CremationRefundsPage({ userData }: { userData: any }) {
     reason: '',
     notes: ''
   });
-  const [sendingNotification, setSendingNotification] = useState<number | null>(null);
   const { showToast } = useToast();
 
   useEffect(() => {
@@ -172,29 +170,6 @@ function CremationRefundsPage({ userData }: { userData: any }) {
     }
   };
 
-  const handleSendNotification = async (refundId: number) => {
-    setSendingNotification(refundId);
-    try {
-      const response = await fetch(`/api/refunds/${refundId}/notify`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (response.ok) {
-        showToast('Customer notification sent successfully.', 'success');
-      } else {
-        const error = await response.json();
-        showToast(`Failed to send notification: ${error.error}`, 'error');
-      }
-    } catch (error) {
-      console.error('Send notification error:', error);
-      showToast('Failed to send notification. Please try again.', 'error');
-    } finally {
-      setSendingNotification(null);
-    }
-  };
 
   const getStatusIcon = (status: string, refundType: string) => {
     switch (status) {
@@ -538,26 +513,13 @@ function CremationRefundsPage({ userData }: { userData: any }) {
                           </div>
                         )}
                         
-                        {/* Notification buttons for completed refunds */}
+                        {/* Auto-notification status for completed refunds */}
                         {refund.status === 'completed' && (
                           <div className="space-y-2">
-                            <button
-                              onClick={() => handleSendNotification(refund.id)}
-                              disabled={sendingNotification === refund.id}
-                              className="flex items-center px-3 py-1 bg-blue-600 text-white rounded text-xs hover:bg-blue-700 disabled:opacity-50"
-                            >
-                              {sendingNotification === refund.id ? (
-                                <>
-                                  <ClockIcon className="w-3 h-3 mr-1 animate-spin" />
-                                  Sending...
-                                </>
-                              ) : (
-                                <>
-                                  <EnvelopeIcon className="w-3 h-3 mr-1" />
-                                  Notify Customer
-                                </>
-                              )}
-                            </button>
+                            <div className="flex items-center px-3 py-1 bg-green-100 text-green-800 rounded text-xs">
+                              <CheckCircleIcon className="w-3 h-3 mr-1" />
+                              Auto-notified
+                            </div>
                           </div>
                         )}
                         

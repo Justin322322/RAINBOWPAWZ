@@ -26,9 +26,6 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
   const [currentYear, setCurrentYear] = useState<number>(new Date().getFullYear());
   const [_showBulkActions, _setShowBulkActions] = useState<boolean>(false);
   const [showQuickPresets, setShowQuickPresets] = useState<boolean>(false);
-  const [_showCopyModal, setShowCopyModal] = useState<boolean>(false);
-  const [selectedMonthToCopy, setSelectedMonthToCopy] = useState<string>('');
-  const [targetMonths, setTargetMonths] = useState<string[]>([]);
   const [selectedQuickSetupPackages, setSelectedQuickSetupPackages] = useState<number[]>([]);
   const [weekdayStartTime, setWeekdayStartTime] = useState<string>("09:00");
   const [weekdayEndTime, setWeekdayEndTime] = useState<string>("17:00");
@@ -977,58 +974,6 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
     }
   };
   
-  // Copy availability functions
-  const _copyMonthAvailability = async () => {
-    if (!selectedMonthToCopy || targetMonths.length === 0) {
-      showToast('Please select source month and target months', 'warning');
-      return;
-    }
-    
-    const [sourceYear, sourceMonth] = selectedMonthToCopy.split('-').map(Number);
-    const sourceData = availabilityData.filter(day => {
-      const date = new Date(day.date);
-      return date.getFullYear() === sourceYear && date.getMonth() === sourceMonth - 1;
-    });
-    
-    if (sourceData.length === 0) {
-      showToast('No availability data found for the selected source month', 'warning');
-      return;
-    }
-    
-    const promises = [];
-    for (const targetMonthStr of targetMonths) {
-      const [targetYear, targetMonth] = targetMonthStr.split('-').map(Number);
-      
-      for (const sourceDay of sourceData) {
-        if (sourceDay.timeSlots.length === 0) continue;
-        
-        const sourceDate = new Date(sourceDay.date);
-        const targetDate = new Date(targetYear, targetMonth - 1, sourceDate.getDate());
-        
-        // Skip if target date doesn't exist (e.g., Feb 30)
-        if (targetDate.getMonth() !== targetMonth - 1) continue;
-        
-        const targetDateString = formatDateToString(targetDate);
-        const newDay: DayAvailability = {
-          date: targetDateString,
-          isAvailable: sourceDay.isAvailable,
-          timeSlots: sourceDay.timeSlots.map(slot => ({
-            ...slot,
-            id: Date.now().toString() + Math.random().toString(36).substring(2, 9)
-          }))
-        };
-        
-        promises.push(saveAvailability(newDay));
-      }
-    }
-    
-    await Promise.all(promises);
-    setSuccessMessage(`Availability copied to ${targetMonths.length} month(s)!`);
-    setShowSuccessMessage(true);
-    setShowCopyModal(false);
-    setSelectedMonthToCopy('');
-    setTargetMonths([]);
-  };
   const handleDayClick = (date: Date) => {
     // Prevent selecting past dates
     const today = new Date();
@@ -1319,7 +1264,6 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
         isDisabled={isDisabled}
         showQuickPresets={showQuickPresets}
         setShowQuickPresets={setShowQuickPresets}
-        onShowCopyMonth={() => setShowCopyModal(true)}
         onRefresh={handleRefreshData}
       />
 
