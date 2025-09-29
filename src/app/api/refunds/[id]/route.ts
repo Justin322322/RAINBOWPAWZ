@@ -119,9 +119,10 @@ export async function PUT(
     switch (action) {
       case 'approve_refund':
         // Approve pending refund (moves to processing status)
-        if (refund.status !== 'pending_approval') {
+        // Allow approval of both pending_approval and pending automatic refunds
+        if (!['pending_approval', 'pending'].includes(refund.status)) {
           return NextResponse.json({ 
-            error: 'Only pending_approval refunds can be approved' 
+            error: 'Only pending_approval or pending refunds can be approved' 
           }, { status: 400 });
         }
 
@@ -133,7 +134,7 @@ export async function PUT(
         await logRefundAudit({
           refund_id: refundId,
           action: 'refund_approved',
-          previous_status: 'pending_approval',
+          previous_status: refund.status,
           new_status: 'processing',
           performed_by: parseInt(authResult.userId),
           performed_by_type: authResult.accountType === 'admin' ? 'admin' : 'staff',
@@ -160,9 +161,10 @@ export async function PUT(
 
       case 'reject_refund':
         // Reject pending refund
-        if (refund.status !== 'pending_approval') {
+        // Allow rejection of both pending_approval and pending automatic refunds
+        if (!['pending_approval', 'pending'].includes(refund.status)) {
           return NextResponse.json({ 
-            error: 'Only pending_approval refunds can be rejected' 
+            error: 'Only pending_approval or pending refunds can be rejected' 
           }, { status: 400 });
         }
 
@@ -174,7 +176,7 @@ export async function PUT(
         await logRefundAudit({
           refund_id: refundId,
           action: 'refund_rejected',
-          previous_status: 'pending_approval',
+          previous_status: refund.status,
           new_status: 'cancelled',
           performed_by: parseInt(authResult.userId),
           performed_by_type: authResult.accountType === 'admin' ? 'admin' : 'staff',
