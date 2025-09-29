@@ -15,7 +15,6 @@ import {
   StarIcon
 } from '@heroicons/react/24/outline';
 
-import FurParentPageSkeleton from '@/components/ui/FurParentPageSkeleton';
 import { handleImageError } from '@/utils/imageUtils';
 import ReviewsList from '@/components/reviews/ReviewsList';
 import StaticMapComponent from '@/components/map/StaticMapComponent';
@@ -351,9 +350,7 @@ function ServiceDetailPage({ userData }: ServiceDetailPageProps) {
       {/* Navigation is now handled by layout */}
 
       {loading ? (
-        <div className="max-w-7xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
-          <FurParentPageSkeleton type="package" />
-        </div>
+        null
       ) : error ? (
         <div className="max-w-7xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
           <div className="bg-red-50 border border-red-200 p-8 rounded-lg text-center">

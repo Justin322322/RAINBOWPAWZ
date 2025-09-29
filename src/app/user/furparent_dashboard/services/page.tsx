@@ -8,7 +8,7 @@ type LocationData = {
   coordinates?: [number, number];
   source: 'profile' | 'default' | 'geolocation';
 };
-import ServicesPageSkeleton from '@/components/ui/ServicesPageSkeleton';
+// Removed full-section skeleton; we now show skeletons only on provider cards
 // OTP verification is handled by the layout
 
 interface ServicesPageProps {
@@ -263,11 +263,6 @@ function ServicesPage({ userData }: ServicesPageProps) {
     fetchServiceProviders(1);
   };
 
-  // Show skeleton while loading
-  if (isLoadingLocation || (isLoading && serviceProviders.length === 0)) {
-    return <ServicesPageSkeleton />;
-  }
-
   return (
     <>
       {/* Hero Section with Pattern Background */}
@@ -287,11 +282,10 @@ function ServicesPage({ userData }: ServicesPageProps) {
         <div className="bg-white py-8">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="bg-white rounded-lg shadow-[0_4px_16px_rgba(0,0,0,0.1)] p-8 -mt-16 relative z-20">
-              
               <MapWithServicesList
                 serviceProviders={serviceProviders}
                 userLocation={userLocation}
-                isLoading={isLoading}
+                isLoading={isLoading || isLoadingLocation}
                 selectedProviderId={selectedProviderId}
                 onGetDirections={handleGetDirections}
               />

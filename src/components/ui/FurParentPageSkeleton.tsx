@@ -476,7 +476,7 @@ export default memo(function FurParentPageSkeleton({ type = 'services' }: FurPar
 
               {/* Pagination dots */}
               <div className="flex justify-center space-x-2">
-                {[1, 2, 3].map((i) => (
+        {[1, 2, 3].map((i) => (
                   <div key={i} className="h-2 w-2 bg-gray-300 rounded-full animate-pulse"></div>
                 ))}
               </div>

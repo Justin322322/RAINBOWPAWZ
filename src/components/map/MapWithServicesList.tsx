@@ -249,18 +249,7 @@ const MapWithServicesList = React.memo(function MapWithServicesList({
     return () => window.removeEventListener('resize', checkScreenSize);
   }, []);
 
-  if (isLoading) {
-    return (
-      <SectionLoader
-        message="Loading services and providers..."
-        minHeight="min-h-[600px]"
-        withBackground={true}
-        withShadow={true}
-        rounded={true}
-        sectionId="services-map-grid"
-      />
-    );
-  }
+  // When loading, render placeholder cards in the list and keep the map frame visible
 
   return (
     <div className="w-full">
@@ -317,7 +306,30 @@ const MapWithServicesList = React.memo(function MapWithServicesList({
                 </div>
 
                 <div className="p-4">
-                  {providersForPagination.length === 0 ? (
+                  {isLoading ? (
+                    <>
+                      <div className="space-y-3">
+                        {Array.from({ length: 4 }).map((_, idx) => (
+                          <div key={idx} className="border rounded-lg p-3 animate-pulse">
+                            <div className="flex justify-between items-start mb-2">
+                              <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+                              <div className="h-5 bg-gray-200 rounded w-16"></div>
+                            </div>
+                            <div className="h-3 bg-gray-200 rounded w-full mb-1"></div>
+                            <div className="h-3 bg-gray-200 rounded w-2/3 mb-2"></div>
+                            <div className="flex justify-between items-center mb-2">
+                              <div className="h-3 bg-gray-200 rounded w-20"></div>
+                              <div className="h-3 bg-gray-200 rounded w-16"></div>
+                            </div>
+                            <div className="flex gap-2">
+                              <div className="flex-1 h-8 bg-gray-200 rounded"></div>
+                              <div className="flex-1 h-8 bg-gray-200 rounded"></div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </>
+                  ) : providersForPagination.length === 0 ? (
                     <div className="text-center py-8">
                       <MapPinIcon className="h-12 w-12 mx-auto text-gray-300 mb-4" />
                       <h4 className="text-lg font-medium text-gray-700 mb-2">
@@ -409,7 +421,9 @@ const MapWithServicesList = React.memo(function MapWithServicesList({
 
             <div className="p-4">
               <div className="w-full h-[500px] rounded-lg overflow-hidden">
-                {serviceProviders.length === 0 || !userLocation ? (
+                {isLoading ? (
+                  <div className="w-full h-full bg-gray-100 animate-pulse rounded-lg" />
+                ) : serviceProviders.length === 0 || !userLocation ? (
                   <div className="w-full h-full flex items-center justify-center bg-gray-100 rounded-lg text-center p-8">
                     <div>
                       <MapPinIcon className="h-12 w-12 mx-auto text-gray-300 mb-4" />
