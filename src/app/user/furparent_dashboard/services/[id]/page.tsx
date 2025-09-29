@@ -349,9 +349,7 @@ function ServiceDetailPage({ userData }: ServiceDetailPageProps) {
     <div className="min-h-screen">
       {/* Navigation is now handled by layout */}
 
-      {loading ? (
-        null
-      ) : error ? (
+      {error ? (
         <div className="max-w-7xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
           <div className="bg-red-50 border border-red-200 p-8 rounded-lg text-center">
             <XCircleIcon className="h-16 w-16 text-red-500 mx-auto mb-4" />
@@ -768,7 +766,38 @@ function ServiceDetailPage({ userData }: ServiceDetailPageProps) {
             </div>
           </div>
         </>
-      ) : null}
+      ) : (
+        <>
+          {/* Provider Banner (static shell when provider not yet available) */}
+          <div className="relative bg-gray-800 -mt-8 -mx-4 sm:-mx-6 lg:-mx-8 text-white">
+            <div className="absolute inset-0 overflow-hidden">
+              <div className="absolute inset-0 bg-[url('/bg_2.png')] bg-cover bg-center" />
+            </div>
+            <div className="absolute inset-0 bg-[var(--primary-green-light)] mix-blend-multiply" aria-hidden="true" />
+            <div className="absolute inset-0 bg-gradient-to-t from-[var(--primary-green)] via-transparent to-transparent md:bg-gradient-to-r" aria-hidden="true" />
+            <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16 md:py-20 lg:py-24 xl:py-32 text-center lg:text-left" />
+          </div>
+
+          {/* Main Content shell */}
+          <div className="bg-gray-50 py-8 sm:py-12">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+              <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6 sm:mb-8">
+                <button
+                  onClick={() => router.back()}
+                  className="flex items-center justify-center sm:justify-start text-[var(--primary-green)] hover:text-[var(--primary-green-hover)] transition-colors"
+                >
+                  <ArrowLeftIcon className="h-5 w-5 mr-2" />
+                  <span>Back to Services</span>
+                </button>
+                <div className="flex space-x-1 bg-gray-200 p-1 rounded-lg self-center sm:self-auto">
+                  <span className="px-3 sm:px-4 py-2 text-sm font-medium rounded-md bg-white text-[var(--primary-green)] shadow">Packages</span>
+                  <span className="px-3 sm:px-4 py-2 text-sm font-medium rounded-md text-gray-600">Reviews</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
 
 
     </div>

@@ -251,10 +251,59 @@ const MapWithServicesList = React.memo(function MapWithServicesList({
 
   // When loading, render placeholder cards in the list and keep the map frame visible
 
+  // Skeleton component for filters
+  const FilterSkeleton = () => (
+    <div className="bg-white rounded-lg shadow-md border border-gray-200 mb-6">
+      {/* Header skeleton */}
+      <div className="p-4 border-b border-gray-200">
+        <div className="flex items-center gap-3">
+          {/* Search input skeleton */}
+          <div className="flex-1">
+            <div className="h-10 bg-gray-200 rounded-md animate-pulse"></div>
+          </div>
+          {/* Filter button skeleton */}
+          <div className="h-10 w-20 bg-gray-200 rounded-md animate-pulse"></div>
+        </div>
+      </div>
+
+      {/* Expanded filter section skeleton */}
+      <div className="p-4 bg-gray-50 border-t border-gray-200">
+        {/* Quick stats skeleton */}
+        <div className="mb-4 p-3 bg-white rounded-md border border-gray-200">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-center">
+            {Array.from({ length: 4 }).map((_, idx) => (
+              <div key={idx}>
+                <div className="h-6 bg-gray-200 rounded animate-pulse mb-1"></div>
+                <div className="h-3 bg-gray-200 rounded animate-pulse w-16 mx-auto"></div>
+              </div>
+            ))}
+          </div>
+        </div>
+        
+        {/* Filter controls skeleton */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+          {Array.from({ length: 4 }).map((_, idx) => (
+            <div key={idx}>
+              <div className="h-4 bg-gray-200 rounded animate-pulse mb-2"></div>
+              <div className="h-10 bg-gray-200 rounded-md animate-pulse"></div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Results count skeleton */}
+      <div className="px-4 py-2 bg-gray-50 border-t border-gray-200">
+        <div className="h-4 bg-gray-200 rounded animate-pulse w-48"></div>
+      </div>
+    </div>
+  );
+
   return (
     <div className="w-full">
       {/* Filters */}
-      {serviceProviders.length > 0 && (
+      {isLoading ? (
+        <FilterSkeleton />
+      ) : serviceProviders.length > 0 ? (
         <div className="mb-6">
           <MapFilters
             providers={mappedProvidersForFilter}
@@ -262,7 +311,7 @@ const MapWithServicesList = React.memo(function MapWithServicesList({
             onFilterChange={handleFilterChange}
           />
         </div>
-      )}
+      ) : null}
 
       {/* Mobile Toggle Button */}
       <div className="lg:hidden mb-4">
