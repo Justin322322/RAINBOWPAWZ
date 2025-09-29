@@ -6,7 +6,7 @@ import 'leaflet/dist/leaflet.css';
 import { geocodingService } from '@/utils/geocoding';
 import { routingService } from '@/utils/routing';
 import { cacheManager } from '@/utils/cache';
-import { getBataanCoordinates } from '@/utils/distance';
+import { geocodeAddress } from '@/utils/distance';
 
 // Fix for TypeScript error with Leaflet control
 declare module 'leaflet' {
@@ -136,7 +136,7 @@ export default function MapComponent({
       
       if (type === 'provider') {
         // For providers, use the same coordinate calculation as the API to ensure consistency
-        const coordinates = await getBataanCoordinates(address);
+        const coordinates = await geocodeAddress(address);
         if (!coordinates) {
           console.warn(`🗺️ [MapComponent] Provider coordinates not found for: ${address}`);
           return; // Skip this provider if coordinates not found

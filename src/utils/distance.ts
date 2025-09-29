@@ -58,12 +58,12 @@ function deg2rad(deg: number): number {
 }
 
 /**
- * Get coordinates for a location using dynamic geocoding
- * This function uses the geocoding API to resolve addresses dynamically
- * @param location Location name or address
+ * Get coordinates for any location using dynamic geocoding
+ * This function uses the geocoding API to resolve addresses dynamically for any location
+ * @param location Location name or address (works for any location, not just Bataan)
  * @returns Promise<Coordinates | null>
  */
-export async function getBataanCoordinates(location: string): Promise<Coordinates | null> {
+export async function geocodeAddress(location: string): Promise<Coordinates | null> {
   if (!location || location.trim() === '') {
     return null;
   }

@@ -23,7 +23,7 @@ import GCashIcon from '@/components/ui/GCashIcon';
 import { useCart } from '@/contexts/CartContext';
 import TimeSlotSelector from '@/components/booking/TimeSlotSelector';
 import AddOnSelector, { AddOn } from '@/components/booking/AddOnSelector';
-import { calculateDistance, getBataanCoordinates } from '@/utils/distance';
+import { calculateDistance, geocodeAddress } from '@/utils/distance';
 
 interface CheckoutPageProps {
   userData?: any;
@@ -637,11 +637,11 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
         try {
           // Get coordinates for the delivery address
           const deliveryAddress = currentUserData.address || currentUserData.city || 'Bataan';
-          const deliveryCoordinates = await getBataanCoordinates(deliveryAddress);
+          const deliveryCoordinates = await geocodeAddress(deliveryAddress);
 
           // Get coordinates for the provider address
           const providerAddress = bookingData.provider.address || bookingData.provider.city || 'Bataan';
-          const providerCoordinates = await getBataanCoordinates(providerAddress);
+          const providerCoordinates = await geocodeAddress(providerAddress);
 
           // Verify both coordinates are non-null before calculating distance
           if (!deliveryCoordinates || !providerCoordinates) {

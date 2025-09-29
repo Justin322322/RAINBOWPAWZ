@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { query } from '@/lib/db';
-import { calculateDistance, getBataanCoordinates } from '@/utils/distance';
+import { calculateDistance, geocodeAddress } from '@/utils/distance';
 import { routingService } from '@/utils/routing';
 import { serverCache } from '@/utils/server-cache';
 
@@ -79,7 +79,7 @@ export async function GET(request: Request) {
     } else {
       // Only fallback to geocoding if we have a valid location string
       if (userLocation && userLocation.trim() !== '') {
-        userCoordinates = await getBataanCoordinates(userLocation);
+        userCoordinates = await geocodeAddress(userLocation);
         if (!userCoordinates) {
           // Location not found in our database
           return NextResponse.json({
@@ -99,7 +99,7 @@ export async function GET(request: Request) {
     }
   } else if (userLocation) {
     // Priority 2: Fallback to address-based lookup
-    userCoordinates = await getBataanCoordinates(userLocation);
+    userCoordinates = await geocodeAddress(userLocation);
     if (!userCoordinates) {
       // Location not found in our database
       return NextResponse.json({
@@ -252,7 +252,7 @@ export async function GET(request: Request) {
         };
         // Async function to calculate distance for a single provider with server caching
         const calculateProviderDistance = async (provider: any, userCoords: any): Promise<void> => {
-          const providerCoordinates = await getBataanCoordinates(provider.address || 'Bataan');
+          const providerCoordinates = await geocodeAddress(provider.address || 'Bataan');
 
           // Check if providerCoordinates is null and skip distance calculation
           if (!providerCoordinates) {
@@ -357,7 +357,7 @@ export async function GET(request: Request) {
           } catch {
             // Final fallback - use simple distance calculation with fallback coordinates
             try {
-              const providerCoordinates = await getBataanCoordinates(provider.address || 'Bataan');
+              const providerCoordinates = await geocodeAddress(provider.address || 'Bataan');
               if (providerCoordinates) {
                 const distanceValue = calculateDistance(userCoordinates, providerCoordinates);
                 provider.distance = `${distanceValue.toFixed(1)} km`;
