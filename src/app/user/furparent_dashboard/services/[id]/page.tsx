@@ -135,7 +135,7 @@ function ServiceDetailPage({ userData }: ServiceDetailPageProps) {
     return () => {
       window.removeEventListener('userDataUpdated', handleUserDataUpdate as EventListener);
     };
-  }, [userData]);
+  }, [userData, userLocation?.address]);
 
   // Function to sort packages based on selected criteria
   const getSortedPackages = () => {

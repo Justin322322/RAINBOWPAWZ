@@ -8,7 +8,6 @@ type LocationData = {
   coordinates?: [number, number];
   source: 'profile' | 'default' | 'geolocation';
 };
-import { cacheManager } from '@/utils/cache';
 import ServicesPageSkeleton from '@/components/ui/ServicesPageSkeleton';
 // OTP verification is handled by the layout
 
@@ -85,7 +84,7 @@ function ServicesPage({ userData }: ServicesPageProps) {
     return () => {
       window.removeEventListener('userDataUpdated', handleUserDataUpdate as EventListener);
     };
-  }, [userData]);
+  }, [userData, userLocation?.address]);
 
   // Load map after component mounts and location is determined
   useEffect(() => {
