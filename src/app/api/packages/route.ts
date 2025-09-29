@@ -158,8 +158,8 @@ export async function GET(request: NextRequest) {
           }
           
           // Skip extremely long base64 strings that break Next.js optimization
-          // Allow up to ~3MB to accommodate higher quality images on the list view
-          const MAX_IMAGE_SIZE = 3000000; // 3MB in characters
+          // Reduced size limit for better performance on services list view
+          const MAX_IMAGE_SIZE = 1000000; // 1MB in characters for better performance
           if (img.startsWith('data:image/') && img.length > MAX_IMAGE_SIZE) {
             console.warn(`Package ${packageId} has oversized base64 image (${img.length} chars), skipping`);
             return null;
@@ -172,7 +172,7 @@ export async function GET(request: NextRequest) {
           
           if (dataUrl && typeof dataUrl === 'string' && dataUrl.startsWith('data:image/')) {
             // Skip extremely long base64 strings - use same limit as above
-            const MAX_IMAGE_SIZE = 3000000; // 3MB in characters
+            const MAX_IMAGE_SIZE = 1000000; // 1MB in characters for better performance
             if (dataUrl.length > MAX_IMAGE_SIZE) {
               console.warn(`Package ${packageId} has oversized base64 image (${dataUrl.length} chars), skipping`);
               return null;

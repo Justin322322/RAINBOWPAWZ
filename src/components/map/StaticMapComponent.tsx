@@ -29,8 +29,13 @@ export default function StaticMapComponent({
         setIsLoading(true);
         setError(null);
 
-        // Geocode the provider address
-        const result = await geocodingService.geocodeAddress(providerAddress);
+        // Geocode the provider address with timeout
+        const geocodingPromise = geocodingService.geocodeAddress(providerAddress);
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Geocoding timeout')), 5000)
+        );
+        
+        const result = await Promise.race([geocodingPromise, timeoutPromise]) as any;
         
         if (!result.coordinates) {
           throw new Error('Could not find provider location');

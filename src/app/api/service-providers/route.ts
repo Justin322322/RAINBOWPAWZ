@@ -126,7 +126,7 @@ export async function GET(request: Request) {
       // Create cache key for this request
       const cacheKey = `${userLocation}_${userLat}_${userLng}_${limit}_${offset}_${search}_${maxDistance}_${sortBy}_${sortOrder}`;
 
-      // Check server cache first (5 minute cache)
+      // Check server cache first (10 minute cache for better performance)
       const cachedData = serverCache.getServiceProvidersData(cacheKey);
       if (cachedData) {
         return NextResponse.json({
@@ -135,7 +135,7 @@ export async function GET(request: Request) {
           statistics: cachedData.statistics
         }, {
           headers: {
-            'Cache-Control': 'private, max-age=300', // Cache for 5 minutes
+            'Cache-Control': 'private, max-age=600', // Cache for 10 minutes
             'X-Cache': 'HIT'
           }
         });
@@ -279,7 +279,7 @@ export async function GET(request: Request) {
             const routeResult = await routingService.getRoute(
               [userCoords.lat, userCoords.lng],
               [providerCoordinates.lat, providerCoordinates.lng],
-              { timeout: 5000 } // 5 second timeout
+              { timeout: 3000 } // 3 second timeout for better performance
             );
 
             // Validate that distance exists in the response before parsing
@@ -421,7 +421,7 @@ export async function GET(request: Request) {
             totalProviders: total,
             filteredCount: processedProviders.length
           }
-        }, 5 * 60 * 1000); // 5 minute cache
+        }, 10 * 60 * 1000); // 10 minute cache
 
         return NextResponse.json({
           providers: processedProviders,
@@ -439,7 +439,7 @@ export async function GET(request: Request) {
           }
         }, {
           headers: {
-            'Cache-Control': 'private, max-age=300', // Cache for 5 minutes
+            'Cache-Control': 'private, max-age=600', // Cache for 10 minutes
             'X-Cache': 'MISS'
           }
         });

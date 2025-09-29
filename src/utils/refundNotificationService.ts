@@ -61,7 +61,7 @@ export async function sendRefundProcessedNotification(
       userId: refundData.userId,
       type: 'refund_processed',
       title: 'Refund Processed',
-      message: `Your refund of ₱${refundData.amount.toFixed(2)} for booking #${refundData.bookingId} has been processed.`,
+      message: `Your refund of ₱${Number(refundData.amount).toFixed(2)} for booking #${refundData.bookingId} has been processed.`,
       entityId: refundData.refundId,
       shouldSendEmail: false // Already sent above
     });
@@ -105,7 +105,7 @@ export async function sendRefundInitiatedNotification(
       userId: refundData.userId,
       type: 'refund_initiated',
       title: 'Refund Initiated',
-      message: `Your refund request for ₱${refundData.amount.toFixed(2)} has been initiated and is being processed.`,
+      message: `Your refund request for ₱${Number(refundData.amount).toFixed(2)} has been initiated and is being processed.`,
       entityId: refundData.refundId,
       shouldSendEmail: false
     });
@@ -146,7 +146,7 @@ export async function sendRefundFailedNotification(
       userId: refundData.userId,
       type: 'refund_failed',
       title: 'Refund Failed',
-      message: `Your refund request for ₱${refundData.amount.toFixed(2)} could not be processed. Please contact support.`,
+      message: `Your refund request for ₱${Number(refundData.amount).toFixed(2)} could not be processed. Please contact support.`,
       entityId: refundData.refundId,
       shouldSendEmail: false
     });
@@ -229,11 +229,11 @@ async function sendRefundSMS(
 
   switch (type) {
     case 'processed':
-      message = `Your refund of ₱${refundData.amount.toFixed(2)} for booking #${refundData.bookingId} has been processed. Please check your email for details. - RainbowPaws`;
+      message = `Your refund of ₱${Number(refundData.amount).toFixed(2)} for booking #${refundData.bookingId} has been processed. Please check your email for details. - RainbowPaws`;
       break;
     
     case 'initiated':
-      message = `Your refund request of ₱${refundData.amount.toFixed(2)} for booking #${refundData.bookingId} is being processed. You'll receive an update soon. - RainbowPaws`;
+      message = `Your refund request of ₱${Number(refundData.amount).toFixed(2)} for booking #${refundData.bookingId} is being processed. You'll receive an update soon. - RainbowPaws`;
       break;
     
     default:
@@ -322,7 +322,7 @@ function createRefundProcessedEmailHtml(refundData: RefundNotificationData): str
                 
                 <div class="details">
                     <h3>Refund Details</h3>
-                    <p><strong>Refund Amount:</strong> <span class="amount">₱${refundData.amount.toFixed(2)}</span></p>
+                    <p><strong>Refund Amount:</strong> <span class="amount">₱${Number(refundData.amount).toFixed(2)}</span></p>
                     <p><strong>Booking ID:</strong> #${refundData.bookingId}</p>
                     <p><strong>Transaction ID:</strong> ${refundData.transactionId || 'N/A'}</p>
                     <p><strong>Payment Method:</strong> ${refundData.paymentMethod.toUpperCase()}</p>
@@ -370,7 +370,7 @@ function createRefundProcessedEmailText(refundData: RefundNotificationData): str
     Your refund has been processed successfully.
     
     REFUND DETAILS:
-    - Refund Amount: ₱${refundData.amount.toFixed(2)}
+    - Refund Amount: ₱${Number(refundData.amount).toFixed(2)}
     - Booking ID: #${refundData.bookingId}
     - Transaction ID: ${refundData.transactionId || 'N/A'}
     - Payment Method: ${refundData.paymentMethod.toUpperCase()}
@@ -432,7 +432,7 @@ function createRefundInitiatedEmailHtml(refundData: RefundNotificationData, inst
                 
                 <div class="details">
                     <h3>Refund Request Details</h3>
-                    <p><strong>Refund Amount:</strong> <span class="amount">₱${refundData.amount.toFixed(2)}</span></p>
+                    <p><strong>Refund Amount:</strong> <span class="amount">₱${Number(refundData.amount).toFixed(2)}</span></p>
                     <p><strong>Booking ID:</strong> #${refundData.bookingId}</p>
                     <p><strong>Payment Method:</strong> ${refundData.paymentMethod.toUpperCase()}</p>
                     <p><strong>Status:</strong> <span class="status">Processing</span></p>
@@ -480,7 +480,7 @@ function createRefundInitiatedEmailText(refundData: RefundNotificationData, inst
     Your refund request has been initiated and is being processed.
     
     REFUND REQUEST DETAILS:
-    - Refund Amount: ₱${refundData.amount.toFixed(2)}
+    - Refund Amount: ₱${Number(refundData.amount).toFixed(2)}
     - Booking ID: #${refundData.bookingId}
     - Payment Method: ${refundData.paymentMethod.toUpperCase()}
     - Status: Processing
@@ -543,7 +543,7 @@ function createRefundFailedEmailHtml(refundData: RefundNotificationData, failure
                 
                 <div class="details">
                     <h3>Refund Request Details</h3>
-                    <p><strong>Refund Amount:</strong> <span class="amount">₱${refundData.amount.toFixed(2)}</span></p>
+                    <p><strong>Refund Amount:</strong> <span class="amount">₱${Number(refundData.amount).toFixed(2)}</span></p>
                     <p><strong>Booking ID:</strong> #${refundData.bookingId}</p>
                     <p><strong>Payment Method:</strong> ${refundData.paymentMethod.toUpperCase()}</p>
                     <p><strong>Status:</strong> <span class="status">Failed</span></p>
@@ -586,7 +586,7 @@ function createRefundFailedEmailText(refundData: RefundNotificationData, failure
     We apologize, but we encountered an issue while processing your refund.
     
     REFUND REQUEST DETAILS:
-    - Refund Amount: ₱${refundData.amount.toFixed(2)}
+    - Refund Amount: ₱${Number(refundData.amount).toFixed(2)}
     - Booking ID: #${refundData.bookingId}
     - Payment Method: ${refundData.paymentMethod.toUpperCase()}
     - Status: Failed

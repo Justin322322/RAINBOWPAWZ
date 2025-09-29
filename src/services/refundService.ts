@@ -277,7 +277,7 @@ async function processAutomaticRefund(
         refundId,
         refundType: 'automatic',
         paymentMethod: bookingInfo.paymentMethod,
-        message: `Automatic refund of ₱${request.amount.toFixed(2)} processed successfully`
+        message: `Automatic refund of ₱${Number(request.amount).toFixed(2)} processed successfully`
       };
 
     } catch (paymongoError) {
@@ -602,7 +602,7 @@ function generateManualRefundInstructions(paymentMethod: string, amount: number)
       '4. Log into your cremation center\'s PayMongo account',
       '5. Navigate to the Payments section',
       '6. Find the original payment transaction',
-      `7. Process a refund of ₱${amount.toFixed(2)}`,
+      `7. Process a refund of ₱${Number(amount).toFixed(2)}`,
       '8. Download the official refund receipt from PayMongo',
       '',
       'STEP 3 - UPLOAD RECEIPT:',
@@ -617,7 +617,7 @@ function generateManualRefundInstructions(paymentMethod: string, amount: number)
     instructions.push(
       'INSTRUCTIONS FOR CREMATION CENTER:',
       'Please process the cash refund manually:',
-      `1. Prepare cash amount of ₱${amount.toFixed(2)}`,
+      `1. Prepare cash amount of ₱${Number(amount).toFixed(2)}`,
       '2. Contact the customer to arrange refund collection',
       '3. Have customer sign a refund receipt',
       '4. Take a photo or scan the signed receipt',
@@ -630,7 +630,7 @@ function generateManualRefundInstructions(paymentMethod: string, amount: number)
     instructions.push(
       'INSTRUCTIONS FOR CREMATION CENTER:',
       'Please process the refund manually:',
-      `1. Process refund of ₱${amount.toFixed(2)} through the original payment method`,
+      `1. Process refund of ₱${Number(amount).toFixed(2)} through the original payment method`,
       '2. Use your cremation center\'s payment processing system',
       '3. Obtain official receipt or confirmation',
       '4. Upload the receipt/confirmation to the system',
@@ -652,7 +652,7 @@ function generateQRRefundInstructions(amount: number): string[] {
     'This refund has been automatically processed by the cremation business.',
     '',
     'REFUND DETAILS:',
-    `• Amount: ₱${amount.toFixed(2)}`,
+    `• Amount: ₱${Number(amount).toFixed(2)}`,
     '• Status: Completed',
     '• Method: QR Code Payment',
     '',
@@ -980,7 +980,7 @@ function generateReceiptContent(refund: any): string {
       <div class="content">
         <div class="row">
           <strong>Refund Amount:</strong>
-          <span>₱${refund.amount.toFixed(2)}</span>
+          <span>₱${Number(refund.amount).toFixed(2)}</span>
         </div>
         <div class="row">
           <strong>Original Payment Method:</strong>
@@ -1093,7 +1093,7 @@ export async function sendRefundCompletionNotification(refundId: number): Promis
         const { sendSMS } = await import('@/lib/httpSmsService');
         await sendSMS({
           to: customer.email, // Assuming email is used as phone number identifier
-          message: `Your refund of ₱${refund.amount.toFixed(2)} has been completed. Refund ID: #${refund.id}. Thank you for choosing RainbowPaws.`
+          message: `Your refund of ₱${Number(refund.amount).toFixed(2)} has been completed. Refund ID: #${refund.id}. Thank you for choosing RainbowPaws.`
         });
       } catch (smsError) {
         console.error('Failed to send refund completion SMS:', smsError);

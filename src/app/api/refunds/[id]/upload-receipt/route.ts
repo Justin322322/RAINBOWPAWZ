@@ -53,10 +53,10 @@ export async function POST(
       }, { status: 400 });
     }
 
-    // Check if refund requires manual processing
-    if (refund.refund_type !== 'manual') {
+    // Check if refund requires manual processing or is a stuck automatic refund
+    if (refund.refund_type !== 'manual' && refund.status !== 'processing') {
       return NextResponse.json({ 
-        error: 'Receipt upload is only required for manual refunds' 
+        error: 'Receipt upload is only required for manual refunds or processing automatic refunds' 
       }, { status: 400 });
     }
 

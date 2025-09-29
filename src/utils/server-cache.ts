@@ -41,8 +41,8 @@ type CacheDataTypes = RoutingCacheData | ServiceProvidersCacheData;
 class ServerCache {
   private static instance: ServerCache;
   private cache = new Map<string, CacheEntry<CacheDataTypes>>();
-  private readonly DEFAULT_TTL = 60 * 60 * 1000; // 1 hour
-  private readonly ROUTING_TTL = 30 * 60 * 1000; // 30 minutes
+  private readonly DEFAULT_TTL = 30 * 60 * 1000; // 30 minutes (reduced for better performance)
+  private readonly ROUTING_TTL = 15 * 60 * 1000; // 15 minutes (reduced for better performance)
   private readonly MAX_CACHE_SIZE = 1000; // Maximum number of entries
   private cleanupInterval: NodeJS.Timeout | null = null;
 

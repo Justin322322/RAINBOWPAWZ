@@ -9,6 +9,7 @@ type LocationData = {
   source: 'profile' | 'default' | 'geolocation';
 };
 import { cacheManager } from '@/utils/cache';
+import ServicesPageSkeleton from '@/components/ui/ServicesPageSkeleton';
 // OTP verification is handled by the layout
 
 interface ServicesPageProps {
@@ -20,30 +21,25 @@ function ServicesPage({ userData }: ServicesPageProps) {
   const [isLoadingLocation, setIsLoadingLocation] = useState(true);
   const [selectedProviderId, setSelectedProviderId] = useState<number | null>(null);
 
-  // Get user location from profile - simplified approach
+  // Get user location from profile - optimized approach
   useEffect(() => {
     const getLocation = () => {
       setIsLoadingLocation(true);
 
-      // Always get fresh data from session storage
+      // Use userData prop first (from server), then fallback to session storage
       let currentUserData = userData;
 
-      // Get the most recent data from session storage
-      if (typeof window !== 'undefined') {
+      // Only check session storage if userData prop is not available
+      if (!currentUserData && typeof window !== 'undefined') {
         const sessionUserData = sessionStorage.getItem('user_data');
         if (sessionUserData) {
           try {
-            const parsedData = JSON.parse(sessionUserData);
-            // Use session storage data if it's more recent or if userData prop is not available
-            currentUserData = parsedData;
+            currentUserData = JSON.parse(sessionUserData);
           } catch (error) {
             console.error('Failed to parse user data from session storage:', error);
           }
         }
       }
-
-      // Clear routing cache to remove old invalid entries (one-time fix)
-      cacheManager.clearRoutingCache();
 
       // Set location based on current user data
       let location = null;
@@ -52,9 +48,6 @@ function ServicesPage({ userData }: ServicesPageProps) {
           address: currentUserData.address,
           source: 'profile' as const
         };
-        console.log('✅ Setting location to:', location);
-      } else {
-        console.log('❌ No address found in user data');
       }
 
       setUserLocation(location);
@@ -64,12 +57,7 @@ function ServicesPage({ userData }: ServicesPageProps) {
     // Run immediately
     getLocation();
 
-    // Also listen for storage changes (when profile is updated in another tab/component)
-    const handleStorageChange = () => {
-      getLocation();
-    };
-
-    // Listen for custom events (when profile is updated)
+    // Listen for custom events (when profile is updated) - optimized
     const handleUserDataUpdate = (event: CustomEvent) => {
       if (event.detail) {
         // Update session storage with new data
@@ -79,23 +67,22 @@ function ServicesPage({ userData }: ServicesPageProps) {
           console.error('Failed to update session storage:', error);
         }
 
-        // Update location
-        if (event.detail.address && event.detail.address.trim() !== '') {
-          setUserLocation({
-            address: event.detail.address,
+        // Update location only if address actually changed
+        const newAddress = event.detail.address?.trim() || '';
+        const currentAddress = userLocation?.address?.trim() || '';
+        
+        if (newAddress !== currentAddress) {
+          setUserLocation(newAddress ? {
+            address: newAddress,
             source: 'profile' as const
-          });
-        } else {
-          setUserLocation(null);
+          } : null);
         }
       }
     };
 
-    window.addEventListener('storage', handleStorageChange);
     window.addEventListener('userDataUpdated', handleUserDataUpdate as EventListener);
 
     return () => {
-      window.removeEventListener('storage', handleStorageChange);
       window.removeEventListener('userDataUpdated', handleUserDataUpdate as EventListener);
     };
   }, [userData]);
@@ -173,10 +160,10 @@ function ServicesPage({ userData }: ServicesPageProps) {
       const queryString = params.toString();
       const cacheKey = queryString;
 
-      // Check cache first (5 minute cache)
+      // Check cache first (10 minute cache)
       const cachedData = cache.get(cacheKey);
       const now = Date.now();
-      const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+      const CACHE_DURATION = 10 * 60 * 1000; // 10 minutes
 
       if (cachedData && (now - cachedData.timestamp) < CACHE_DURATION) {
         setServiceProviders(cachedData.data.providers || []);
@@ -277,7 +264,10 @@ function ServicesPage({ userData }: ServicesPageProps) {
     fetchServiceProviders(1);
   };
 
-  // No longer needed since we're only using profile data
+  // Show skeleton while loading
+  if (isLoadingLocation || (isLoading && serviceProviders.length === 0)) {
+    return <ServicesPageSkeleton />;
+  }
 
   return (
     <>

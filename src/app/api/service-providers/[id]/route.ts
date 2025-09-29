@@ -154,7 +154,7 @@ export async function GET(
                   const routeResult = await routingService.getRoute(
                     [userCoordinates.lat, userCoordinates.lng],
                     [providerCoordinates.lat, providerCoordinates.lng],
-                    { timeout: 5000 } // 5 second timeout
+                    { timeout: 3000 } // 3 second timeout for better performance
                   );
 
                   // Validate that distance exists in the response

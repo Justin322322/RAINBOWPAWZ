@@ -16,7 +16,7 @@ import MapFilters, { FilterState, ServiceProvider as FilterServiceProvider } fro
 import dynamic from 'next/dynamic';
 import { SectionLoader } from '@/components/ui/SectionLoader';
 
-// Import the map component with dynamic loading
+// Import the map component with dynamic loading and better performance
 const MapComponent = dynamic(
   () => import('./MapComponent'),
   {

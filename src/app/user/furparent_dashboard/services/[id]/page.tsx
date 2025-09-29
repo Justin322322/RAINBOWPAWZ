@@ -76,17 +76,15 @@ function ServiceDetailPage({ userData }: ServiceDetailPageProps) {
     const getLocation = () => {
       setIsLoadingLocation(true);
 
-      // Always get fresh data from session storage
+      // Use userData prop first (from server), then fallback to session storage
       let currentUserData = userData;
 
-      // Get the most recent data from session storage
-      if (typeof window !== 'undefined') {
+      // Only check session storage if userData prop is not available
+      if (!currentUserData && typeof window !== 'undefined') {
         const sessionUserData = sessionStorage.getItem('user_data');
         if (sessionUserData) {
           try {
-            const parsedData = JSON.parse(sessionUserData);
-            // Use session storage data if it's more recent or if userData prop is not available
-            currentUserData = parsedData;
+            currentUserData = JSON.parse(sessionUserData);
           } catch (error) {
             console.error('Failed to parse user data from session storage:', error);
           }
@@ -109,7 +107,7 @@ function ServiceDetailPage({ userData }: ServiceDetailPageProps) {
     // Run immediately
     getLocation();
 
-    // Listen for custom events (when profile is updated)
+    // Listen for custom events (when profile is updated) - optimized
     const handleUserDataUpdate = (event: CustomEvent) => {
       if (event.detail) {
         // Update session storage with new data
@@ -119,14 +117,15 @@ function ServiceDetailPage({ userData }: ServiceDetailPageProps) {
           console.error('Failed to update session storage:', error);
         }
 
-        // Update location
-        if (event.detail.address && event.detail.address.trim() !== '') {
-          setUserLocation({
-            address: event.detail.address,
+        // Update location only if address actually changed
+        const newAddress = event.detail.address?.trim() || '';
+        const currentAddress = userLocation?.address?.trim() || '';
+        
+        if (newAddress !== currentAddress) {
+          setUserLocation(newAddress ? {
+            address: newAddress,
             source: 'profile' as const
-          });
-        } else {
-          setUserLocation(null);
+          } : null);
         }
       }
     };
