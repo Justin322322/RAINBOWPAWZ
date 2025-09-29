@@ -68,12 +68,9 @@ function ServiceDetailPage({ userData }: ServiceDetailPageProps) {
   // Get user location from profile with coordinates support
   // Remove hardcoded default address
   const [userLocation, setUserLocation] = useState<LocationData | null>(null);
-  const [isLoadingLocation, setIsLoadingLocation] = useState(true);
 
   useEffect(() => {
     const getLocation = () => {
-      setIsLoadingLocation(true);
-
       // Use userData prop first (from server), then fallback to session storage
       let currentUserData = userData;
 
@@ -99,7 +96,6 @@ function ServiceDetailPage({ userData }: ServiceDetailPageProps) {
       }
 
       setUserLocation(location);
-      setIsLoadingLocation(false);
     };
 
     // Run immediately
@@ -152,11 +148,6 @@ function ServiceDetailPage({ userData }: ServiceDetailPageProps) {
   };
 
   useEffect(() => {
-    // Wait for location loading to complete to ensure we have coordinates if available
-    if (isLoadingLocation) {
-      return;
-    }
-
     // Fetch real provider data
     const fetchData = async () => {
       try {
@@ -222,10 +213,10 @@ function ServiceDetailPage({ userData }: ServiceDetailPageProps) {
       }
     };
 
-    if (providerId && !isLoadingLocation) {
+    if (providerId) {
       fetchData();
     }
-  }, [providerId, userLocation, isLoadingLocation, mockPets]);
+  }, [providerId, userLocation, mockPets]);
 
   const handleNextPackage = () => {
     const sortedPackages = getSortedPackages();
@@ -367,15 +358,15 @@ function ServiceDetailPage({ userData }: ServiceDetailPageProps) {
             </div>
           </div>
         </div>
-      ) : provider ? (
+      ) : (
         <>
           {/* Provider Banner */}
           <div className="relative bg-gray-800 -mt-8 -mx-4 sm:-mx-6 lg:-mx-8 text-white">
             <div className="absolute inset-0 overflow-hidden">
-              {provider.profile_picture ? (
+              {provider?.profile_picture ? (
                 <Image
                   src={`/api/image/profile-pictures/${provider.id}/${provider.profile_picture.split('/').pop()}`}
-                  alt={`${provider.name} Profile`}
+                  alt={`${provider?.name || 'Provider'} Profile`}
                   fill
                   className="object-cover"
                   onError={(e) => {
@@ -398,25 +389,25 @@ function ServiceDetailPage({ userData }: ServiceDetailPageProps) {
               <div className="flex flex-col lg:flex-row gap-6 lg:gap-8 items-start">
                 <div className="w-full lg:w-1/2 order-2 lg:order-1">
                   <div className="flex flex-col items-center lg:items-start gap-3 lg:gap-4 mb-4">
-                    <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-white tracking-tight text-center lg:text-left">{provider.name}</h1>
+                    <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-white tracking-tight text-center lg:text-left">{provider?.name || 'Loading...'}</h1>
                     <div className="flex-shrink-0 flex items-center bg-white/10 backdrop-blur-sm px-3 py-1 rounded-full text-sm">
                       <StarIcon className="h-5 w-5 text-yellow-300 mr-2" />
-                      <span className="font-semibold text-white">{provider.rating ? provider.rating.toFixed(1) : 'New'}</span>
+                      <span className="font-semibold text-white">{provider?.rating ? provider.rating.toFixed(1) : 'New'}</span>
                     </div>
                   </div>
                   <p className="mt-3 lg:mt-4 text-base lg:text-lg text-white/80 flex items-center justify-center lg:justify-start">
                     <MapPinIcon className="h-4 w-4 lg:h-5 lg:w-5 mr-2 flex-shrink-0" />
-                    <span className="text-center lg:text-left">{provider.address?.replace(', Philippines', '')}</span>
+                    <span className="text-center lg:text-left">{provider?.address?.replace(', Philippines', '') || 'Loading...'}</span>
                   </p>
-                  {provider.operational_hours && provider.operational_hours !== 'Not specified' && (
+                  {provider?.operational_hours && provider.operational_hours !== 'Not specified' && (
                     <p className="mt-2 lg:mt-2 text-base lg:text-lg text-white/80 flex items-center justify-center lg:justify-start">
                       <ClockIcon className="h-4 w-4 lg:h-5 lg:w-5 mr-2 flex-shrink-0" />
-                      <span className="text-center lg:text-left">{provider.operational_hours}</span>
+                      <span className="text-center lg:text-left">{provider?.operational_hours}</span>
                     </p>
                   )}
                   <div className="mt-6 lg:mt-8 border-l-4 border-white/30 pl-4 lg:pl-6 max-w-md mx-auto lg:mx-0">
                     <p className="text-white/90 text-base lg:text-lg italic leading-relaxed text-center lg:text-left">
-                      &quot;{provider.description || 'Professional pet cremation services with care and compassion.'}&quot;
+                      &quot;{provider?.description || 'Professional pet cremation services with care and compassion.'}&quot;
                     </p>
                   </div>
                 </div>
@@ -424,8 +415,8 @@ function ServiceDetailPage({ userData }: ServiceDetailPageProps) {
                                  {/* Map Section - Right Side */}
                  <div className="w-full lg:w-1/2 order-1 lg:order-2 mb-6 lg:mb-0">
                    <StaticMapComponent
-                     providerAddress={provider.address}
-                     providerName={provider.name}
+                     providerAddress={provider?.address}
+                     providerName={provider?.name}
                      className="w-full h-64 sm:h-72 md:h-80 lg:h-96"
                    />
                  </div>
@@ -758,37 +749,6 @@ function ServiceDetailPage({ userData }: ServiceDetailPageProps) {
                    <ReviewsList providerId={Number(providerId)} className="" />
                  </div>
                )}
-            </div>
-          </div>
-        </>
-      ) : (
-        <>
-          {/* Provider Banner (static shell when provider not yet available) */}
-          <div className="relative bg-gray-800 -mt-8 -mx-4 sm:-mx-6 lg:-mx-8 text-white">
-            <div className="absolute inset-0 overflow-hidden">
-              <div className="absolute inset-0 bg-[url('/bg_2.png')] bg-cover bg-center" />
-            </div>
-            <div className="absolute inset-0 bg-[var(--primary-green-light)] mix-blend-multiply" aria-hidden="true" />
-            <div className="absolute inset-0 bg-gradient-to-t from-[var(--primary-green)] via-transparent to-transparent md:bg-gradient-to-r" aria-hidden="true" />
-            <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16 md:py-20 lg:py-24 xl:py-32 text-center lg:text-left" />
-          </div>
-
-          {/* Main Content shell */}
-          <div className="bg-gray-50 py-8 sm:py-12">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-              <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6 sm:mb-8">
-                <button
-                  onClick={() => router.back()}
-                  className="flex items-center justify-center sm:justify-start text-[var(--primary-green)] hover:text-[var(--primary-green-hover)] transition-colors"
-                >
-                  <ArrowLeftIcon className="h-5 w-5 mr-2" />
-                  <span>Back to Services</span>
-                </button>
-                <div className="flex space-x-1 bg-gray-200 p-1 rounded-lg self-center sm:self-auto">
-                  <span className="px-3 sm:px-4 py-2 text-sm font-medium rounded-md bg-white text-[var(--primary-green)] shadow">Packages</span>
-                  <span className="px-3 sm:px-4 py-2 text-sm font-medium rounded-md text-gray-600">Reviews</span>
-                </div>
-              </div>
             </div>
           </div>
         </>
