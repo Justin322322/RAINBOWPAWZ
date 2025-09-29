@@ -63,6 +63,9 @@ function deg2rad(deg: number): number {
  * @param location Location name or address (works for any location, not just Bataan)
  * @returns Promise<Coordinates | null>
  */
+// Import the server-side geocoding function
+import { geocodeAddressDirect } from './geocoding-server';
+
 export async function geocodeAddress(location: string): Promise<Coordinates | null> {
   if (!location || location.trim() === '') {
     return null;
@@ -71,8 +74,7 @@ export async function geocodeAddress(location: string): Promise<Coordinates | nu
   try {
     // Check if we're in a server-side environment
     if (typeof window === 'undefined') {
-      // Server-side: Import and use the geocoding logic directly
-      const { geocodeAddressDirect } = await import('./geocoding-server.js');
+      // Server-side: Use the geocoding logic directly
       return await geocodeAddressDirect(location);
     } else {
       // Client-side: Use the API endpoint
