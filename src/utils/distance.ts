@@ -69,28 +69,36 @@ export async function geocodeAddress(location: string): Promise<Coordinates | nu
   }
 
   try {
-    // Use the geocoding API to resolve the address dynamically
-    const response = await fetch(`/api/geocoding?address=${encodeURIComponent(location)}`);
-    
-    if (!response.ok) {
-      console.warn(`Geocoding failed for "${location}": ${response.status}`);
-      return null;
-    }
+    // Check if we're in a server-side environment
+    if (typeof window === 'undefined') {
+      // Server-side: Import and use the geocoding logic directly
+      const { geocodeAddressDirect } = await import('./geocoding-server.js');
+      return await geocodeAddressDirect(location);
+    } else {
+      // Client-side: Use the API endpoint
+      const url = `/api/geocoding?address=${encodeURIComponent(location)}`;
+      const response = await fetch(url);
+      
+      if (!response.ok) {
+        console.warn(`Geocoding failed for "${location}": ${response.status}`);
+        return null;
+      }
 
-    const results = await response.json();
-    
-    if (!results || results.length === 0) {
-      console.warn(`No geocoding results found for "${location}"`);
-      return null;
-    }
+      const results = await response.json();
+      
+      if (!results || results.length === 0) {
+        console.warn(`No geocoding results found for "${location}"`);
+        return null;
+      }
 
-    // Use the first (best) result
-    const bestResult = results[0];
-    
-    return {
-      lat: parseFloat(bestResult.lat),
-      lng: parseFloat(bestResult.lon)
-    };
+      // Use the first (best) result
+      const bestResult = results[0];
+      
+      return {
+        lat: parseFloat(bestResult.lat),
+        lng: parseFloat(bestResult.lon)
+      };
+    }
   } catch (error) {
     console.error(`Error geocoding "${location}":`, error);
     return null;
