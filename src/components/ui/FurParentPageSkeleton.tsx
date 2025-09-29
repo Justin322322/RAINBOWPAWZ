@@ -296,35 +296,47 @@ export default memo(function FurParentPageSkeleton({ type = 'services' }: FurPar
     </div>
   );
 
-  // Service detail page skeleton - matches actual layout
+  // Service detail page skeleton - matches actual layout exactly
   const renderServiceDetailPageSkeleton = () => (
-    <div className="space-y-0">
-      {/* Provider Banner Skeleton - matches the actual banner layout */}
+    <div className="min-h-screen">
+      {/* Provider Banner Skeleton - matches the actual banner layout exactly */}
       <div className="relative bg-gray-800 -mt-8 -mx-4 sm:-mx-6 lg:-mx-8 text-white">
-        <div className="absolute inset-0 bg-gray-300 animate-pulse"></div>
-        <div className="absolute inset-0 bg-gradient-to-t from-gray-600 via-transparent to-transparent md:bg-gradient-to-r" aria-hidden="true" />
-        
+        <div className="absolute inset-0 overflow-hidden">
+          <div className="absolute inset-0 bg-[url('/bg_2.png')] bg-cover bg-center"></div>
+        </div>
+        <div className="absolute inset-0 bg-[var(--primary-green-light)] mix-blend-multiply" aria-hidden="true" />
+        <div className="absolute inset-0 bg-gradient-to-t from-[var(--primary-green)] via-transparent to-transparent md:bg-gradient-to-r" aria-hidden="true" />
+
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16 md:py-20 lg:py-24 xl:py-32 text-center lg:text-left">
           <div className="flex flex-col lg:flex-row gap-6 lg:gap-8 items-start">
             <div className="w-full lg:w-1/2 order-2 lg:order-1">
               <div className="flex flex-col items-center lg:items-start gap-3 lg:gap-4 mb-4">
-                {/* Provider name */}
-                <div className="h-12 w-3/4 bg-white/20 rounded-lg animate-pulse"></div>
-                {/* Rating */}
-                <div className="h-6 w-20 bg-white/20 rounded-full animate-pulse"></div>
+                {/* Provider name - matches text-2xl sm:text-3xl md:text-4xl lg:text-5xl */}
+                <div className="h-8 sm:h-10 md:h-12 lg:h-14 w-3/4 bg-white/20 rounded-lg animate-pulse"></div>
+                {/* Rating badge */}
+                <div className="flex-shrink-0 flex items-center bg-white/10 backdrop-blur-sm px-3 py-1 rounded-full">
+                  <div className="h-5 w-5 bg-white/20 rounded mr-2 animate-pulse"></div>
+                  <div className="h-4 w-8 bg-white/20 rounded animate-pulse"></div>
+                </div>
               </div>
-              {/* Address */}
-              <div className="h-5 w-full bg-white/20 rounded-lg animate-pulse mb-2"></div>
-              {/* Hours */}
-              <div className="h-5 w-2/3 bg-white/20 rounded-lg animate-pulse mb-6"></div>
-              {/* Description */}
-              <div className="border-l-4 border-white/30 pl-4 lg:pl-6 max-w-md mx-auto lg:mx-0">
-                <div className="h-4 w-full bg-white/20 rounded-lg animate-pulse mb-1"></div>
-                <div className="h-4 w-3/4 bg-white/20 rounded-lg animate-pulse"></div>
+              {/* Address with icon */}
+              <div className="mt-3 lg:mt-4 flex items-center justify-center lg:justify-start">
+                <div className="h-4 w-4 lg:h-5 lg:w-5 bg-white/20 rounded mr-2 animate-pulse"></div>
+                <div className="h-4 lg:h-5 w-full bg-white/20 rounded animate-pulse"></div>
+              </div>
+              {/* Hours with icon */}
+              <div className="mt-2 lg:mt-2 flex items-center justify-center lg:justify-start">
+                <div className="h-4 w-4 lg:h-5 lg:w-5 bg-white/20 rounded mr-2 animate-pulse"></div>
+                <div className="h-4 lg:h-5 w-2/3 bg-white/20 rounded animate-pulse"></div>
+              </div>
+              {/* Description with border */}
+              <div className="mt-6 lg:mt-8 border-l-4 border-white/30 pl-4 lg:pl-6 max-w-md mx-auto lg:mx-0">
+                <div className="h-4 lg:h-5 w-full bg-white/20 rounded animate-pulse mb-1"></div>
+                <div className="h-4 lg:h-5 w-3/4 bg-white/20 rounded animate-pulse"></div>
               </div>
             </div>
             
-            {/* Map Section Skeleton */}
+            {/* Map Section - Right Side */}
             <div className="w-full lg:w-1/2 order-1 lg:order-2 mb-6 lg:mb-0">
               <div className="w-full h-64 sm:h-72 md:h-80 lg:h-96 bg-gray-300 rounded-lg animate-pulse"></div>
             </div>
@@ -332,62 +344,134 @@ export default memo(function FurParentPageSkeleton({ type = 'services' }: FurPar
         </div>
       </div>
 
-      {/* Main Content Skeleton */}
+      {/* Main Content */}
       <div className="bg-gray-50 py-8 sm:py-12">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           {/* Back button and Tabs */}
           <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6 sm:mb-8">
-            <div className="flex items-center">
+            <div className="flex items-center justify-center sm:justify-start">
               <div className="h-5 w-5 bg-gray-200 rounded mr-2 animate-pulse"></div>
               <div className="h-4 w-32 bg-gray-200 rounded animate-pulse"></div>
             </div>
             
             <div className="flex space-x-1 bg-gray-200 p-1 rounded-lg self-center sm:self-auto">
-              <div className="h-8 w-20 bg-gray-300 rounded-md animate-pulse"></div>
-              <div className="h-8 w-20 bg-gray-300 rounded-md animate-pulse"></div>
+              <div className="px-3 sm:px-4 py-2 bg-white rounded-md shadow">
+                <div className="h-4 w-16 bg-gray-300 rounded animate-pulse"></div>
+              </div>
+              <div className="px-3 sm:px-4 py-2">
+                <div className="h-4 w-16 bg-gray-300 rounded animate-pulse"></div>
+              </div>
             </div>
           </div>
 
           {/* Packages Section */}
           <div>
             <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
-              <div className="h-8 w-48 bg-gray-200 rounded animate-pulse mb-4 md:mb-0"></div>
+              <div className="h-8 sm:h-10 md:h-12 w-48 bg-gray-200 rounded animate-pulse text-center md:text-left mb-4 md:mb-0"></div>
               <div className="flex items-center justify-center md:justify-start">
-                <div className="h-4 w-16 bg-gray-200 rounded mr-2 animate-pulse"></div>
-                <div className="h-8 w-32 bg-gray-200 rounded animate-pulse"></div>
+                <div className="mr-2 h-4 w-16 bg-gray-200 rounded animate-pulse"></div>
+                <div className="relative">
+                  <div className="h-8 w-32 bg-gray-200 rounded animate-pulse"></div>
+                </div>
               </div>
             </div>
 
             <div className="h-px w-full bg-gray-300 mb-8"></div>
 
-            {/* Packages Carousel Skeleton */}
+            {/* Packages Carousel */}
             <div className="relative">
               <div className="flex items-center justify-between mb-6">
-                <div className="h-10 w-10 bg-gray-200 rounded-full animate-pulse"></div>
-                
+                <div className="p-2 rounded-full bg-[var(--primary-green)]">
+                  <div className="h-6 w-6 bg-white/20 rounded animate-pulse"></div>
+                </div>
+ 
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 w-full mx-2 sm:mx-4">
                   {[1, 2, 3].map((i) => (
                     <div key={i} className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">
-                      <div className="h-48 bg-gray-200 animate-pulse relative">
-                        <div className="absolute top-3 right-3 h-6 w-16 bg-gray-300 rounded-full animate-pulse"></div>
-                      </div>
-                      <div className="p-5 space-y-3">
-                        <div className="h-6 w-3/4 bg-gray-200 rounded animate-pulse"></div>
-                        <div className="flex flex-wrap gap-2">
-                          <div className="h-5 w-16 bg-gray-200 rounded-full animate-pulse"></div>
-                          <div className="h-5 w-20 bg-gray-200 rounded-full animate-pulse"></div>
+                      <div className="h-48 relative overflow-hidden bg-gray-100">
+                        <div className="absolute inset-0 bg-gray-200 animate-pulse"></div>
+                        {/* Price Badge */}
+                        <div className="absolute top-3 right-3 bg-white/95 backdrop-blur-sm px-3 py-1 rounded-full shadow-sm">
+                          <div className="h-5 w-16 bg-gray-300 rounded animate-pulse"></div>
                         </div>
-                        <div className="space-y-1">
+                      </div>
+
+                      <div className="p-5">
+                        {/* Package Name */}
+                        <div className="h-6 w-3/4 bg-gray-200 rounded mb-2 animate-pulse"></div>
+
+                        {/* Package Tags */}
+                        <div className="flex flex-wrap gap-2 mb-3">
+                          <div className="h-5 w-16 bg-green-100 rounded-full animate-pulse"></div>
+                          <div className="h-5 w-20 bg-green-100 rounded-full animate-pulse"></div>
+                          <div className="h-5 w-18 bg-green-100 rounded-full animate-pulse"></div>
+                        </div>
+
+                        {/* Description Preview */}
+                        <div className="space-y-1 mb-3">
                           <div className="h-3 w-full bg-gray-200 rounded animate-pulse"></div>
                           <div className="h-3 w-2/3 bg-gray-200 rounded animate-pulse"></div>
                         </div>
-                        <div className="h-10 w-full bg-gray-200 rounded animate-pulse"></div>
+
+                        {/* Key Inclusions */}
+                        <div className="mb-4">
+                          <div className="h-3 w-16 bg-gray-200 rounded mb-2 animate-pulse"></div>
+                          <div className="space-y-1">
+                            <div className="flex items-center">
+                              <div className="h-3 w-3 bg-gray-200 rounded mr-2 animate-pulse"></div>
+                              <div className="h-3 w-3/4 bg-gray-200 rounded animate-pulse"></div>
+                            </div>
+                            <div className="flex items-center">
+                              <div className="h-3 w-3 bg-gray-200 rounded mr-2 animate-pulse"></div>
+                              <div className="h-3 w-2/3 bg-gray-200 rounded animate-pulse"></div>
+                            </div>
+                            <div className="flex items-center">
+                              <div className="h-3 w-3 bg-gray-200 rounded mr-2 animate-pulse"></div>
+                              <div className="h-3 w-4/5 bg-gray-200 rounded animate-pulse"></div>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Supported Pet Types */}
+                        <div className="mb-4">
+                          <div className="h-3 w-20 bg-gray-200 rounded mb-2 animate-pulse"></div>
+                          <div className="flex flex-wrap gap-1">
+                            <div className="h-5 w-12 bg-green-100 rounded animate-pulse"></div>
+                            <div className="h-5 w-14 bg-green-100 rounded animate-pulse"></div>
+                            <div className="h-5 w-10 bg-green-100 rounded animate-pulse"></div>
+                          </div>
+                        </div>
+
+                        {/* Weight-Based Pricing or Kg Price */}
+                        <div className="mb-4 p-3 bg-gray-50 rounded-lg border border-gray-200">
+                          <div className="flex items-center mb-2">
+                            <div className="h-4 w-4 bg-gray-200 rounded mr-2 animate-pulse"></div>
+                            <div className="h-3 w-24 bg-gray-200 rounded animate-pulse"></div>
+                          </div>
+                          <div className="space-y-2">
+                            <div className="flex items-center justify-between">
+                              <div className="h-3 w-20 bg-gray-200 rounded animate-pulse"></div>
+                              <div className="h-3 w-16 bg-gray-200 rounded animate-pulse"></div>
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <div className="h-3 w-24 bg-gray-200 rounded animate-pulse"></div>
+                              <div className="h-3 w-16 bg-gray-200 rounded animate-pulse"></div>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Action Button */}
+                        <div className="w-full px-4 py-3 bg-[var(--primary-green)] rounded-lg">
+                          <div className="h-4 w-32 bg-white/20 rounded mx-auto animate-pulse"></div>
+                        </div>
                       </div>
                     </div>
                   ))}
                 </div>
-                
-                <div className="h-10 w-10 bg-gray-200 rounded-full animate-pulse"></div>
+
+                <div className="p-2 rounded-full bg-[var(--primary-green)]">
+                  <div className="h-6 w-6 bg-white/20 rounded animate-pulse"></div>
+                </div>
               </div>
 
               {/* Pagination dots */}
