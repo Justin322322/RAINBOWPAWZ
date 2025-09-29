@@ -53,13 +53,22 @@ export async function POST(request: NextRequest) {
     }
 
     // Validate file
-    const allowed = ['image/jpeg', 'image/png', 'image/webp'];
+    const allowed = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
     if (!allowed.includes(file.type)) {
-      return NextResponse.json({ error: 'Only JPEG, PNG, WEBP allowed' }, { status: 400 });
+      return NextResponse.json({ 
+        error: `Invalid file type. Only JPEG, PNG, and WEBP images are allowed. Received: ${file.type}` 
+      }, { status: 400 });
     }
     const MAX = 10 * 1024 * 1024;
     if (file.size > MAX) {
-      return NextResponse.json({ error: 'File too large (10MB max)' }, { status: 413 });
+      return NextResponse.json({ 
+        error: `File too large. Maximum size is 10MB. Received: ${(file.size / 1024 / 1024).toFixed(2)}MB` 
+      }, { status: 413 });
+    }
+    
+    // Validate file name
+    if (!file.name || file.name.trim() === '') {
+      return NextResponse.json({ error: 'File must have a valid name' }, { status: 400 });
     }
 
     // Resolve provider_id and provider user_id from booking (best-effort)
@@ -93,19 +102,27 @@ export async function POST(request: NextRequest) {
 
     // Prefer Blob storage; gracefully fallback to base64 data URL if not configured
     let path = '';
-    if (putFn) {
-      const key = `uploads/bookings/${bookingId}/payment_receipt_${Date.now()}.${ext}`;
-      const result = await putFn(key, Buffer.from(arrayBuffer), {
-        access: 'public',
-        contentType: file.type,
-        token: blobToken,
-      });
-      path = result?.url || '';
+    if (putFn && blobToken) {
+      try {
+        const key = `uploads/bookings/${bookingId}/payment_receipt_${Date.now()}.${ext}`;
+        const result = await putFn(key, Buffer.from(arrayBuffer), {
+          access: 'public',
+          contentType: file.type,
+          token: blobToken,
+        });
+        path = result?.url || '';
+        console.log('Receipt uploaded to blob storage:', path);
+      } catch (blobError) {
+        console.warn('Blob storage upload failed, falling back to base64:', blobError);
+        path = '';
+      }
     }
+    
     if (!path) {
       // Fallback: store as base64 data URL so upload still works without blob config
       const base64 = Buffer.from(arrayBuffer).toString('base64');
       path = `data:${file.type};base64,${base64}`;
+      console.log('Receipt stored as base64 data URL (length:', path.length, ')');
     }
 
     await ensureReceiptTable();
@@ -159,8 +176,10 @@ export async function POST(request: NextRequest) {
     } catch {}
 
     return NextResponse.json({ success: true, receiptPath: path });
-  } catch {
-    return NextResponse.json({ error: 'Failed to upload receipt' }, { status: 500 });
+  } catch (error) {
+    console.error('Receipt upload error:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Failed to upload receipt';
+    return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
 }
 

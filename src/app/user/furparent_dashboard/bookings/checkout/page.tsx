@@ -91,9 +91,30 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
   // Handle receipt file selection with preview
   const handleReceiptFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0] || null;
-    setReceiptFile(file);
-
+    
     if (file) {
+      // Validate file type
+      const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+      if (!allowedTypes.includes(file.type)) {
+        showToast('Please select a valid image file (JPEG, PNG, or WEBP)', 'error');
+        e.target.value = ''; // Clear the input
+        setReceiptFile(null);
+        setReceiptPreview(null);
+        return;
+      }
+      
+      // Validate file size (10MB max)
+      const maxSize = 10 * 1024 * 1024; // 10MB
+      if (file.size > maxSize) {
+        showToast(`File too large. Maximum size is 10MB. Selected file: ${(file.size / 1024 / 1024).toFixed(2)}MB`, 'error');
+        e.target.value = ''; // Clear the input
+        setReceiptFile(null);
+        setReceiptPreview(null);
+        return;
+      }
+      
+      setReceiptFile(file);
+      
       // Create preview URL
       const reader = new FileReader();
       reader.onload = (e) => {
@@ -101,6 +122,7 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
       };
       reader.readAsDataURL(file);
     } else {
+      setReceiptFile(null);
       setReceiptPreview(null);
     }
   };
@@ -986,8 +1008,15 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
               xhr.send(fd);
             });
             if (!resp.ok) {
-              const t = await resp.text();
-              throw new Error(t || 'Failed to upload receipt');
+              let errorMessage = 'Failed to upload receipt';
+              try {
+                const errorData = await resp.json();
+                errorMessage = errorData.error || errorMessage;
+              } catch {
+                const errorText = await resp.text();
+                errorMessage = errorText || errorMessage;
+              }
+              throw new Error(errorMessage);
             }
           }
 
@@ -1222,11 +1251,13 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
                               <option value="">Select Pet Type</option>
                               {/* Use supported pet types from package if available, otherwise fallback to default list */}
                               {bookingData?.package?.supportedPetTypes && bookingData.package.supportedPetTypes.length > 0 ? (
-                                bookingData.package.supportedPetTypes.map((petTypeOption: string) => (
-                                  <option key={petTypeOption} value={petTypeOption}>
-                                    {petTypeOption}
-                                  </option>
-                                ))
+                                bookingData.package.supportedPetTypes
+                                  .filter((petTypeOption: string) => petTypeOption !== 'Other') // Remove "Other" from dropdown options
+                                  .map((petTypeOption: string) => (
+                                    <option key={petTypeOption} value={petTypeOption}>
+                                      {petTypeOption}
+                                    </option>
+                                  ))
                               ) : (
                                 // Fallback to default pet types if package doesn't specify supported types
                                 <>
@@ -1238,7 +1269,6 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
                                   <option value="Guinea Pigs">Guinea Pigs</option>
                                   <option value="Fish">Fish</option>
                                   <option value="Reptiles">Reptiles</option>
-                                  <option value="Other">Other</option>
                                 </>
                               )}
                             </select>
@@ -1257,7 +1287,7 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
                           {/* Show supported pet types info if available */}
                           {bookingData?.package?.supportedPetTypes && bookingData.package.supportedPetTypes.length > 0 && (
                             <p className="mt-1 text-xs text-gray-500">
-                              This package supports: {bookingData.package.supportedPetTypes.join(', ')}
+                              This package supports: {bookingData.package.supportedPetTypes.filter((type: string) => type !== 'Other').join(', ')}
                             </p>
                           )}
                         </div>

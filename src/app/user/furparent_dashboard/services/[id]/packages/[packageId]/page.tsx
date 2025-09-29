@@ -285,14 +285,16 @@ function PackageDetailPage({ userData: _userData }: PackageDetailPageProps) {
                       <div>
                         <p className="text-sm text-gray-500 mb-2">Supported Pet Types</p>
                         <div className="flex flex-wrap gap-2">
-                          {packageData.supportedPetTypes.map((petType: string, index: number) => (
-                            <span
-                              key={index}
-                              className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800"
-                            >
-                              {petType}
-                            </span>
-                          ))}
+                          {packageData.supportedPetTypes
+                            .filter((petType: string) => petType !== 'Other')
+                            .map((petType: string, index: number) => (
+                              <span
+                                key={index}
+                                className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800"
+                              >
+                                {petType}
+                              </span>
+                            ))}
                         </div>
                       </div>
                     )}
