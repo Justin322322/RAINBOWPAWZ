@@ -1,7 +1,7 @@
 // Email templates for various notifications_unified
 
 // Base email template with common styling
-const baseEmailTemplate = (content: string) => `
+export const baseEmailTemplate = (content: string) => `
 <!DOCTYPE html>
 <html lang="en">
 <head>

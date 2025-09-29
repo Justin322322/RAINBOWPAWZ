@@ -8,7 +8,11 @@ import {
   ExclamationTriangleIcon,
   CheckCircleIcon,
   XCircleIcon,
-  CloudArrowUpIcon
+  CloudArrowUpIcon,
+  PlusIcon,
+  ArrowPathIcon,
+  EnvelopeIcon,
+  PhoneIcon
 } from '@heroicons/react/24/outline';
 import CremationDashboardLayout from '@/components/navigation/CremationDashboardLayout';
 import withBusinessVerification from '@/components/withBusinessVerification';
@@ -43,6 +47,14 @@ function CremationRefundsPage({ userData }: { userData: any }) {
   const [selectedRefund, setSelectedRefund] = useState<RefundRecord | null>(null);
   const [filter, setFilter] = useState<'all' | 'pending' | 'manual' | 'completed'>('all');
   const [uploadingReceipt, setUploadingReceipt] = useState<number | null>(null);
+  const [showInitiateModal, setShowInitiateModal] = useState(false);
+  const [initiateForm, setInitiateForm] = useState({
+    bookingId: '',
+    amount: '',
+    reason: '',
+    notes: ''
+  });
+  const [sendingNotification, setSendingNotification] = useState<number | null>(null);
   const { showToast } = useToast();
 
   useEffect(() => {
@@ -124,6 +136,67 @@ function CremationRefundsPage({ userData }: { userData: any }) {
     }
   };
 
+  const handleInitiateRefund = async () => {
+    if (!initiateForm.bookingId || !initiateForm.amount || !initiateForm.reason) {
+      showToast('Please fill in all required fields.', 'error');
+      return;
+    }
+
+    try {
+      const response = await fetch('/api/refunds', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          booking_id: parseInt(initiateForm.bookingId),
+          amount: parseFloat(initiateForm.amount),
+          reason: initiateForm.reason,
+          notes: initiateForm.notes,
+          initiated_by: userData.user_id,
+          initiated_by_type: 'business'
+        })
+      });
+
+      if (response.ok) {
+        await fetchRefunds();
+        setShowInitiateModal(false);
+        setInitiateForm({ bookingId: '', amount: '', reason: '', notes: '' });
+        showToast('Refund initiated successfully.', 'success');
+      } else {
+        const error = await response.json();
+        showToast(`Failed to initiate refund: ${error.error}`, 'error');
+      }
+    } catch (error) {
+      console.error('Initiate refund error:', error);
+      showToast('Failed to initiate refund. Please try again.', 'error');
+    }
+  };
+
+  const handleSendNotification = async (refundId: number) => {
+    setSendingNotification(refundId);
+    try {
+      const response = await fetch(`/api/refunds/${refundId}/notify`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (response.ok) {
+        showToast('Customer notification sent successfully.', 'success');
+      } else {
+        const error = await response.json();
+        showToast(`Failed to send notification: ${error.error}`, 'error');
+      }
+    } catch (error) {
+      console.error('Send notification error:', error);
+      showToast('Failed to send notification. Please try again.', 'error');
+    } finally {
+      setSendingNotification(null);
+    }
+  };
+
   const getStatusIcon = (status: string, refundType: string) => {
     switch (status) {
       case 'completed':
@@ -181,6 +254,22 @@ function CremationRefundsPage({ userData }: { userData: any }) {
           <div>
             <h1 className="text-2xl font-semibold text-gray-800">Refund Management</h1>
             <p className="text-gray-600 mt-1">Manage refunds for your cremation services</p>
+          </div>
+          <div className="flex space-x-3">
+            <button
+              onClick={() => setShowInitiateModal(true)}
+              className="inline-flex items-center px-4 py-2 bg-[var(--primary-green)] text-white rounded-lg hover:bg-green-700 transition-colors duration-200"
+            >
+              <PlusIcon className="w-5 h-5 mr-2" />
+              Initiate Refund
+            </button>
+            <button
+              onClick={fetchRefunds}
+              className="inline-flex items-center px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors duration-200"
+            >
+              <ArrowPathIcon className="w-5 h-5 mr-2" />
+              Refresh
+            </button>
           </div>
         </div>
       </div>
@@ -449,6 +538,30 @@ function CremationRefundsPage({ userData }: { userData: any }) {
                             </div>
                           </div>
                         )}
+                        
+                        {/* Notification buttons for completed refunds */}
+                        {refund.status === 'completed' && (
+                          <div className="space-y-2">
+                            <button
+                              onClick={() => handleSendNotification(refund.id)}
+                              disabled={sendingNotification === refund.id}
+                              className="flex items-center px-3 py-1 bg-blue-600 text-white rounded text-xs hover:bg-blue-700 disabled:opacity-50"
+                            >
+                              {sendingNotification === refund.id ? (
+                                <>
+                                  <ClockIcon className="w-3 h-3 mr-1 animate-spin" />
+                                  Sending...
+                                </>
+                              ) : (
+                                <>
+                                  <EnvelopeIcon className="w-3 h-3 mr-1" />
+                                  Notify Customer
+                                </>
+                              )}
+                            </button>
+                          </div>
+                        )}
+                        
                         <button
                           onClick={() => setSelectedRefund(refund)}
                           className="text-blue-600 hover:text-blue-900 text-sm"
@@ -703,6 +816,113 @@ function CremationRefundsPage({ userData }: { userData: any }) {
                 </div>
               ) : null
             )}
+          </div>
+        </Modal>
+      )}
+
+      {/* Initiate Refund Modal */}
+      {showInitiateModal && (
+        <Modal
+          isOpen={showInitiateModal}
+          onClose={() => setShowInitiateModal(false)}
+          title="Initiate New Refund"
+          size="medium"
+          variant="default"
+          footerContent={
+            <div className="flex flex-col sm:flex-row justify-end gap-3">
+              <button
+                onClick={() => setShowInitiateModal(false)}
+                className="inline-flex items-center justify-center px-4 py-2 bg-gray-100 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-colors duration-200 w-full sm:w-auto"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleInitiateRefund}
+                className="inline-flex items-center justify-center px-4 py-2 bg-[var(--primary-green)] text-white text-sm font-medium rounded-lg hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors duration-200 w-full sm:w-auto"
+              >
+                <PlusIcon className="w-4 h-4 mr-2" />
+                Initiate Refund
+              </button>
+            </div>
+          }
+        >
+          <div className="space-y-6">
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <div className="flex items-center">
+                <ExclamationTriangleIcon className="w-5 h-5 text-blue-600 mr-3" />
+                <div>
+                  <h3 className="text-sm font-medium text-blue-800">Important Notice</h3>
+                  <p className="text-sm text-blue-700 mt-1">
+                    Initiating a refund will automatically notify the customer. Make sure you have processed the refund through your payment system first.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Booking ID <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="number"
+                  value={initiateForm.bookingId}
+                  onChange={(e) => setInitiateForm({ ...initiateForm, bookingId: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--primary-green)] focus:border-transparent"
+                  placeholder="Enter booking ID"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Refund Amount (₱) <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={initiateForm.amount}
+                  onChange={(e) => setInitiateForm({ ...initiateForm, amount: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--primary-green)] focus:border-transparent"
+                  placeholder="0.00"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Refund Reason <span className="text-red-500">*</span>
+                </label>
+                <select
+                  value={initiateForm.reason}
+                  onChange={(e) => setInitiateForm({ ...initiateForm, reason: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--primary-green)] focus:border-transparent"
+                  required
+                >
+                  <option value="">Select a reason</option>
+                  <option value="Service cancellation">Service cancellation</option>
+                  <option value="Customer request">Customer request</option>
+                  <option value="Service not provided">Service not provided</option>
+                  <option value="Payment error">Payment error</option>
+                  <option value="Quality issue">Quality issue</option>
+                  <option value="Other">Other</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Additional Notes
+                </label>
+                <textarea
+                  value={initiateForm.notes}
+                  onChange={(e) => setInitiateForm({ ...initiateForm, notes: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--primary-green)] focus:border-transparent"
+                  rows={3}
+                  placeholder="Add any additional details about this refund..."
+                />
+              </div>
+            </div>
           </div>
         </Modal>
       )}

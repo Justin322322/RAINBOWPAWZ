@@ -464,7 +464,12 @@ function determineRefundType(paymentMethod: string): { refundType: 'automatic' |
  */
 function isQRCodePayment(paymentMethod: string): boolean {
   const method = paymentMethod.toLowerCase();
-  return method.includes('qr') || method.includes('scan') || method === 'qr_code';
+  return method.includes('qr') || 
+         method.includes('scan') || 
+         method.includes('manual') ||
+         method.includes('qr_manual') ||
+         method === 'qr_code' ||
+         method === 'qr';
 }
 
 /**
@@ -498,9 +503,12 @@ function generateManualRefundInstructions(paymentMethod: string, amount: number)
       `4. Process a refund of ₱${amount.toFixed(2)}`,
       '5. Download the official refund receipt from PayMongo',
       '6. Upload the receipt to the system using the "Upload Receipt" button',
-      '7. The system will verify and complete the refund process',
+      '7. The system will automatically notify the customer',
+      '8. Customer will receive email/SMS confirmation',
+      '9. Customer can download their refund receipt',
       '',
-      'NOTE: This is a QR code payment that requires manual processing by the cremation center.'
+      'NOTE: This is a QR code payment that requires manual processing by the cremation center.',
+      'The customer will be automatically notified once the refund is completed.'
     );
   } else if (normalizePaymentMethod(paymentMethod) === 'cash') {
     instructions.push(
@@ -629,20 +637,20 @@ export async function verifyAndCompleteRefund(
         ip_address: ipAddress
       });
 
+      // Generate refund receipt for customer
+      try {
+        const receiptResult = await generateRefundReceipt(refundId);
+        if (receiptResult.success) {
+          console.log('Refund receipt generated:', receiptResult.receiptPath);
+        }
+      } catch (receiptError) {
+        console.error('Failed to generate refund receipt:', receiptError);
+        // Don't fail the refund if receipt generation fails
+      }
+
       // Send notification about successful refund completion
       try {
-        await sendRefundProcessedNotification({
-          refundId: refundId,
-          bookingId: refund.booking_id,
-          userId: refund.user_id,
-          amount: parseFloat(refund.amount.toString()),
-          refundType: 'manual',
-          paymentMethod: refund.payment_method,
-          status: 'completed',
-          reason: refund.reason,
-          transactionId: refund.transaction_id,
-          receiptPath: refund.receipt_path
-        });
+        await sendRefundCompletionNotification(refundId);
       } catch (notificationError) {
         console.error('Failed to send refund completion notification:', notificationError);
         // Don't fail the refund if notification fails
@@ -771,5 +779,253 @@ export async function reconcileQueuedAutomaticRefund(bookingId: number, paymongo
     });
   } catch (error) {
     console.error('Error reconciling queued automatic refund:', error);
+  }
+}
+
+/**
+ * Generate refund receipt for customer download
+ */
+export async function generateRefundReceipt(refundId: number): Promise<{ success: boolean; receiptPath?: string; error?: string }> {
+  try {
+    const refund = await getRefundById(refundId);
+    if (!refund) {
+      return { success: false, error: 'Refund not found' };
+    }
+
+    if (refund.status !== 'completed') {
+      return { success: false, error: 'Refund must be completed to generate receipt' };
+    }
+
+    // Generate receipt content
+    const receiptContent = generateReceiptContent(refund);
+    
+    // Save receipt to file system
+    const receiptPath = await saveRefundReceipt(refundId, receiptContent);
+    
+    // Update refund record with receipt path
+    await updateRefundRecord(refundId, {
+      receipt_path: receiptPath
+    });
+
+    return { success: true, receiptPath };
+
+  } catch (error) {
+    console.error('Error generating refund receipt:', error);
+    return { 
+      success: false, 
+      error: error instanceof Error ? error.message : 'Failed to generate receipt' 
+    };
+  }
+}
+
+/**
+ * Generate receipt content as HTML/PDF
+ */
+function generateReceiptContent(refund: any): string {
+  const receiptDate = new Date().toLocaleDateString('en-PH', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+
+  return `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="UTF-8">
+      <title>Refund Receipt #${refund.id}</title>
+      <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .header { text-align: center; border-bottom: 2px solid #333; padding-bottom: 20px; }
+        .content { margin: 20px 0; }
+        .row { display: flex; justify-content: space-between; margin: 10px 0; }
+        .footer { margin-top: 40px; text-align: center; font-size: 12px; color: #666; }
+      </style>
+    </head>
+    <body>
+      <div class="header">
+        <h1>RainbowPaws</h1>
+        <h2>REFUND RECEIPT</h2>
+        <p>Receipt #${refund.id}</p>
+        <p>Date: ${receiptDate}</p>
+      </div>
+      
+      <div class="content">
+        <div class="row">
+          <strong>Refund Amount:</strong>
+          <span>₱${refund.amount.toFixed(2)}</span>
+        </div>
+        <div class="row">
+          <strong>Original Payment Method:</strong>
+          <span>${refund.payment_method.toUpperCase()}</span>
+        </div>
+        <div class="row">
+          <strong>Refund Type:</strong>
+          <span>${refund.refund_type.toUpperCase()}</span>
+        </div>
+        <div class="row">
+          <strong>Booking ID:</strong>
+          <span>#${refund.booking_id}</span>
+        </div>
+        <div class="row">
+          <strong>Reason:</strong>
+          <span>${refund.reason}</span>
+        </div>
+        <div class="row">
+          <strong>Status:</strong>
+          <span>COMPLETED</span>
+        </div>
+      </div>
+      
+      <div class="footer">
+        <p>This receipt confirms that your refund has been processed successfully.</p>
+        <p>For any questions, please contact RainbowPaws support.</p>
+      </div>
+    </body>
+    </html>
+  `;
+}
+
+/**
+ * Save refund receipt to file system
+ */
+async function saveRefundReceipt(refundId: number, content: string): Promise<string> {
+  const fs = await import('fs/promises');
+  const path = await import('path');
+  
+  // Create receipts directory
+  const receiptsDir = path.join(process.cwd(), 'public', 'uploads', 'refund-receipts');
+  try {
+    await fs.access(receiptsDir);
+  } catch {
+    await fs.mkdir(receiptsDir, { recursive: true });
+  }
+  
+  // Generate filename
+  const filename = `refund_receipt_${refundId}_${Date.now()}.html`;
+  const filePath = path.join(receiptsDir, filename);
+  
+  // Save file
+  await fs.writeFile(filePath, content, 'utf8');
+  
+  return `/uploads/refund-receipts/${filename}`;
+}
+
+/**
+ * Send refund completion notification to customer
+ */
+export async function sendRefundCompletionNotification(refundId: number): Promise<{ success: boolean; error?: string }> {
+  try {
+    const refund = await getRefundById(refundId);
+    if (!refund) {
+      return { success: false, error: 'Refund not found' };
+    }
+
+    // Get customer information
+    const customerQuery = `
+      SELECT u.first_name, u.last_name, u.email, u.sms_notifications, u.email_notifications
+      FROM users u
+      WHERE u.user_id = ?
+    `;
+    const customerResult = await query(customerQuery, [refund.user_id]) as any[];
+    
+    if (customerResult.length === 0) {
+      return { success: false, error: 'Customer not found' };
+    }
+
+    const customer = customerResult[0];
+    const customerName = `${customer.first_name} ${customer.last_name}`.trim();
+
+    // Send email notification if enabled
+    if (customer.email_notifications) {
+      try {
+        const { sendEmail } = await import('@/lib/consolidatedEmailService');
+        const { refundCompletedTemplate } = await import('@/lib/refundEmailTemplates');
+        
+        const emailTemplate = refundCompletedTemplate({
+          customerName,
+          refundAmount: refund.amount,
+          refundId: refund.id || 0,
+          paymentMethod: refund.payment_method,
+          bookingId: refund.booking_id
+        });
+        
+        await sendEmail({
+          to: customer.email,
+          subject: emailTemplate.subject,
+          html: emailTemplate.html
+        });
+      } catch (emailError) {
+        console.error('Failed to send refund completion email:', emailError);
+      }
+    }
+
+    // Send SMS notification if enabled
+    if (customer.sms_notifications) {
+      try {
+        const { sendSMS } = await import('@/lib/httpSmsService');
+        await sendSMS({
+          to: customer.email, // Assuming email is used as phone number identifier
+          message: `Your refund of ₱${refund.amount.toFixed(2)} has been completed. Refund ID: #${refund.id}. Thank you for choosing RainbowPaws.`
+        });
+      } catch (smsError) {
+        console.error('Failed to send refund completion SMS:', smsError);
+      }
+    }
+
+    return { success: true };
+
+  } catch (error) {
+    console.error('Error sending refund completion notification:', error);
+    return { 
+      success: false, 
+      error: error instanceof Error ? error.message : 'Failed to send notification' 
+    };
+  }
+}
+
+/**
+ * Get customer refunds for dashboard
+ */
+export async function getCustomerRefunds(userId: number): Promise<any[]> {
+  try {
+    const refundsQuery = `
+      SELECT 
+        r.*,
+        b.pet_name,
+        b.booking_date,
+        sp.business_name as provider_name
+      FROM refunds r
+      LEFT JOIN bookings b ON r.booking_id = b.id
+      LEFT JOIN service_providers sp ON b.provider_id = sp.provider_id
+      WHERE r.user_id = ?
+      ORDER BY r.initiated_at DESC
+    `;
+    
+    const refunds = await query(refundsQuery, [userId]) as any[];
+    
+    return refunds.map(refund => ({
+      id: refund.id,
+      booking_id: refund.booking_id,
+      amount: parseFloat(refund.amount),
+      reason: refund.reason,
+      status: refund.status,
+      refund_type: refund.refund_type,
+      payment_method: refund.payment_method,
+      receipt_path: refund.receipt_path,
+      notes: refund.notes,
+      initiated_at: refund.initiated_at,
+      processed_at: refund.processed_at,
+      completed_at: refund.completed_at,
+      pet_name: refund.pet_name,
+      booking_date: refund.booking_date,
+      provider_name: refund.provider_name
+    }));
+
+  } catch (error) {
+    console.error('Error fetching customer refunds:', error);
+    return [];
   }
 }
