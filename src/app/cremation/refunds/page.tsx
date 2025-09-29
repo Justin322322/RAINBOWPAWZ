@@ -99,13 +99,19 @@ function CremationRefundsPage({ userData }: { userData: any }) {
 
   const handleVerifyRefund = async (refundId: number, approved: boolean, reason?: string) => {
     try {
+      // Determine the correct action based on refund status
+      const refund = refunds.find(r => r.id === refundId);
+      const isStuckAutomaticRefund = refund?.refund_type === 'automatic' && refund?.status === 'processing';
+      
       const response = await fetch(`/api/refunds/${refundId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          action: approved ? 'approve_refund' : 'reject_refund',
+          action: approved ? 
+            (isStuckAutomaticRefund ? 'verify_receipt' : 'approve_refund') : 
+            'reject_refund',
           approved,
           rejection_reason: reason
         })
@@ -378,8 +384,9 @@ function CremationRefundsPage({ userData }: { userData: any }) {
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                        {/* Manual refund actions */}
-                        {refund.refund_type === 'manual' && ['pending', 'pending_approval', 'processing'].includes(refund.status) && (
+                        {/* Refund actions for manual refunds and stuck automatic refunds */}
+                        {((refund.refund_type === 'manual' && ['pending', 'pending_approval', 'processing'].includes(refund.status)) || 
+                          (refund.refund_type === 'automatic' && refund.status === 'processing')) && (
                           <div className="space-y-2">
                             {/* Approval buttons for pending_approval status */}
                             {refund.status === 'pending_approval' && (
@@ -485,6 +492,30 @@ function CremationRefundsPage({ userData }: { userData: any }) {
                           </div>
                         )}
                         
+                        {/* Completion buttons for automatic refunds stuck on processing */}
+                        {refund.refund_type === 'automatic' && refund.status === 'processing' && (
+                          <div className="space-y-2">
+                            <div className="text-xs text-blue-600 mb-2">Auto-refund stuck on processing</div>
+                            <div className="flex space-x-2">
+                              <button
+                                onClick={() => handleVerifyRefund(refund.id, true)}
+                                className="px-3 py-1 bg-green-600 text-white rounded text-xs hover:bg-green-700"
+                                title="Manually complete this automatic refund that couldn't be processed automatically"
+                              >
+                                Complete Refund
+                              </button>
+                              <button
+                                onClick={() => {
+                                  const reason = prompt('Rejection reason:');
+                                  if (reason) handleVerifyRefund(refund.id, false, reason);
+                                }}
+                                className="px-3 py-1 bg-red-600 text-white rounded text-xs hover:bg-red-700"
+                              >
+                                Reject
+                              </button>
+                            </div>
+                          </div>
+                        )}
                         
                         <button
                           onClick={() => setSelectedRefund(refund)}
@@ -520,8 +551,9 @@ function CremationRefundsPage({ userData }: { userData: any }) {
           variant="default"
           footerContent={
             <div className="flex flex-col sm:flex-row justify-end gap-3">
-              {/* Manual refund approval buttons */}
-              {selectedRefund.refund_type === 'manual' && ['pending', 'processing'].includes(selectedRefund.status) ? (
+              {/* Refund completion buttons for manual refunds and stuck automatic refunds */}
+              {(selectedRefund.refund_type === 'manual' && ['pending', 'processing'].includes(selectedRefund.status)) || 
+               (selectedRefund.refund_type === 'automatic' && selectedRefund.status === 'processing') ? (
                 <>
                   <button
                     onClick={() => handleVerifyRefund(selectedRefund.id, true)}
