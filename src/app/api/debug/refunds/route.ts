@@ -3,10 +3,10 @@
  * Temporary endpoint to troubleshoot refund visibility issues
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { query } from '@/lib/db/query';
 
-export async function GET(_request: NextRequest) {
+export async function GET() {
   try {
     // Get all refunds with booking and provider info
     const refundsQuery = `
