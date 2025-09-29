@@ -122,6 +122,14 @@ export async function cancelBookingWithRefund(
       request.forceRefund
     );
 
+    console.log('Cancellation refund check:', {
+      bookingId: request.bookingId,
+      paymentMethod: bookingInfo.payment_method,
+      paymentStatus: bookingInfo.payment_status,
+      shouldRefund: shouldProcessRefund.shouldRefund,
+      reason: shouldProcessRefund.reason
+    });
+
     if (!shouldProcessRefund.shouldRefund) {
       return {
         success: true,
@@ -159,6 +167,12 @@ export async function cancelBookingWithRefund(
     };
 
     const refundResult = await processRefund(refundRequest);
+
+    console.log('Refund processing result:', {
+      bookingId: request.bookingId,
+      refundResult: refundResult,
+      refundRequest: refundRequest
+    });
 
     // If refund processing failed (e.g., PayMongo not executed), create a manual pending refund so it appears in reports
     if (!refundResult.success) {

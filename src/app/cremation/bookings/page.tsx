@@ -16,7 +16,8 @@ import {
   CheckCircleIcon,
   XCircleIcon,
   DocumentIcon,
-  ClockIcon
+  ClockIcon,
+  ExclamationTriangleIcon
 } from '@heroicons/react/24/outline';
 import { LoadingSpinner } from '@/app/cremation/components/LoadingComponents';
 
@@ -28,6 +29,10 @@ function CremationBookingsPage({ userData }: { userData: any }) {
   const [selectedBooking, setSelectedBooking] = useState<any>(null);
   const [showConfirmPaymentModal, setShowConfirmPaymentModal] = useState(false);
   const [selectedBookingForPayment, setSelectedBookingForPayment] = useState<any>(null);
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [selectedBookingForCancel, setSelectedBookingForCancel] = useState<any>(null);
+  const [cancelReason, setCancelReason] = useState('');
+  const [cancelNotes, setCancelNotes] = useState('');
   const [loading, setLoading] = useState(true);
   const [bookings, setBookings] = useState<any[]>([]);
   const [_stats, setStats] = useState({
@@ -47,9 +52,81 @@ function CremationBookingsPage({ userData }: { userData: any }) {
     showToastOriginal(message, type, duration);
   }, [showToastOriginal]);
 
+  // Fetch bookings function
+  const fetchBookings = async () => {
+    if (!userData?.business_id) {
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+    setFetchError(null);
+
+    try {
+      // Add minimum loading delay for better UX (same as admin)
+      const minLoadingTime = new Promise(resolve => setTimeout(resolve, 600));
+      
+      const providerId = userData?.business_id || userData?.provider_id || 999;
+      
+      // Build query parameters including search and filter terms
+      const queryParams = new URLSearchParams({
+        providerId: providerId.toString()
+      });
+
+      if (searchTerm.trim()) {
+        queryParams.append('search', searchTerm.trim());
+      }
+
+      if (statusFilter && statusFilter !== 'all') {
+        queryParams.append('status', statusFilter);
+      }
+
+      if (paymentFilter && paymentFilter !== 'all') {
+        queryParams.append('paymentStatus', paymentFilter);
+      }
+
+      const [_, bookingsResponse] = await Promise.all([
+        minLoadingTime,
+        fetch(`/api/cremation/bookings?${queryParams.toString()}`, {
+          method: 'GET',
+          headers: {
+            'Cache-Control': 'no-cache'
+          }
+        })
+      ]);
+
+      if (!bookingsResponse.ok) {
+        throw new Error(`HTTP error! status: ${bookingsResponse.status}`);
+      }
+
+      const data = await bookingsResponse.json();
+      
+      if (data.success) {
+        setBookings(data.bookings || []);
+        setStats(data.stats || {
+          totalBookings: 0,
+          scheduled: 0,
+          inProgress: 0,
+          completed: 0,
+          cancelled: 0,
+          pending: 0,
+          totalRevenue: 0
+        });
+      } else {
+        throw new Error(data.error || 'Failed to fetch bookings');
+      }
+    } catch (error) {
+      console.error('Error fetching bookings:', error);
+      setFetchError(error instanceof Error ? error.message : 'Failed to fetch bookings');
+      setBookings([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Fetch bookings data when component mounts or search/filter changes
   useEffect(() => {
-    const fetchBookings = async () => {
+    const fetchData = async () => {
       if (!userData?.business_id) {
         setLoading(false);
         return;
@@ -116,7 +193,7 @@ function CremationBookingsPage({ userData }: { userData: any }) {
       }
     };
 
-    fetchBookings();
+    fetchData();
   }, [userData, searchTerm, statusFilter, paymentFilter]);
 
   // Show toast when fetchError changes
@@ -147,6 +224,13 @@ function CremationBookingsPage({ userData }: { userData: any }) {
   const handleConfirmPayment = (booking: any) => {
     setSelectedBookingForPayment(booking);
     setShowConfirmPaymentModal(true);
+  };
+
+  const handleCancelBooking = (booking: any) => {
+    setSelectedBookingForCancel(booking);
+    setCancelReason('');
+    setCancelNotes('');
+    setShowCancelModal(true);
   };
 
   const handleConfirmPaymentAction = async (action: 'confirm' | 'reject', reason?: string) => {
@@ -210,6 +294,44 @@ function CremationBookingsPage({ userData }: { userData: any }) {
     } catch (error) {
       console.error('Error confirming payment:', error);
       showToast(error instanceof Error ? error.message : 'Failed to process payment confirmation', 'error');
+    }
+  };
+
+  const handleCancelBookingAction = async () => {
+    if (!selectedBookingForCancel || !cancelReason.trim()) return;
+
+    try {
+      const response = await fetch(`/api/cremation/bookings/${selectedBookingForCancel.id}/cancel`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          reason: cancelReason,
+          notes: cancelNotes
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to cancel booking');
+      }
+
+      const data = await response.json();
+      showToast(data.message, 'success');
+
+      // Close modal and refresh bookings
+      setShowCancelModal(false);
+      setSelectedBookingForCancel(null);
+      setCancelReason('');
+      setCancelNotes('');
+
+      // Refresh the bookings data
+      await fetchBookings();
+
+    } catch (error) {
+      console.error('Error cancelling booking:', error);
+      showToast(error instanceof Error ? error.message : 'Failed to cancel booking', 'error');
     }
   };
 
@@ -476,6 +598,15 @@ function CremationBookingsPage({ userData }: { userData: any }) {
                             Confirm Payment
                           </button>
                         )}
+                        {booking.paymentStatus === 'paid' && ['pending', 'confirmed'].includes(booking.status) && (
+                          <button
+                            onClick={() => handleCancelBooking(booking)}
+                            className="inline-flex items-center px-2.5 py-1.5 text-xs font-medium rounded text-white bg-red-600 hover:bg-red-700"
+                          >
+                            <XMarkIcon className="h-4 w-4 mr-1" />
+                            Cancel & Refund
+                          </button>
+                        )}
                         <Link
                           href={`/cremation/bookings/${booking.id}`}
                           className="inline-flex items-center px-2.5 py-1.5 text-xs font-medium rounded text-white bg-blue-600 hover:bg-blue-700"
@@ -598,6 +729,101 @@ function CremationBookingsPage({ userData }: { userData: any }) {
           }}
           onConfirm={handleConfirmPaymentAction}
         />
+      )}
+
+      {/* Cancel Booking Modal */}
+      {showCancelModal && selectedBookingForCancel && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto">
+            {/* Header */}
+            <div className="bg-red-600 text-white px-6 py-4 rounded-t-2xl">
+              <div className="flex justify-between items-center">
+                <div>
+                  <h1 className="text-lg font-medium text-white">Cancel Booking</h1>
+                  <p className="text-sm text-white/80 mt-1">
+                    Booking #{selectedBookingForCancel.id} • {selectedBookingForCancel.petName}
+                  </p>
+                </div>
+                <button
+                  onClick={() => setShowCancelModal(false)}
+                  className="text-white hover:text-white/80 transition-colors duration-200 p-2 rounded-lg hover:bg-white/10"
+                >
+                  <XMarkIcon className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+
+            <div className="p-6 space-y-4">
+              {/* Warning */}
+              <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                <div className="flex items-center">
+                  <ExclamationTriangleIcon className="w-5 h-5 text-red-600 mr-3" />
+                  <div>
+                    <h3 className="text-sm font-medium text-red-800">Important Notice</h3>
+                    <p className="text-sm text-red-700 mt-1">
+                      Cancelling this booking will automatically initiate a refund process. The customer will be notified.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Cancellation Reason */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Cancellation Reason <span className="text-red-500">*</span>
+                </label>
+                <select
+                  value={cancelReason}
+                  onChange={(e) => setCancelReason(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                  required
+                >
+                  <option value="">Select a reason</option>
+                  <option value="Service not available">Service not available</option>
+                  <option value="Customer request">Customer request</option>
+                  <option value="Emergency situation">Emergency situation</option>
+                  <option value="Equipment issue">Equipment issue</option>
+                  <option value="Weather conditions">Weather conditions</option>
+                  <option value="Other">Other</option>
+                </select>
+              </div>
+
+              {/* Additional Notes */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Additional Notes
+                </label>
+                <textarea
+                  value={cancelNotes}
+                  onChange={(e) => setCancelNotes(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                  rows={3}
+                  placeholder="Add any additional details about this cancellation..."
+                />
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="border-t border-gray-200 bg-gray-50 px-6 py-4 rounded-b-2xl">
+              <div className="flex justify-end space-x-3">
+                <button
+                  onClick={() => setShowCancelModal(false)}
+                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleCancelBookingAction}
+                  disabled={!cancelReason.trim()}
+                  className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <XMarkIcon className="h-4 w-4 mr-2" />
+                  Cancel Booking & Initiate Refund
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
     </CremationDashboardLayout>
   );

@@ -59,7 +59,7 @@ export async function ensureRefundsTable(): Promise<void> {
         user_id INT NOT NULL,
         amount DECIMAL(10,2) NOT NULL,
         reason TEXT NOT NULL,
-        status ENUM('pending', 'processing', 'completed', 'failed', 'cancelled') NOT NULL DEFAULT 'pending',
+        status ENUM('pending', 'pending_approval', 'processing', 'completed', 'failed', 'cancelled') NOT NULL DEFAULT 'pending',
         refund_type ENUM('automatic', 'manual') NOT NULL DEFAULT 'manual',
         payment_method ENUM('gcash', 'card', 'paymaya', 'cash', 'qr_code') NOT NULL DEFAULT 'cash',
         transaction_id VARCHAR(255) DEFAULT NULL,

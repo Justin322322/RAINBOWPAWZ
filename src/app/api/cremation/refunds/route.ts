@@ -57,15 +57,15 @@ export async function GET(request: NextRequest) {
         u.last_name,
         u.email,
         b.pet_name as pet_name,
-        b.booking_date as booking_date
+        b.booking_date as booking_date,
+        b.provider_id as provider_id
       FROM refunds r
       JOIN users u ON r.user_id = u.user_id
-      LEFT JOIN bookings sb ON r.booking_id = sb.id AND sb.provider_id = ?
-      LEFT JOIN bookings b ON r.booking_id = b.id AND b.provider_id = ?
-      WHERE (sb.id IS NOT NULL OR b.id IS NOT NULL)
+      LEFT JOIN bookings b ON r.booking_id = b.id
+      WHERE b.provider_id = ?
     `;
     
-    const queryParams = [providerId, providerId];
+    const queryParams = [providerId];
 
     // Add status filter if provided
     if (status && status !== 'all') {
