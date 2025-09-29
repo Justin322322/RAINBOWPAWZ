@@ -6,6 +6,7 @@
 import { query } from '@/lib/db/query';
 import { sendEmail } from '@/lib/consolidatedEmailService';
 import { createUserNotification } from '@/utils/userNotificationService';
+import { sendSMS } from '@/lib/httpSmsService';
 
 export interface RefundNotificationData {
   refundId: number;
@@ -241,19 +242,15 @@ async function sendRefundSMS(
 
   try {
     // Use existing SMS service
-    const response = await fetch('/api/sms/send', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        to: customerInfo.phone,
-        message
-      })
+    const smsResult = await sendSMS({
+      to: customerInfo.phone,
+      message
     });
 
-    if (!response.ok) {
-      console.error('Failed to send refund SMS notification');
+    if (smsResult.success) {
+      console.log(`✅ Refund SMS sent successfully to ${customerInfo.phone} for refund #${refundData.refundId}`);
+    } else {
+      console.error(`❌ Refund SMS failed for refund #${refundData.refundId}:`, smsResult.error);
     }
   } catch (error) {
     console.error('Error sending refund SMS:', error);

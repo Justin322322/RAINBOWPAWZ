@@ -422,7 +422,7 @@ function CremationRefundsPage({ userData }: { userData: any }) {
                                       <div className="text-xs text-blue-500">Uploading...</div>
                                     )}
                                     {/* Allow approval even without receipt for certain cases */}
-                                    {(refund.payment_method === 'cash' || refund.payment_method === 'qr_code') && (
+                                    {(refund.payment_method === 'cash' || refund.payment_method === 'qr_code' || refund.payment_method === 'qr_manual') && (
                                       <div className="flex space-x-2 mt-2">
                                         <button
                                           onClick={() => handleVerifyRefund(refund.id, true)}

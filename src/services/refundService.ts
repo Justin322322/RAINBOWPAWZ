@@ -153,15 +153,15 @@ async function processAutomaticRefund(
     }
 
     if (!paymentId) {
-      // If we cannot locate a PayMongo payment ID yet, keep this as AUTOMATIC
-      // Create a pending automatic refund record and exit gracefully.
+      // If we cannot locate a PayMongo payment ID, convert to manual refund
+      // This ensures the refund appears in the approval workflow
       const refundId = await createRefundRecord({
         booking_id: request.bookingId,
         user_id: bookingInfo.userId,
         amount: request.amount,
         reason: request.reason,
-        status: 'pending',
-        refund_type: 'automatic',
+        status: 'pending_approval',
+        refund_type: 'manual',
         payment_method: normalizePaymentMethod(bookingInfo.paymentMethod),
         transaction_id: bookingInfo.transactionId || undefined,
         processed_by: request.initiatedBy,
@@ -170,7 +170,8 @@ async function processAutomaticRefund(
           initiated_by_type: request.initiatedByType,
           original_amount: bookingInfo.amount,
           missing_payment_id: true,
-          source_id: bookingInfo.sourceId || null
+          source_id: bookingInfo.sourceId || null,
+          converted_from_automatic: true
         }),
         initiated_at: new Date()
       });
@@ -178,19 +179,19 @@ async function processAutomaticRefund(
       await logRefundAudit({
         refund_id: refundId,
         action: 'refund_queued',
-        new_status: 'pending',
+        new_status: 'pending_approval',
         performed_by: request.initiatedBy,
         performed_by_type: request.initiatedByType,
-        details: 'Automatic refund queued: payment id not yet available. Will retry via reconciliation.',
+        details: 'Automatic refund converted to manual: payment id not available. Requires manual processing.',
         ip_address: request.ipAddress
       });
 
       return {
         success: true,
         refundId,
-        refundType: 'automatic',
+        refundType: 'manual',
         paymentMethod: bookingInfo.paymentMethod,
-        message: 'Automatic refund scheduled. The system will complete it once the payment is located.'
+        message: 'Refund converted to manual processing due to missing payment ID. Please approve and process manually.'
       };
     }
 
@@ -511,9 +512,14 @@ async function getBookingPaymentInfo(bookingId: number): Promise<BookingPaymentI
 function determineRefundType(paymentMethod: string, initiatedByType: string): { refundType: 'automatic' | 'manual', canAutoProcess: boolean } {
   const normalizedMethod = normalizePaymentMethod(paymentMethod);
   
+  console.log('Determining refund type:', { paymentMethod, normalizedMethod, initiatedByType });
+  
   // QR code payments: automatic when initiated by business, manual when initiated by customer
   if (isQRCodePayment(paymentMethod)) {
-    if (initiatedByType === 'provider' || initiatedByType === 'admin') {
+    const isBusinessInitiated = initiatedByType === 'provider' || initiatedByType === 'admin' || initiatedByType === 'staff';
+    console.log('QR payment detected:', { isBusinessInitiated, result: isBusinessInitiated ? 'automatic' : 'manual' });
+    
+    if (isBusinessInitiated) {
       return { refundType: 'automatic', canAutoProcess: true };
     } else {
       return { refundType: 'manual', canAutoProcess: false };
@@ -522,7 +528,7 @@ function determineRefundType(paymentMethod: string, initiatedByType: string): { 
 
   // Cash payments: automatic when initiated by business, manual when initiated by customer
   if (normalizedMethod === 'cash') {
-    if (initiatedByType === 'provider' || initiatedByType === 'admin') {
+    if (initiatedByType === 'provider' || initiatedByType === 'admin' || initiatedByType === 'staff') {
       return { refundType: 'automatic', canAutoProcess: true };
     } else {
       return { refundType: 'manual', canAutoProcess: false };
@@ -543,12 +549,15 @@ function determineRefundType(paymentMethod: string, initiatedByType: string): { 
  */
 function isQRCodePayment(paymentMethod: string): boolean {
   const method = paymentMethod.toLowerCase();
-  return method.includes('qr') || 
-         method.includes('scan') || 
-         method.includes('manual') ||
-         method.includes('qr_manual') ||
-         method === 'qr_code' ||
-         method === 'qr';
+  const isQR = method.includes('qr') || 
+               method.includes('scan') || 
+               method.includes('manual') ||
+               method.includes('qr_manual') ||
+               method === 'qr_code' ||
+               method === 'qr';
+  
+  console.log('Checking if QR payment:', { paymentMethod, method, isQR });
+  return isQR;
 }
 
 /**
