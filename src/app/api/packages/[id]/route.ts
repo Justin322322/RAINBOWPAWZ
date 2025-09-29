@@ -9,23 +9,6 @@ import { getImagePath } from '@/utils/imageUtils';
 
 export const dynamic = 'force-dynamic'; // ensure requests aren't cached
 
-let cachedServiceTypesSchema: { ok: boolean; checkedAt: number } | null = null;
-async function hasServiceTypesProviderSchema(): Promise<boolean> {
-  const now = Date.now();
-  if (cachedServiceTypesSchema && now - cachedServiceTypesSchema.checkedAt < 5 * 60 * 1000) {
-    return cachedServiceTypesSchema.ok;
-  }
-  try {
-    const cols = (await query('SHOW COLUMNS FROM service_types')) as Array<{ Field: string }>;
-    const names = (cols || []).map(c => c.Field);
-    const ok = names.includes('provider_id') && names.includes('pet_type');
-    cachedServiceTypesSchema = { ok, checkedAt: now };
-    return ok;
-  } catch {
-    cachedServiceTypesSchema = { ok: false, checkedAt: now };
-    return false;
-  }
-}
 
 /** GET a specific package by ID */
 export async function GET(
