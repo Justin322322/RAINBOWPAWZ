@@ -6,7 +6,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db/query';
 
-export async function GET(request: NextRequest) {
+export async function GET(_request: NextRequest) {
   try {
     // Get all refunds with booking and provider info
     const refundsQuery = `
