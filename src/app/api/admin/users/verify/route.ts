@@ -116,7 +116,6 @@ export async function POST(request: NextRequest) {
           const currentStatus = businessExists[0]?.application_status || businessExists[0]?.verification_status;
           const businessUserId = businessExists[0]?.user_id;
 
-
           // Only update verification_status if it's not restricted
           let updatedStatus = 'approved';
           if (currentStatus === 'restricted') {
@@ -125,46 +124,19 @@ export async function POST(request: NextRequest) {
 
           // SECURITY FIX: Check columns and update safely for each table type
           if (useServiceProvidersTable) {
-            // Check if service_providers has application_status column (avoid SHOW + placeholders incompatibility)
-            const columnsResult = await query(
-              `SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS 
-               WHERE TABLE_SCHEMA = DATABASE() 
-                 AND TABLE_NAME = ? 
-                 AND COLUMN_NAME = ? 
-               LIMIT 1`,
-              ['service_providers', 'application_status']
-            ) as any[];
-            const hasApplicationStatus = columnsResult.length > 0;
-
-            if (hasApplicationStatus) {
-              await query(`
-                UPDATE service_providers
-                SET application_status = ?,
-                    verification_status = ?,
-                    verification_date = NOW(),
-                    verification_notes = ?,
-                    updated_at = NOW()
-                WHERE provider_id = ?
-              `, [
-                updatedStatus,
-                updatedStatus === 'approved' ? 'verified' : updatedStatus,
-                notes || (currentStatus === 'restricted' ? 'Verified by admin but still restricted' : 'Verified by admin'),
-                businessId
-              ]);
-            } else {
-              await query(`
-                UPDATE service_providers
-                SET verification_status = ?,
-                    verification_date = NOW(),
-                    verification_notes = ?,
-                    updated_at = NOW()
-                WHERE provider_id = ?
-              `, [
-                updatedStatus === 'approved' ? 'verified' : updatedStatus,
-                notes || (currentStatus === 'restricted' ? 'Verified by admin but still restricted' : 'Verified by admin'),
-                businessId
-              ]);
-            }
+            // service_providers table only has application_status, not verification_status
+            await query(`
+              UPDATE service_providers
+              SET application_status = ?,
+                  verification_date = NOW(),
+                  verification_notes = ?,
+                  updated_at = NOW()
+              WHERE provider_id = ?
+            `, [
+              updatedStatus,
+              notes || (currentStatus === 'restricted' ? 'Verified by admin but still restricted' : 'Verified by admin'),
+              businessId
+            ]);
           } else {
             // Check if service_providers has application_status column (avoid SHOW + placeholders incompatibility)
             const columnsResult = await query(
@@ -188,7 +160,7 @@ export async function POST(request: NextRequest) {
                 WHERE id = ?
               `, [
                 updatedStatus,
-                updatedStatus === 'approved' ? 'verified' : updatedStatus,
+                updatedStatus, // Keep both statuses in sync
                 notes || (currentStatus === 'restricted' ? 'Verified by admin but still restricted' : 'Verified by admin'),
                 businessId
               ]);
@@ -201,7 +173,7 @@ export async function POST(request: NextRequest) {
                     updated_at = NOW()
                 WHERE id = ?
               `, [
-                updatedStatus === 'approved' ? 'verified' : updatedStatus,
+                updatedStatus,
                 notes || (currentStatus === 'restricted' ? 'Verified by admin but still restricted' : 'Verified by admin'),
                 businessId
               ]);

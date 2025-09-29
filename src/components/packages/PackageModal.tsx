@@ -78,7 +78,7 @@ const PackageModal: React.FC<PackageModalProps> = ({
     customCategories: [],
     customCremationTypes: [],
     customProcessingTimes: [],
-    supportedPetTypes: ['Dogs', 'Cats', 'Birds', 'Rabbits']
+    supportedPetTypes: []
     ,
     sizePricing: [
       { sizeCategory: 'Small (0–10 kg)', weightRangeMin: 0, weightRangeMax: 10, price: 0 },
@@ -105,6 +105,10 @@ const PackageModal: React.FC<PackageModalProps> = ({
   const [isLoadingAddOnSuggestions, setIsLoadingAddOnSuggestions] = useState(false);
   const [isAddOnInputFocused, setIsAddOnInputFocused] = useState(false);
   const [uploadingImages, setUploadingImages] = useState<Set<string>>(new Set());
+  
+  // Custom pet types for "Other" option
+  const [customPetTypes, setCustomPetTypes] = useState<string[]>([]);
+  const [newCustomPetType, setNewCustomPetType] = useState('');
   
   // Animation states for smooth removal (simplified for now)
   // const [removingInclusions, setRemovingInclusions] = useState<Set<number>>(new Set());
@@ -139,8 +143,7 @@ const PackageModal: React.FC<PackageModalProps> = ({
       formData.description.trim(),
       formData.price > 0,
       formData.inclusions.length > 0,
-      formData.conditions.trim(),
-      formData.supportedPetTypes.length > 0
+      formData.conditions.trim()
     ];
 
     const completedFields = requiredFields.filter(Boolean).length;
@@ -234,7 +237,7 @@ const PackageModal: React.FC<PackageModalProps> = ({
       customCategories: [],
       customCremationTypes: [],
       customProcessingTimes: [],
-      supportedPetTypes: ['Dogs', 'Cats', 'Birds', 'Rabbits'],
+      supportedPetTypes: [],
       sizePricing: [
         { sizeCategory: 'Small (0–10 kg)', weightRangeMin: 0, weightRangeMax: 10, price: 0 },
         { sizeCategory: 'Medium (11–25 kg)', weightRangeMin: 11, weightRangeMax: 25, price: 0 },
@@ -249,6 +252,8 @@ const PackageModal: React.FC<PackageModalProps> = ({
     setNewCustomCategory('');
     setNewCustomCremationType('');
     setNewCustomProcessingTime('');
+    setCustomPetTypes([]);
+    setNewCustomPetType('');
     // setRemovingInclusions(new Set());
     // setRemovingAddOns(new Set());
   };
@@ -320,7 +325,7 @@ const PackageModal: React.FC<PackageModalProps> = ({
         customCategories: pkg.customCategories || [],
         customCremationTypes: pkg.customCremationTypes || [],
         customProcessingTimes: pkg.customProcessingTimes || [],
-        supportedPetTypes: pkg.supportedPetTypes || ['Dogs', 'Cats', 'Birds', 'Rabbits'],
+        supportedPetTypes: pkg.supportedPetTypes || [],
         sizePricing: (pkg.sizePricing && pkg.sizePricing.length > 0)
           ? pkg.sizePricing
           : [
@@ -379,6 +384,8 @@ const PackageModal: React.FC<PackageModalProps> = ({
         setNewInclusion('');
         setNewAddOn('');
         setNewAddOnPrice('');
+        setCustomPetTypes([]);
+        setNewCustomPetType('');
         setErrors({});
         // setRemovingInclusions(new Set());
         // setRemovingAddOns(new Set());
@@ -521,9 +528,17 @@ const PackageModal: React.FC<PackageModalProps> = ({
     showToast('Add-on removed', 'success');
   }, [showToast]);
 
-  const _handleTogglePetType = useCallback((petType: string) => {
+  const handleTogglePetType = useCallback((petType: string) => {
     setFormData(prev => {
       if (prev.supportedPetTypes.includes(petType)) {
+        // If unchecking "Other", remove all custom pet types
+        if (petType === 'Other') {
+          const updatedTypes = prev.supportedPetTypes.filter(type => type !== petType);
+          return {
+            ...prev,
+            supportedPetTypes: updatedTypes.filter(type => !customPetTypes.includes(type))
+          };
+        }
         return {
           ...prev,
           supportedPetTypes: prev.supportedPetTypes.filter(type => type !== petType)
@@ -535,6 +550,31 @@ const PackageModal: React.FC<PackageModalProps> = ({
         };
       }
     });
+    
+    // If unchecking "Other", clear custom pet types
+    if (petType === 'Other' && formData.supportedPetTypes.includes(petType)) {
+      setCustomPetTypes([]);
+    }
+  }, [customPetTypes, formData.supportedPetTypes]);
+
+  const handleAddCustomPetType = useCallback(() => {
+    if (newCustomPetType.trim() && !customPetTypes.includes(newCustomPetType.trim())) {
+      const newType = newCustomPetType.trim();
+      setCustomPetTypes(prev => [...prev, newType]);
+      setFormData(prev => ({
+        ...prev,
+        supportedPetTypes: [...prev.supportedPetTypes, newType]
+      }));
+      setNewCustomPetType('');
+    }
+  }, [newCustomPetType, customPetTypes]);
+
+  const handleRemoveCustomPetType = useCallback((petType: string) => {
+    setCustomPetTypes(prev => prev.filter(type => type !== petType));
+    setFormData(prev => ({
+      ...prev,
+      supportedPetTypes: prev.supportedPetTypes.filter(type => type !== petType)
+    }));
   }, []);
 
   // Image upload handlers
@@ -636,7 +676,7 @@ const PackageModal: React.FC<PackageModalProps> = ({
 
   const validateForm = useCallback(() => {
     const newErrors: Record<string, string | undefined> = {};
-    const fieldOrder = ['name', 'description', 'price', 'inclusions', 'conditions', 'supportedPetTypes'];
+    const fieldOrder = ['name', 'description', 'price', 'inclusions', 'conditions'];
 
     // Core validation rules (same for both create and edit modes)
     if (!formData.name.trim()) newErrors.name = 'Package name is required';
@@ -649,7 +689,6 @@ const PackageModal: React.FC<PackageModalProps> = ({
     }
     if (formData.inclusions.length === 0) newErrors.inclusions = 'At least one inclusion is required';
     if (!formData.conditions.trim()) newErrors.conditions = 'Conditions are required';
-    if (formData.supportedPetTypes.length === 0) newErrors.supportedPetTypes = 'Please select at least one pet type';
 
     // Optional field validation
     if (formData.overageFeePerKg < 0) newErrors.overageFeePerKg = 'Overage fee per kg cannot be negative';
@@ -1068,6 +1107,7 @@ const PackageModal: React.FC<PackageModalProps> = ({
                       />
                     </div>
                   </div>
+                  
                   <div className="mt-4">
                     <label className="block text-sm font-medium text-gray-700 mb-2">Supported Pet Types</label>
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
@@ -1076,25 +1116,71 @@ const PackageModal: React.FC<PackageModalProps> = ({
                           <input
                             type="checkbox"
                             checked={formData.supportedPetTypes.includes(petType)}
-                            onChange={(e) => {
-                              if (e.target.checked) {
-                                setFormData(prev => ({
-                                  ...prev,
-                                  supportedPetTypes: [...prev.supportedPetTypes, petType]
-                                }));
-                              } else {
-                                setFormData(prev => ({
-                                  ...prev,
-                                  supportedPetTypes: prev.supportedPetTypes.filter(type => type !== petType)
-                                }));
-                              }
-                            }}
+                            onChange={(_e) => handleTogglePetType(petType)}
                             className="rounded border-gray-300 text-[var(--primary-green)] focus:ring-[var(--primary-green)] h-4 w-4"
                           />
                           <span className="ml-2 text-sm text-gray-700">{petType}</span>
                         </label>
                       ))}
                     </div>
+                    
+                    {/* Custom Pet Types Section - Only show when "Other" is selected */}
+                    {formData.supportedPetTypes.includes('Other') && (
+                      <div className="mt-4 p-4 bg-gray-50 rounded-lg border">
+                        <h4 className="text-sm font-medium text-gray-700 mb-3">Add Custom Pet Types</h4>
+                        
+                        {/* Display existing custom pet types */}
+                        {customPetTypes.length > 0 && (
+                          <div className="mb-3">
+                            <div className="flex flex-wrap gap-2">
+                              {customPetTypes.map((petType) => (
+                                <span
+                                  key={petType}
+                                  className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800"
+                                >
+                                  {petType}
+                                  <button
+                                    type="button"
+                                    onClick={() => handleRemoveCustomPetType(petType)}
+                                    className="ml-2 text-green-600 hover:text-green-800"
+                                  >
+                                    ×
+                                  </button>
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                        
+                        {/* Add new custom pet type */}
+                        <div className="flex gap-2">
+                          <input
+                            type="text"
+                            value={newCustomPetType}
+                            onChange={(e) => setNewCustomPetType(e.target.value)}
+                            placeholder="Enter pet type (e.g., Fish)"
+                            className="flex-1 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)] sm:text-sm"
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                e.preventDefault();
+                                handleAddCustomPetType();
+                              }
+                            }}
+                          />
+                          <button
+                            type="button"
+                            onClick={handleAddCustomPetType}
+                            disabled={!newCustomPetType.trim() || customPetTypes.includes(newCustomPetType.trim())}
+                            className="px-4 py-2 bg-[var(--primary-green)] text-white rounded-md hover:bg-green-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-sm font-medium"
+                          >
+                            +
+                          </button>
+                        </div>
+                        <p className="mt-2 text-xs text-gray-500">
+                          Click the + button to add custom pet types. You can add multiple entries.
+                        </p>
+                      </div>
+                    )}
                   </div>
                 </div>
                 {/* Inclusions */}

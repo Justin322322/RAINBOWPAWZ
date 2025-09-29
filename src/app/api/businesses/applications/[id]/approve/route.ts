@@ -31,6 +31,7 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
     const tableName = 'service_providers';
 
     // SECURITY FIX: Use validated table names instead of template literals
+    // Note: service_providers table only has application_status, not verification_status
     const updateResult = await query(
       `UPDATE ${tableName}
        SET application_status = 'approved',
@@ -83,6 +84,21 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
     } catch (notificationError) {
       // Non-critical error, just log it
       console.error('Error creating approval notification:', notificationError);
+    }
+
+    // Create admin notification about the approval
+    try {
+      const { createAdminNotification } = await import('@/utils/adminNotificationService');
+      await createAdminNotification({
+        type: 'business_approved',
+        title: 'Business Application Approved',
+        message: `Business "${business.business_name || business.name}" (Provider #${business.provider_id}) has been approved.`,
+        entityType: 'business_application',
+        entityId: business.provider_id,
+        shouldSendEmail: false // Don't spam admins with approval notifications
+      });
+    } catch (adminNotificationError) {
+      console.error('Error creating admin notification for approval:', adminNotificationError);
     }
 
     // Log the admin action using the utility function

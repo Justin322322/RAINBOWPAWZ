@@ -451,7 +451,7 @@ export async function GET(request: NextRequest) {
         addOns,
         images: finalImages,
         sizePricing,
-        supportedPetTypes: []
+        supportedPetTypes: p.supported_pet_types || []
       };
     });
 
@@ -517,7 +517,8 @@ export async function POST(request: NextRequest) {
       conditions = '',
       inclusions = [],
       addOns = [],
-      images = []
+      images = [],
+      supportedPetTypes = []
     } = body || {};
 
     if (!name || !description || price == null) {
@@ -528,31 +529,69 @@ export async function POST(request: NextRequest) {
       // Insert the core package record including optional fields supported by schema
       let pkgRes: any;
       try {
-        pkgRes = (await transaction.query(
-          `
-          INSERT INTO service_packages
-            (provider_id, name, description, category, cremation_type,
-             processing_time, price, delivery_fee_per_km, conditions, is_active,
-             pricing_mode, overage_fee_per_kg, inclusions, addons, images)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, TRUE, ?, ?, ?, ?, ?)
-          `,
-          [
-            providerId,
-            name,
-            description,
-            category,
-            cremationType,
-            processingTime,
-            Number(price),
-            Number(deliveryFeePerKm) || 0,
-            conditions,
-            pricingMode === 'by_size' ? 'by_size' : 'fixed',
-            Number(overageFeePerKg) || 0,
-            JSON.stringify(inclusions || []),
-            JSON.stringify(addOns || []),
-            JSON.stringify(images || [])
-          ]
-        )) as any;
+        // Try to insert with supported_pet_types column first
+        try {
+          pkgRes = (await transaction.query(
+            `
+            INSERT INTO service_packages
+              (provider_id, name, description, category, cremation_type,
+               processing_time, price, delivery_fee_per_km, conditions, is_active,
+               pricing_mode, overage_fee_per_kg, inclusions, addons, images, size_pricing, supported_pet_types)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, TRUE, ?, ?, ?, ?, ?, ?, ?)
+            `,
+            [
+              providerId,
+              name,
+              description,
+              category,
+              cremationType,
+              processingTime,
+              Number(price),
+              Number(deliveryFeePerKm) || 0,
+              conditions,
+              pricingMode === 'by_size' ? 'by_size' : 'fixed',
+              Number(overageFeePerKg) || 0,
+              JSON.stringify(inclusions || []),
+              JSON.stringify(addOns || []),
+              JSON.stringify(images || []),
+              JSON.stringify(sizePricing || []),
+              JSON.stringify(supportedPetTypes)
+            ]
+          )) as any;
+        } catch (columnError: any) {
+          // If supported_pet_types column doesn't exist, fall back to old schema
+          if (columnError.code === 'ER_BAD_FIELD_ERROR' && columnError.message.includes('supported_pet_types')) {
+            console.warn('supported_pet_types column not found, falling back to old schema');
+            pkgRes = (await transaction.query(
+              `
+              INSERT INTO service_packages
+                (provider_id, name, description, category, cremation_type,
+                 processing_time, price, delivery_fee_per_km, conditions, is_active,
+                 pricing_mode, overage_fee_per_kg, inclusions, addons, images, size_pricing)
+              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, TRUE, ?, ?, ?, ?, ?, ?)
+              `,
+              [
+                providerId,
+                name,
+                description,
+                category,
+                cremationType,
+                processingTime,
+                Number(price),
+                Number(deliveryFeePerKm) || 0,
+                conditions,
+                pricingMode === 'by_size' ? 'by_size' : 'fixed',
+                Number(overageFeePerKg) || 0,
+                JSON.stringify(inclusions || []),
+                JSON.stringify(addOns || []),
+                JSON.stringify(images || []),
+                JSON.stringify(sizePricing || [])
+              ]
+            )) as any;
+          } else {
+            throw columnError; // Re-throw if it's a different error
+          }
+        }
       } catch (e: any) {
         // Fallback for older schemas without new columns
         const msg = e?.message || '';
@@ -623,11 +662,6 @@ export async function POST(request: NextRequest) {
       // Images are now stored in JSON column during the main INSERT
       // No separate insertion needed - images are already processed and stored in the JSON column
 
-      // Note: supportedPetTypes functionality is disabled due to service_types table schema mismatch
-      // The service_types table doesn't have provider_id column, so this feature needs to be redesigned
-      if (Array.isArray(body.supportedPetTypes)) {
-        console.warn('supportedPetTypes feature is disabled - service_types table schema needs to be updated');
-      }
 
       return { packageId };
     });
@@ -675,7 +709,7 @@ async function getPackageById(packageId: number, providerId?: string): Promise<N
       inclusions: [],
       addOns: [],
       images: [],
-      supportedPetTypes: []
+      supportedPetTypes: pkg.supported_pet_types || []
     };
     
     return NextResponse.json({ package: packageData });

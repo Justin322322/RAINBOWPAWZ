@@ -26,13 +26,13 @@ export async function createAdminNotification({
   emailSubject
 }: AdminNotificationParams): Promise<{ success: boolean; notificationId?: number; error?: string }> {
   try {
-    // Ensure the admin_notifications table exists
-    await ensureAdminNotificationsTable();
+    // Ensure the notifications_unified table exists
+    await ensureNotificationsUnifiedTable();
 
     // Determine link based on notification type
     let link = null;
 
-    if (type === 'new_cremation_center' || type === 'pending_application') {
+    if (type === 'new_cremation_center' || type === 'pending_application' || type === 'business_approved') {
       // Link to the applications page
       link = '/admin/applications';
 
@@ -65,38 +65,79 @@ export async function createAdminNotification({
       }
     }
 
-    // Insert the notification
-    const result = await query(
-      `INSERT INTO admin_notifications (type, title, message, entity_type, entity_id, link)
-       VALUES (?, ?, ?, ?, ?, ?)`,
-      [type, title, message, entityType, entityId, link]
-    ) as any;
+    // Get all admin users to create individual notifications
+    const admins = await query(`SELECT user_id, email, first_name FROM users WHERE role = 'admin'`) as any[];
+    
+    if (!admins || admins.length === 0) {
+      return {
+        success: false,
+        error: 'No admin users found'
+      };
+    }
 
-    // Send email notifications_unified to all admins if requested
+    // Create individual notifications for each admin in the unified table
+    const notificationPromises = admins.map(async (admin) => {
+      try {
+        // Check if notification already exists to prevent duplicates
+        const existingNotification = await query(`
+          SELECT id FROM notifications_unified 
+          WHERE user_id = ? AND title = ? AND message = ? AND created_at > DATE_SUB(NOW(), INTERVAL 1 HOUR)
+        `, [admin.user_id, title, message]) as any[];
+
+        if (existingNotification && existingNotification.length > 0) {
+          console.log('Admin notification already exists, skipping duplicate:', existingNotification[0].id);
+          return existingNotification[0].id;
+        }
+
+        // Insert notification into unified table
+        const result = await query(
+          `INSERT INTO notifications_unified 
+            (user_id, title, message, type, category, status, priority, link, data, created_at)
+           VALUES (?, ?, ?, 'system', 'admin', 'delivered', 'normal', ?, ?, NOW())`,
+          [
+            admin.user_id,
+            title,
+            message,
+            link,
+            entityId ? JSON.stringify({ entityType, entityId }) : null
+          ]
+        ) as any;
+
+        // Broadcast to this specific admin via SSE
+        try {
+          broadcastToUser(String(admin.user_id), 'admin', {
+            id: result.insertId || Date.now(),
+            title,
+            message,
+            type: 'system',
+            status: 0,
+            link,
+            created_at: new Date().toISOString()
+          });
+        } catch (broadcastError) {
+          console.warn('Failed to broadcast to admin:', admin.user_id, broadcastError);
+        }
+
+        return result.insertId;
+      } catch (error) {
+        console.error(`Failed to create notification for admin ${admin.user_id}:`, error);
+        return null;
+      }
+    });
+
+    const results = await Promise.allSettled(notificationPromises);
+    const successfulNotifications = results
+      .filter(result => result.status === 'fulfilled' && result.value !== null)
+      .map(result => (result as PromiseFulfilledResult<number>).value);
+
+    // Send email notifications to all admins if requested
     if (shouldSendEmail) {
       await sendAdminEmailNotifications(title, message, type, link, emailSubject);
     }
 
-    // Broadcast to all connected admin sessions via SSE
-    try {
-      // Fetch admin IDs to target specific users
-      const admins = await query(`SELECT user_id FROM users WHERE role = 'admin'`) as any[];
-      for (const admin of admins) {
-        broadcastToUser(String(admin.user_id), 'admin', {
-          id: result.insertId || Date.now(),
-          title,
-          message,
-          type,
-          status: 0,
-          link,
-          created_at: new Date().toISOString()
-        });
-      }
-    } catch {}
-
     return {
-      success: true,
-      notificationId: result.insertId
+      success: successfulNotifications.length > 0,
+      notificationId: successfulNotifications[0] || undefined
     };
   } catch (error) {
     return {
@@ -292,38 +333,50 @@ This is an automated admin notification. Please do not reply to this email.
 }
 
 /**
- * Ensure the admin_notifications table exists
+ * Ensure the notifications_unified table exists
  */
-async function ensureAdminNotificationsTable(): Promise<boolean> {
+async function ensureNotificationsUnifiedTable(): Promise<boolean> {
   try {
     // Check if the table exists
     const tableExists = await query(`
       SELECT COUNT(*) as count
       FROM information_schema.tables
       WHERE table_schema = DATABASE()
-      AND table_name = 'admin_notifications'
+      AND table_name = 'notifications_unified'
     `) as any[];
 
     if (tableExists[0].count === 0) {
       // Create the table if it doesn't exist
       await query(`
-        CREATE TABLE IF NOT EXISTS admin_notifications (
+        CREATE TABLE IF NOT EXISTS notifications_unified (
           id INT AUTO_INCREMENT PRIMARY KEY,
-          type VARCHAR(50) NOT NULL,
+          user_id INT NOT NULL,
+          provider_id INT DEFAULT NULL,
+          type ENUM('email','sms','push','system') NOT NULL,
+          category ENUM('booking','payment','refund','review','admin','marketing','system') NOT NULL,
           title VARCHAR(255) NOT NULL,
           message TEXT NOT NULL,
-          entity_type VARCHAR(50) DEFAULT NULL,
-          entity_id INT DEFAULT NULL,
-          link VARCHAR(255) DEFAULT NULL,
-          status TINYINT(1) DEFAULT 0,
-          created_at TIMESTAMP NOT NULL DEFAULT current_timestamp()
+          data JSON DEFAULT NULL,
+          status ENUM('pending','sent','delivered','failed','read') DEFAULT 'pending',
+          priority ENUM('low','normal','high','urgent') DEFAULT 'normal',
+          scheduled_at TIMESTAMP NULL DEFAULT NULL,
+          sent_at TIMESTAMP NULL DEFAULT NULL,
+          read_at TIMESTAMP NULL DEFAULT NULL,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+          INDEX idx_user_id (user_id),
+          INDEX idx_provider_id (provider_id),
+          INDEX idx_type (type),
+          INDEX idx_category (category),
+          INDEX idx_status (status),
+          INDEX idx_created_at (created_at)
         )
       `);
     }
 
     return true;
   } catch (error) {
-    console.error("Error ensuring admin_notifications table exists:", error);
+    console.error("Error ensuring notifications_unified table exists:", error);
     return false;
   }
 }
