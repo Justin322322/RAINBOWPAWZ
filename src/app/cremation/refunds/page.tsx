@@ -11,8 +11,7 @@ import {
   CloudArrowUpIcon,
   PlusIcon,
   ArrowPathIcon,
-  EnvelopeIcon,
-  PhoneIcon
+  EnvelopeIcon
 } from '@heroicons/react/24/outline';
 import CremationDashboardLayout from '@/components/navigation/CremationDashboardLayout';
 import withBusinessVerification from '@/components/withBusinessVerification';

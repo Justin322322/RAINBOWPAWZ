@@ -19,7 +19,6 @@ import {
   RefundRecord
 } from '@/lib/db/refunds';
 import {
-  sendRefundProcessedNotification,
   sendRefundFailedNotification
 } from '@/utils/refundNotificationService';
 
