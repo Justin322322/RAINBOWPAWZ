@@ -13,7 +13,7 @@ export interface RefundRecord {
   reason: string;
   status: 'pending' | 'pending_approval' | 'processing' | 'completed' | 'failed' | 'cancelled';
   refund_type: 'automatic' | 'manual';
-  payment_method: 'gcash' | 'card' | 'paymaya' | 'cash' | 'qr_code';
+  payment_method: 'gcash' | 'card' | 'paymaya' | 'cash' | 'qr_code' | 'qr_manual';
   transaction_id?: string;
   paymongo_refund_id?: string;
   processed_by?: number; // admin/staff user ID for manual refunds
@@ -61,7 +61,7 @@ export async function ensureRefundsTable(): Promise<void> {
         reason TEXT NOT NULL,
         status ENUM('pending', 'pending_approval', 'processing', 'completed', 'failed', 'cancelled') NOT NULL DEFAULT 'pending',
         refund_type ENUM('automatic', 'manual') NOT NULL DEFAULT 'manual',
-        payment_method ENUM('gcash', 'card', 'paymaya', 'cash', 'qr_code') NOT NULL DEFAULT 'cash',
+        payment_method ENUM('gcash', 'card', 'paymaya', 'cash', 'qr_code', 'qr_manual') NOT NULL DEFAULT 'cash',
         transaction_id VARCHAR(255) DEFAULT NULL,
         paymongo_refund_id VARCHAR(255) DEFAULT NULL,
         processed_by INT DEFAULT NULL,

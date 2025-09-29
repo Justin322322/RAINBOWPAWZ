@@ -554,15 +554,22 @@ function isQRCodePayment(paymentMethod: string): boolean {
 /**
  * Normalize payment method names
  */
-function normalizePaymentMethod(paymentMethod: string): 'gcash' | 'card' | 'paymaya' | 'cash' | 'qr_code' {
+function normalizePaymentMethod(paymentMethod: string): 'gcash' | 'card' | 'paymaya' | 'cash' | 'qr_code' | 'qr_manual' {
   const method = paymentMethod.toLowerCase();
+  
+  console.log('Normalizing payment method:', { original: paymentMethod, normalized: method });
   
   if (method.includes('gcash')) return 'gcash';
   if (method.includes('card') || method.includes('credit') || method.includes('debit')) return 'card';
   if (method.includes('paymaya') || method.includes('maya')) return 'paymaya';
   if (method.includes('cash')) return 'cash';
-  if (method.includes('qr') || method.includes('scan')) return 'qr_code';
+  if (method.includes('qr') || method.includes('scan')) {
+    // Keep the original if it's qr_manual, otherwise normalize to qr_code
+    if (method.includes('manual')) return 'qr_manual';
+    return 'qr_code';
+  }
   
+  console.log('Payment method not recognized, defaulting to cash:', paymentMethod);
   return 'cash'; // Default fallback
 }
 
