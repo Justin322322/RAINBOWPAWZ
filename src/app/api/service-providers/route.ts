@@ -79,7 +79,7 @@ export async function GET(request: Request) {
     } else {
       // Only fallback to geocoding if we have a valid location string
       if (userLocation && userLocation.trim() !== '') {
-        userCoordinates = getBataanCoordinates(userLocation);
+        userCoordinates = await getBataanCoordinates(userLocation);
         if (!userCoordinates) {
           // Location not found in our database
           return NextResponse.json({
@@ -99,7 +99,7 @@ export async function GET(request: Request) {
     }
   } else if (userLocation) {
     // Priority 2: Fallback to address-based lookup
-    userCoordinates = getBataanCoordinates(userLocation);
+    userCoordinates = await getBataanCoordinates(userLocation);
     if (!userCoordinates) {
       // Location not found in our database
       return NextResponse.json({
@@ -252,7 +252,7 @@ export async function GET(request: Request) {
         };
         // Async function to calculate distance for a single provider with server caching
         const calculateProviderDistance = async (provider: any, userCoords: any): Promise<void> => {
-          const providerCoordinates = getBataanCoordinates(provider.address || 'Bataan');
+          const providerCoordinates = await getBataanCoordinates(provider.address || 'Bataan');
 
           // Check if providerCoordinates is null and skip distance calculation
           if (!providerCoordinates) {
@@ -355,13 +355,18 @@ export async function GET(request: Request) {
             await calculateProviderDistance(provider, userCoordinates);
 
           } catch {
-            // Final fallback
-            const providerCoordinates = getBataanCoordinates(provider.address || 'Bataan');
-            if (providerCoordinates) {
-              const distanceValue = calculateDistance(userCoordinates, providerCoordinates);
-              provider.distance = `${distanceValue.toFixed(1)} km`;
-              provider.distanceValue = distanceValue;
-            } else {
+            // Final fallback - use simple distance calculation with fallback coordinates
+            try {
+              const providerCoordinates = await getBataanCoordinates(provider.address || 'Bataan');
+              if (providerCoordinates) {
+                const distanceValue = calculateDistance(userCoordinates, providerCoordinates);
+                provider.distance = `${distanceValue.toFixed(1)} km`;
+                provider.distanceValue = distanceValue;
+              } else {
+                provider.distance = 'Distance unavailable';
+                provider.distanceValue = 0;
+              }
+            } catch {
               provider.distance = 'Distance unavailable';
               provider.distanceValue = 0;
             }

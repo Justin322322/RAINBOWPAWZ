@@ -29,12 +29,12 @@ export async function GET(
         if (!isNaN(lat) && !isNaN(lng)) {
           userCoordinates = { lat, lng };
         } else if (userLocation && userLocation.trim() !== '') {
-          userCoordinates = getBataanCoordinates(userLocation);
+          userCoordinates = await getBataanCoordinates(userLocation);
           // Note: userCoordinates could be null if location not found, but that's okay for detail page
         }
       } else if (userLocation && userLocation.trim() !== '') {
         // Priority 2: Fallback to address-based lookup
-        userCoordinates = getBataanCoordinates(userLocation);
+        userCoordinates = await getBataanCoordinates(userLocation);
         // Note: userCoordinates could be null if location not found, but that's okay for detail page
       }
     }
@@ -127,7 +127,7 @@ export async function GET(
 
         // Calculate actual distance based on coordinates (if user location available)
         if (userCoordinates && provider.address) {
-          const providerCoordinates = getBataanCoordinates(provider.address);
+          const providerCoordinates = await getBataanCoordinates(provider.address);
 
           // Check if providerCoordinates is null and handle accordingly
           if (!providerCoordinates) {

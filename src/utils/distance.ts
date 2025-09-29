@@ -58,71 +58,41 @@ function deg2rad(deg: number): number {
 }
 
 /**
- * Get coordinates for a location in Bataan, Philippines
- * This is a fallback function that returns coordinates for common locations in Bataan
+ * Get coordinates for a location using dynamic geocoding
+ * This function uses the geocoding API to resolve addresses dynamically
  * @param location Location name or address
- * @returns Coordinates (latitude, longitude)
+ * @returns Promise<Coordinates | null>
  */
-export function getBataanCoordinates(location: string): Coordinates | null {
-  // No default coordinates - return null if location not found
-
-  // Common locations in Bataan with their coordinates
-  const locations: Record<string, Coordinates> = {
-    // Cities
-    'balanga': { lat: 14.6761, lng: 120.5439 },
-    'balanga city': { lat: 14.6761, lng: 120.5439 },
-    // Municipalities
-    'dinalupihan': { lat: 14.8775, lng: 120.4667 },
-    'hermosa': { lat: 14.8333, lng: 120.5000 },
-    'orani': { lat: 14.8004, lng: 120.5292 },
-    'samal': { lat: 14.7667, lng: 120.5167 },
-    'samal bataan': { lat: 14.7667, lng: 120.5167 }, // More specific match for Samal, Bataan
-    'abucay': { lat: 14.7333, lng: 120.5333 },
-    'pilar': { lat: 14.6667, lng: 120.5667 },
-    'orion': { lat: 14.6333, lng: 120.5833 },
-    'limay': { lat: 14.5667, lng: 120.6000 },
-    'mariveles': { lat: 14.4333, lng: 120.4833 },
-    'bagac': { lat: 14.6000, lng: 120.3833 },
-    'morong': { lat: 14.6833, lng: 120.2667 },
-    // Common places
-    'bataan peninsula state university': { lat: 14.6417, lng: 120.5419 },
-    'bpsu': { lat: 14.6417, lng: 120.5419 },
-    'the peninsula': { lat: 14.6761, lng: 120.5439 },
-    // Specific business locations
-    'rainbow paws cremation center': { lat: 14.7667, lng: 120.5167 }, // Samal, Bataan location
-  };
-  
-  if (!location) {
+export async function getBataanCoordinates(location: string): Promise<Coordinates | null> {
+  if (!location || location.trim() === '') {
     return null;
   }
 
-  // Convert to lowercase for better matching
-  const normalizedLocation = location.toLowerCase()
-    .replace(/[,\s]+philippines/g, '')
-    .replace(/\d{4}/, '')  // Remove postal codes
-    .replace(/\s+/g, ' ')
-    .trim();
-
-  // Try exact match first (including with "bataan")
-  const exactMatch = locations[normalizedLocation];
-  if (exactMatch) {
-    return exactMatch;
-  }
-
-  // Try without "bataan" for broader matching
-  const withoutBataan = normalizedLocation.replace(/bataan/g, '').replace(/\s+/g, ' ').trim();
-  const withoutBataanMatch = locations[withoutBataan];
-  if (withoutBataanMatch) {
-    return withoutBataanMatch;
-  }
-
-  // Check if the location contains any of the known locations
-  for (const [key, coords] of Object.entries(locations)) {
-    if (normalizedLocation.includes(key) || withoutBataan.includes(key)) {
-      return coords;
+  try {
+    // Use the geocoding API to resolve the address dynamically
+    const response = await fetch(`/api/geocoding?address=${encodeURIComponent(location)}`);
+    
+    if (!response.ok) {
+      console.warn(`Geocoding failed for "${location}": ${response.status}`);
+      return null;
     }
-  }
 
-  // Return null if no match is found - don't use default coordinates
-  return null;
+    const results = await response.json();
+    
+    if (!results || results.length === 0) {
+      console.warn(`No geocoding results found for "${location}"`);
+      return null;
+    }
+
+    // Use the first (best) result
+    const bestResult = results[0];
+    
+    return {
+      lat: parseFloat(bestResult.lat),
+      lng: parseFloat(bestResult.lon)
+    };
+  } catch (error) {
+    console.error(`Error geocoding "${location}":`, error);
+    return null;
+  }
 }

@@ -8,18 +8,18 @@ async function ensureReceiptTable(): Promise<void> {
       CREATE TABLE IF NOT EXISTS payment_receipts (
         id INT AUTO_INCREMENT PRIMARY KEY,
         booking_id INT NOT NULL,
-        user_id INT NULL,
-        provider_id INT NULL,
-        receipt_path TEXT NOT NULL,
-        status ENUM('awaiting','confirmed','rejected') NOT NULL DEFAULT 'awaiting',
-        notes TEXT NULL,
+        user_id INT NOT NULL,
+        receipt_path VARCHAR(500),
+        notes TEXT,
+        status ENUM('awaiting', 'confirmed', 'rejected') DEFAULT 'awaiting',
+        uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         confirmed_by INT NULL,
-        confirmed_at DATETIME NULL,
-        reject_reason TEXT NULL,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-        UNIQUE KEY uniq_booking (booking_id)
-      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+        confirmed_at TIMESTAMP NULL,
+        rejection_reason TEXT,
+        INDEX idx_booking_id (booking_id),
+        INDEX idx_user_id (user_id),
+        INDEX idx_status (status)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     `);
   } catch {
     // DDL may be blocked in production; ignore
@@ -71,15 +71,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'File must have a valid name' }, { status: 400 });
     }
 
-    // Resolve provider_id and provider user_id from booking (best-effort)
-    let providerId: number | null = null;
+    // Resolve provider user_id from booking (best-effort)
     let providerUserId: number | null = null;
     try {
       const rows = await query(
         'SELECT provider_id FROM bookings WHERE id = ? LIMIT 1',
         [bookingId]
       ) as any[];
-      providerId = rows?.[0]?.provider_id ?? null;
+      const providerId = rows?.[0]?.provider_id ?? null;
       if (providerId) {
         const prow = await query('SELECT user_id FROM service_providers WHERE provider_id = ? LIMIT 1', [providerId]) as any[];
         providerUserId = prow?.[0]?.user_id ?? null;
@@ -142,13 +141,13 @@ export async function POST(request: NextRequest) {
 
       if (existing && existing.length > 0) {
         await query(
-          'UPDATE payment_receipts SET receipt_path = ?, status = \"awaiting\", notes = ?, user_id = ?, provider_id = ?, updated_at = NOW() WHERE booking_id = ?',
-          [path, notes, Number(user.userId), providerId, bookingId]
+          'UPDATE payment_receipts SET receipt_path = ?, status = \"awaiting\", notes = ?, user_id = ?, uploaded_at = NOW() WHERE booking_id = ?',
+          [path, notes, Number(user.userId), bookingId]
         );
       } else {
         await query(
-          'INSERT INTO payment_receipts (booking_id, user_id, provider_id, receipt_path, status, notes) VALUES (?, ?, ?, ?, \"awaiting\", ?)',
-          [bookingId, Number(user.userId), providerId, path, notes]
+          'INSERT INTO payment_receipts (booking_id, user_id, receipt_path, status, notes) VALUES (?, ?, ?, \"awaiting\", ?)',
+          [bookingId, Number(user.userId), path, notes]
         );
       }
     } else {
@@ -211,7 +210,7 @@ export async function GET(request: NextRequest) {
     if (tableExists) {
       try {
         const rows = await query(
-          'SELECT booking_id, user_id, provider_id, receipt_path, status, notes, confirmed_by, confirmed_at, reject_reason, created_at, updated_at FROM payment_receipts WHERE booking_id = ? LIMIT 1',
+          'SELECT booking_id, user_id, receipt_path, status, notes, confirmed_by, confirmed_at, rejection_reason, uploaded_at FROM payment_receipts WHERE booking_id = ? LIMIT 1',
           [bookingId]
         ) as any[];
         if (rows && rows.length > 0) receipt = rows[0];

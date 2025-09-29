@@ -637,11 +637,11 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
         try {
           // Get coordinates for the delivery address
           const deliveryAddress = currentUserData.address || currentUserData.city || 'Bataan';
-          const deliveryCoordinates = getBataanCoordinates(deliveryAddress);
+          const deliveryCoordinates = await getBataanCoordinates(deliveryAddress);
 
           // Get coordinates for the provider address
           const providerAddress = bookingData.provider.address || bookingData.provider.city || 'Bataan';
-          const providerCoordinates = getBataanCoordinates(providerAddress);
+          const providerCoordinates = await getBataanCoordinates(providerAddress);
 
           // Verify both coordinates are non-null before calculating distance
           if (!deliveryCoordinates || !providerCoordinates) {

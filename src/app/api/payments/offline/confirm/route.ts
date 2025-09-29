@@ -7,18 +7,18 @@ async function ensureReceiptTable(): Promise<void> {
     CREATE TABLE IF NOT EXISTS payment_receipts (
       id INT AUTO_INCREMENT PRIMARY KEY,
       booking_id INT NOT NULL,
-      user_id INT NULL,
-      provider_id INT NULL,
-      receipt_path TEXT NOT NULL,
-      status ENUM('awaiting','confirmed','rejected') NOT NULL DEFAULT 'awaiting',
-      notes TEXT NULL,
+      user_id INT NOT NULL,
+      receipt_path VARCHAR(500),
+      notes TEXT,
+      status ENUM('awaiting', 'confirmed', 'rejected') DEFAULT 'awaiting',
+      uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       confirmed_by INT NULL,
-      confirmed_at DATETIME NULL,
-      reject_reason TEXT NULL,
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-      UNIQUE KEY uniq_booking (booking_id)
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+      confirmed_at TIMESTAMP NULL,
+      rejection_reason TEXT,
+      INDEX idx_booking_id (booking_id),
+      INDEX idx_user_id (user_id),
+      INDEX idx_status (status)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
   `);
 }
 
@@ -78,7 +78,7 @@ export async function POST(request: NextRequest) {
       if (tableExists) {
         console.log('✅ [confirm] Updating payment_receipts table');
         await query(
-          'UPDATE payment_receipts SET status = \"confirmed\", confirmed_by = ?, confirmed_at = NOW(), reject_reason = NULL WHERE booking_id = ?',
+          'UPDATE payment_receipts SET status = \"confirmed\", confirmed_by = ?, confirmed_at = NOW(), rejection_reason = NULL WHERE booking_id = ?',
           [parseInt(user.userId), bookingId]
         );
       }
@@ -96,7 +96,7 @@ export async function POST(request: NextRequest) {
       if (tableExists) {
         console.log('❌ [confirm] Rejecting receipt in payment_receipts table');
         await query(
-          'UPDATE payment_receipts SET status = \"rejected\", confirmed_by = ?, confirmed_at = NOW(), reject_reason = ? WHERE booking_id = ?',
+          'UPDATE payment_receipts SET status = \"rejected\", confirmed_by = ?, confirmed_at = NOW(), rejection_reason = ? WHERE booking_id = ?',
           [parseInt(user.userId), reason, bookingId]
         );
       }

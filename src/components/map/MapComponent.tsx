@@ -6,6 +6,7 @@ import 'leaflet/dist/leaflet.css';
 import { geocodingService } from '@/utils/geocoding';
 import { routingService } from '@/utils/routing';
 import { cacheManager } from '@/utils/cache';
+import { getBataanCoordinates } from '@/utils/distance';
 
 // Fix for TypeScript error with Leaflet control
 declare module 'leaflet' {
@@ -118,7 +119,7 @@ export default function MapComponent({
     }).addTo(mapRef.current);
   }, []);
 
-  // Enhanced geocoding function using the new geocoding service
+  // Enhanced geocoding function using consistent coordinate calculation
   const geocodeAddressEnhanced = useCallback(async (address: string, type: 'user' | 'provider', providerId?: number) => {
     // If initial coordinates were provided, don't geocode user location to maintain consistency with API
     if (type === 'user' && (mapLoaded || initialUserCoordinates)) {
@@ -131,30 +132,50 @@ export default function MapComponent({
     setGeocodeAccuracy(null);
 
     try {
-      const result = await geocodingService.geocodeAddress(address);
+      let result;
+      
+      if (type === 'provider') {
+        // For providers, use the same coordinate calculation as the API to ensure consistency
+        const coordinates = await getBataanCoordinates(address);
+        if (!coordinates) {
+          console.warn(`🗺️ [MapComponent] Provider coordinates not found for: ${address}`);
+          return; // Skip this provider if coordinates not found
+        }
+        result = {
+          coordinates: [coordinates.lat, coordinates.lng],
+          formattedAddress: address,
+          confidence: 0.8,
+          provider: 'dynamic-geocoding',
+          accuracy: 'high' as const
+        };
+      } else {
+        // For user location, use the geocoding service
+        result = await geocodingService.geocodeAddress(address);
+      }
+      
       console.log(`🗺️ [MapComponent] Geocoding successful for ${type}:`, result);
-
-
 
       // Clear any existing error messages for all accuracy levels
       setGeocodeError(null);
 
       if (type === 'user') {
-        setUserCoordinates(result.coordinates);
+        const coords: [number, number] = [result.coordinates[0], result.coordinates[1]];
+        setUserCoordinates(coords);
         if (mapRef.current) {
-          mapRef.current.setView(result.coordinates, 13);
+          mapRef.current.setView(coords, 13);
           // Only add user marker if it doesn't exist or coordinates have changed
           if (!userMarkerRef.current) {
-            addUserMarker(result.coordinates);
+            addUserMarker(coords);
           } else {
             // Update existing marker position if coordinates have changed
-            userMarkerRef.current.setLatLng([result.coordinates[0], result.coordinates[1]]);
+            userMarkerRef.current.setLatLng(coords);
           }
         }
       } else if (type === 'provider' && providerId !== undefined) {
+        const coords: [number, number] = [result.coordinates[0], result.coordinates[1]];
         setProviderCoordinates(prev => {
           const newMap = new Map(prev);
-          newMap.set(providerId, result.coordinates);
+          newMap.set(providerId, coords);
           return newMap;
         });
       }
