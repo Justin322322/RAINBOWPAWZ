@@ -37,7 +37,6 @@ function ServiceDetailPage({ userData }: ServiceDetailPageProps) {
   const providerId = params.id;
 
   const [provider, setProvider] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedService, setSelectedService] = useState<number | null>(null);
   const [selectedPet, setSelectedPet] = useState<number | null>(null);
@@ -159,8 +158,6 @@ function ServiceDetailPage({ userData }: ServiceDetailPageProps) {
     }
 
     // Fetch real provider data
-    setLoading(true);
-
     const fetchData = async () => {
       try {
         // Fetch provider details with user location for accurate distance calculation (if available)
@@ -222,8 +219,6 @@ function ServiceDetailPage({ userData }: ServiceDetailPageProps) {
       } catch (error) {
         console.error('Error fetching service details:', error);
         setError('Failed to load provider details');
-      } finally {
-        setLoading(false);
       }
     };
 
