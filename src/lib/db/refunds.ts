@@ -11,7 +11,7 @@ export interface RefundRecord {
   user_id: number;
   amount: number;
   reason: string;
-  status: 'pending' | 'processing' | 'completed' | 'failed' | 'cancelled';
+  status: 'pending' | 'pending_approval' | 'processing' | 'completed' | 'failed' | 'cancelled';
   refund_type: 'automatic' | 'manual';
   payment_method: 'gcash' | 'card' | 'paymaya' | 'cash' | 'qr_code';
   transaction_id?: string;

@@ -9,7 +9,6 @@ import {
   CheckCircleIcon,
   XCircleIcon,
   CloudArrowUpIcon,
-  PlusIcon,
   ArrowPathIcon
 } from '@heroicons/react/24/outline';
 import CremationDashboardLayout from '@/components/navigation/CremationDashboardLayout';
@@ -24,7 +23,7 @@ interface RefundRecord {
   user_id: number;
   amount: number;
   reason: string;
-  status: 'pending' | 'processing' | 'completed' | 'failed' | 'cancelled';
+  status: 'pending' | 'pending_approval' | 'processing' | 'completed' | 'failed' | 'cancelled';
   refund_type: 'automatic' | 'manual';
   payment_method: string;
   receipt_path?: string;
@@ -45,13 +44,6 @@ function CremationRefundsPage({ userData }: { userData: any }) {
   const [selectedRefund, setSelectedRefund] = useState<RefundRecord | null>(null);
   const [filter, setFilter] = useState<'all' | 'pending' | 'manual' | 'completed'>('all');
   const [uploadingReceipt, setUploadingReceipt] = useState<number | null>(null);
-  const [showInitiateModal, setShowInitiateModal] = useState(false);
-  const [initiateForm, setInitiateForm] = useState({
-    bookingId: '',
-    amount: '',
-    reason: '',
-    notes: ''
-  });
   const { showToast } = useToast();
 
   useEffect(() => {
@@ -113,7 +105,7 @@ function CremationRefundsPage({ userData }: { userData: any }) {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          action: 'verify_receipt',
+          action: approved ? 'approve_refund' : 'reject_refund',
           approved,
           rejection_reason: reason
         })
@@ -133,42 +125,6 @@ function CremationRefundsPage({ userData }: { userData: any }) {
     }
   };
 
-  const handleInitiateRefund = async () => {
-    if (!initiateForm.bookingId || !initiateForm.amount || !initiateForm.reason) {
-      showToast('Please fill in all required fields.', 'error');
-      return;
-    }
-
-    try {
-      const response = await fetch('/api/refunds', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          booking_id: parseInt(initiateForm.bookingId),
-          amount: parseFloat(initiateForm.amount),
-          reason: initiateForm.reason,
-          notes: initiateForm.notes,
-          initiated_by: userData.user_id,
-          initiated_by_type: 'business'
-        })
-      });
-
-      if (response.ok) {
-        await fetchRefunds();
-        setShowInitiateModal(false);
-        setInitiateForm({ bookingId: '', amount: '', reason: '', notes: '' });
-        showToast('Refund initiated successfully.', 'success');
-      } else {
-        const error = await response.json();
-        showToast(`Failed to initiate refund: ${error.error}`, 'error');
-      }
-    } catch (error) {
-      console.error('Initiate refund error:', error);
-      showToast('Failed to initiate refund. Please try again.', 'error');
-    }
-  };
 
 
   const getStatusIcon = (status: string, refundType: string) => {
@@ -180,6 +136,8 @@ function CremationRefundsPage({ userData }: { userData: any }) {
         return <XCircleIcon className="w-5 h-5 text-red-500" />;
       case 'processing':
         return <ClockIcon className="w-5 h-5 text-blue-500" />;
+      case 'pending_approval':
+        return <ExclamationTriangleIcon className="w-5 h-5 text-orange-500" />;
       case 'pending':
         if (refundType === 'manual') {
           return <ExclamationTriangleIcon className="w-5 h-5 text-yellow-500" />;
@@ -196,6 +154,7 @@ function CremationRefundsPage({ userData }: { userData: any }) {
       case 'failed':
       case 'cancelled': return 'bg-red-100 text-red-800';
       case 'processing': return 'bg-blue-100 text-blue-800';
+      case 'pending_approval': return 'bg-orange-100 text-orange-800';
       case 'pending': return 'bg-yellow-100 text-yellow-800';
       default: return 'bg-gray-100 text-gray-800';
     }
@@ -204,7 +163,7 @@ function CremationRefundsPage({ userData }: { userData: any }) {
   const filteredRefunds = refunds.filter(refund => {
     switch (filter) {
       case 'pending':
-        return refund.status === 'pending';
+        return refund.status === 'pending' || refund.status === 'pending_approval';
       case 'manual':
         return refund.refund_type === 'manual';
       case 'completed':
@@ -230,13 +189,6 @@ function CremationRefundsPage({ userData }: { userData: any }) {
             <p className="text-gray-600 mt-1">Manage refunds for your cremation services</p>
           </div>
           <div className="flex space-x-3">
-            <button
-              onClick={() => setShowInitiateModal(true)}
-              className="inline-flex items-center px-4 py-2 bg-[var(--primary-green)] text-white rounded-lg hover:bg-green-700 transition-colors duration-200"
-            >
-              <PlusIcon className="w-5 h-5 mr-2" />
-              Initiate Refund
-            </button>
             <button
               onClick={fetchRefunds}
               className="inline-flex items-center px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors duration-200"
@@ -430,60 +382,83 @@ function CremationRefundsPage({ userData }: { userData: any }) {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                         {/* Manual refund actions */}
-                        {refund.refund_type === 'manual' && ['pending', 'processing'].includes(refund.status) && (
+                        {refund.refund_type === 'manual' && ['pending', 'pending_approval', 'processing'].includes(refund.status) && (
                           <div className="space-y-2">
-                            {!refund.receipt_path ? (
-                              <div>
-                                <label className="flex items-center px-3 py-2 border border-gray-300 rounded-md cursor-pointer hover:bg-gray-50">
-                                  <CloudArrowUpIcon className="w-4 h-4 mr-2" />
-                                  <span className="text-sm">Upload Receipt</span>
-                                  <input
-                                    type="file"
-                                    className="hidden"
-                                    accept=".jpg,.jpeg,.png,.pdf"
-                                    onChange={(e) => {
-                                      const file = e.target.files?.[0];
-                                      if (file) handleFileUpload(refund.id, file);
-                                    }}
-                                    disabled={uploadingReceipt === refund.id}
-                                  />
-                                </label>
-                                {uploadingReceipt === refund.id && (
-                                  <div className="text-xs text-blue-500">Uploading...</div>
-                                )}
-                                {/* Allow approval even without receipt for certain cases */}
-                                {(refund.payment_method === 'cash' || refund.payment_method === 'qr_code') && (
-                                  <div className="flex space-x-2 mt-2">
-                                    <button
-                                      onClick={() => handleVerifyRefund(refund.id, true)}
-                                      className="px-3 py-1 bg-blue-600 text-white rounded text-xs hover:bg-blue-700"
-                                    >
-                                      Approve (No Receipt)
-                                    </button>
+                            {/* Approval buttons for pending_approval status */}
+                            {refund.status === 'pending_approval' && (
+                              <div className="flex space-x-2">
+                                <button
+                                  onClick={() => handleVerifyRefund(refund.id, true)}
+                                  className="px-3 py-1 bg-green-100 text-green-800 text-xs rounded hover:bg-green-200"
+                                >
+                                  Approve
+                                </button>
+                                <button
+                                  onClick={() => handleVerifyRefund(refund.id, false)}
+                                  className="px-3 py-1 bg-red-100 text-red-800 text-xs rounded hover:bg-red-200"
+                                >
+                                  Deny
+                                </button>
+                              </div>
+                            )}
+                            
+                            {/* Receipt upload for non-pending_approval statuses */}
+                            {refund.status !== 'pending_approval' && (
+                              <>
+                                {!refund.receipt_path ? (
+                                  <div>
+                                    <label className="flex items-center px-3 py-2 border border-gray-300 rounded-md cursor-pointer hover:bg-gray-50">
+                                      <CloudArrowUpIcon className="w-4 h-4 mr-2" />
+                                      <span className="text-sm">Upload Receipt</span>
+                                      <input
+                                        type="file"
+                                        className="hidden"
+                                        accept=".jpg,.jpeg,.png,.pdf"
+                                        onChange={(e) => {
+                                          const file = e.target.files?.[0];
+                                          if (file) handleFileUpload(refund.id, file);
+                                        }}
+                                        disabled={uploadingReceipt === refund.id}
+                                      />
+                                    </label>
+                                    {uploadingReceipt === refund.id && (
+                                      <div className="text-xs text-blue-500">Uploading...</div>
+                                    )}
+                                    {/* Allow approval even without receipt for certain cases */}
+                                    {(refund.payment_method === 'cash' || refund.payment_method === 'qr_code') && (
+                                      <div className="flex space-x-2 mt-2">
+                                        <button
+                                          onClick={() => handleVerifyRefund(refund.id, true)}
+                                          className="px-3 py-1 bg-blue-600 text-white rounded text-xs hover:bg-blue-700"
+                                        >
+                                          Approve (No Receipt)
+                                        </button>
+                                      </div>
+                                    )}
+                                  </div>
+                                ) : (
+                                  <div className="space-y-2">
+                                    <div className="text-xs text-green-600">Receipt uploaded</div>
+                                    <div className="flex space-x-2">
+                                      <button
+                                        onClick={() => handleVerifyRefund(refund.id, true)}
+                                        className="px-3 py-1 bg-green-600 text-white rounded text-xs hover:bg-green-700"
+                                      >
+                                        Approve
+                                      </button>
+                                      <button
+                                        onClick={() => {
+                                          const reason = prompt('Rejection reason:');
+                                          if (reason) handleVerifyRefund(refund.id, false, reason);
+                                        }}
+                                        className="px-3 py-1 bg-red-600 text-white rounded text-xs hover:bg-red-700"
+                                      >
+                                        Reject
+                                      </button>
+                                    </div>
                                   </div>
                                 )}
-                              </div>
-                            ) : (
-                              <div className="space-y-2">
-                                <div className="text-xs text-green-600">Receipt uploaded</div>
-                                <div className="flex space-x-2">
-                                  <button
-                                    onClick={() => handleVerifyRefund(refund.id, true)}
-                                    className="px-3 py-1 bg-green-600 text-white rounded text-xs hover:bg-green-700"
-                                  >
-                                    Approve
-                                  </button>
-                                  <button
-                                    onClick={() => {
-                                      const reason = prompt('Rejection reason:');
-                                      if (reason) handleVerifyRefund(refund.id, false, reason);
-                                    }}
-                                    className="px-3 py-1 bg-red-600 text-white rounded text-xs hover:bg-red-700"
-                                  >
-                                    Reject
-                                  </button>
-                                </div>
-                              </div>
+                              </>
                             )}
                           </div>
                         )}
@@ -513,15 +488,6 @@ function CremationRefundsPage({ userData }: { userData: any }) {
                           </div>
                         )}
                         
-                        {/* Auto-notification status for completed refunds */}
-                        {refund.status === 'completed' && (
-                          <div className="space-y-2">
-                            <div className="flex items-center px-3 py-1 bg-green-100 text-green-800 rounded text-xs">
-                              <CheckCircleIcon className="w-3 h-3 mr-1" />
-                              Auto-notified
-                            </div>
-                          </div>
-                        )}
                         
                         <button
                           onClick={() => setSelectedRefund(refund)}
@@ -781,112 +747,6 @@ function CremationRefundsPage({ userData }: { userData: any }) {
         </Modal>
       )}
 
-      {/* Initiate Refund Modal */}
-      {showInitiateModal && (
-        <Modal
-          isOpen={showInitiateModal}
-          onClose={() => setShowInitiateModal(false)}
-          title="Initiate New Refund"
-          size="medium"
-          variant="default"
-          footerContent={
-            <div className="flex flex-col sm:flex-row justify-end gap-3">
-              <button
-                onClick={() => setShowInitiateModal(false)}
-                className="inline-flex items-center justify-center px-4 py-2 bg-gray-100 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-colors duration-200 w-full sm:w-auto"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleInitiateRefund}
-                className="inline-flex items-center justify-center px-4 py-2 bg-[var(--primary-green)] text-white text-sm font-medium rounded-lg hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors duration-200 w-full sm:w-auto"
-              >
-                <PlusIcon className="w-4 h-4 mr-2" />
-                Initiate Refund
-              </button>
-            </div>
-          }
-        >
-          <div className="space-y-6">
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <div className="flex items-center">
-                <ExclamationTriangleIcon className="w-5 h-5 text-blue-600 mr-3" />
-                <div>
-                  <h3 className="text-sm font-medium text-blue-800">Important Notice</h3>
-                  <p className="text-sm text-blue-700 mt-1">
-                    Initiating a refund will automatically notify the customer. Make sure you have processed the refund through your payment system first.
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Booking ID <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="number"
-                  value={initiateForm.bookingId}
-                  onChange={(e) => setInitiateForm({ ...initiateForm, bookingId: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--primary-green)] focus:border-transparent"
-                  placeholder="Enter booking ID"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Refund Amount (₱) <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={initiateForm.amount}
-                  onChange={(e) => setInitiateForm({ ...initiateForm, amount: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--primary-green)] focus:border-transparent"
-                  placeholder="0.00"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Refund Reason <span className="text-red-500">*</span>
-                </label>
-                <select
-                  value={initiateForm.reason}
-                  onChange={(e) => setInitiateForm({ ...initiateForm, reason: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--primary-green)] focus:border-transparent"
-                  required
-                >
-                  <option value="">Select a reason</option>
-                  <option value="Service cancellation">Service cancellation</option>
-                  <option value="Customer request">Customer request</option>
-                  <option value="Service not provided">Service not provided</option>
-                  <option value="Payment error">Payment error</option>
-                  <option value="Quality issue">Quality issue</option>
-                  <option value="Other">Other</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Additional Notes
-                </label>
-                <textarea
-                  value={initiateForm.notes}
-                  onChange={(e) => setInitiateForm({ ...initiateForm, notes: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--primary-green)] focus:border-transparent"
-                  rows={3}
-                  placeholder="Add any additional details about this refund..."
-                />
-              </div>
-            </div>
-          </div>
-        </Modal>
-      )}
     </CremationDashboardLayout>
   );
 }

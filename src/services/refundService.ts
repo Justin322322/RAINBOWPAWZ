@@ -319,13 +319,13 @@ async function processManualRefund(
   bookingInfo: BookingPaymentInfo
 ): Promise<RefundResult> {
   try {
-    // Create refund record for manual processing
+    // Create refund record for manual processing with approval workflow
     const refundId = await createRefundRecord({
       booking_id: request.bookingId,
       user_id: bookingInfo.userId,
       amount: request.amount,
       reason: request.reason,
-      status: 'pending',
+      status: 'pending_approval', // Changed from 'pending' to require approval
       refund_type: 'manual',
       payment_method: normalizePaymentMethod(bookingInfo.paymentMethod),
       transaction_id: bookingInfo.transactionId || undefined,
@@ -334,7 +334,9 @@ async function processManualRefund(
       metadata: JSON.stringify({
         initiated_by_type: request.initiatedByType,
         original_amount: bookingInfo.amount,
-        requires_receipt_upload: isQRCodePayment(bookingInfo.paymentMethod)
+        requires_receipt_upload: isQRCodePayment(bookingInfo.paymentMethod),
+        requires_approval: true,
+        approval_workflow: 'business_review'
       }),
       initiated_at: new Date()
     });
@@ -439,12 +441,12 @@ async function getBookingPaymentInfo(bookingId: number): Promise<BookingPaymentI
 function determineRefundType(paymentMethod: string): { refundType: 'automatic' | 'manual', canAutoProcess: boolean } {
   const normalizedMethod = normalizePaymentMethod(paymentMethod);
   
-  // QR code payments require manual processing
+  // QR code payments require manual processing with approval workflow
   if (isQRCodePayment(paymentMethod)) {
     return { refundType: 'manual', canAutoProcess: false };
   }
 
-  // Cash payments require manual processing
+  // Cash payments require manual processing with approval workflow
   if (normalizedMethod === 'cash') {
     return { refundType: 'manual', canAutoProcess: false };
   }
@@ -494,19 +496,27 @@ function generateManualRefundInstructions(paymentMethod: string, amount: number)
   
   if (isQRCodePayment(paymentMethod)) {
     instructions.push(
-      'INSTRUCTIONS FOR CREMATION CENTER:',
-      'Please process the refund manually via PayMongo dashboard:',
-      '1. Log into your cremation center\'s PayMongo account',
-      '2. Navigate to the Payments section',
-      '3. Find the original payment transaction',
-      `4. Process a refund of ₱${amount.toFixed(2)}`,
-      '5. Download the official refund receipt from PayMongo',
-      '6. Upload the receipt to the system using the "Upload Receipt" button',
-      '7. The system will automatically notify the customer',
-      '8. Customer will receive email/SMS confirmation',
-      '9. Customer can download their refund receipt',
+      'QR CODE REFUND WORKFLOW:',
+      'This refund requires your approval before processing:',
       '',
-      'NOTE: This is a QR code payment that requires manual processing by the cremation center.',
+      'STEP 1 - REVIEW & APPROVE:',
+      '1. Review the refund request details',
+      '2. Verify the original QR payment was received',
+      '3. Approve or deny the refund request',
+      '',
+      'STEP 2 - PROCESS REFUND (if approved):',
+      '4. Log into your cremation center\'s PayMongo account',
+      '5. Navigate to the Payments section',
+      '6. Find the original payment transaction',
+      `7. Process a refund of ₱${amount.toFixed(2)}`,
+      '8. Download the official refund receipt from PayMongo',
+      '',
+      'STEP 3 - UPLOAD RECEIPT:',
+      '9. Upload the refund receipt to the system',
+      '10. The system will automatically notify the customer',
+      '11. Customer will receive email/SMS confirmation',
+      '',
+      'NOTE: This QR code payment requires your approval before processing.',
       'The customer will be automatically notified once the refund is completed.'
     );
   } else if (normalizePaymentMethod(paymentMethod) === 'cash') {

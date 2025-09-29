@@ -438,9 +438,9 @@ async function shouldInitiateRefundAsync(
     }
   }
 
-  // For QR and cash we don’t auto-refund (manual)
+  // For QR and cash payments, create pending refund for approval
   if (normalizedMethod === 'cash' || normalizedMethod === 'qr') {
-    return { shouldRefund: false, reason: `${normalizedMethod.toUpperCase()} payment - refund handled manually` };
+    return { shouldRefund: true, reason: `${normalizedMethod.toUpperCase()} payment - creating pending refund for approval` };
   }
 
   // Default to existing logic

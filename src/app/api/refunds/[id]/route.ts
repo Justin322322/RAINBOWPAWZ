@@ -109,6 +109,89 @@ export async function PUT(
     let result;
 
     switch (action) {
+      case 'approve_refund':
+        // Approve pending refund (moves to processing status)
+        if (refund.status !== 'pending_approval') {
+          return NextResponse.json({ 
+            error: 'Only pending_approval refunds can be approved' 
+          }, { status: 400 });
+        }
+
+        await updateRefundRecord(refundId, { 
+          status: 'processing',
+          notes: notes || refund.notes
+        });
+
+        await logRefundAudit({
+          refund_id: refundId,
+          action: 'refund_approved',
+          previous_status: 'pending_approval',
+          new_status: 'processing',
+          performed_by: parseInt(authResult.userId),
+          performed_by_type: authResult.accountType === 'admin' ? 'admin' : 'staff',
+          details: 'Refund approved for processing',
+          ip_address: clientIp
+        });
+
+        // Log admin action
+        await logAdminAction(
+          parseInt(authResult.userId),
+          'approve_refund',
+          'refund',
+          refundId,
+          {
+            refund_id: refundId,
+            booking_id: refund.booking_id,
+            approved: true
+          },
+          clientIp
+        );
+
+        result = { success: true, message: 'Refund approved successfully' };
+        break;
+
+      case 'reject_refund':
+        // Reject pending refund
+        if (refund.status !== 'pending_approval') {
+          return NextResponse.json({ 
+            error: 'Only pending_approval refunds can be rejected' 
+          }, { status: 400 });
+        }
+
+        await updateRefundRecord(refundId, { 
+          status: 'cancelled',
+          notes: rejection_reason ? `${refund.notes || ''}\n\nRejection reason: ${rejection_reason}` : refund.notes
+        });
+
+        await logRefundAudit({
+          refund_id: refundId,
+          action: 'refund_rejected',
+          previous_status: 'pending_approval',
+          new_status: 'cancelled',
+          performed_by: parseInt(authResult.userId),
+          performed_by_type: authResult.accountType === 'admin' ? 'admin' : 'staff',
+          details: `Refund rejected${rejection_reason ? `: ${rejection_reason}` : ''}`,
+          ip_address: clientIp
+        });
+
+        // Log admin action
+        await logAdminAction(
+          parseInt(authResult.userId),
+          'reject_refund',
+          'refund',
+          refundId,
+          {
+            refund_id: refundId,
+            booking_id: refund.booking_id,
+            approved: false,
+            rejection_reason
+          },
+          clientIp
+        );
+
+        result = { success: true, message: 'Refund rejected successfully' };
+        break;
+
       case 'verify_receipt':
         // Verify and complete manual refund
         if (typeof approved !== 'boolean') {
@@ -146,9 +229,9 @@ export async function PUT(
       case 'update_status':
         // Manual status update
         const { status } = body;
-        if (!status || !['pending', 'processing', 'completed', 'failed', 'cancelled'].includes(status)) {
+        if (!status || !['pending', 'pending_approval', 'processing', 'completed', 'failed', 'cancelled'].includes(status)) {
           return NextResponse.json({ 
-            error: 'Invalid status. Must be one of: pending, processing, completed, failed, cancelled' 
+            error: 'Invalid status. Must be one of: pending, pending_approval, processing, completed, failed, cancelled' 
           }, { status: 400 });
         }
 
@@ -214,7 +297,7 @@ export async function PUT(
 
       default:
         return NextResponse.json({ 
-          error: 'Invalid action. Supported actions: verify_receipt, update_status, add_notes' 
+          error: 'Invalid action. Supported actions: approve_refund, reject_refund, verify_receipt, update_status, add_notes' 
         }, { status: 400 });
     }
 
