@@ -105,7 +105,7 @@ export async function processRefund(request: RefundRequest): Promise<RefundResul
     }
 
     // Determine payment method and processing type
-    const { canAutoProcess } = determineRefundType(bookingInfo.paymentMethod);
+    const { canAutoProcess } = determineRefundType(bookingInfo.paymentMethod, request.initiatedByType);
 
     if (canAutoProcess) {
       return await processAutomaticRefund(request, bookingInfo);
@@ -133,6 +133,11 @@ async function processAutomaticRefund(
   bookingInfo: BookingPaymentInfo
 ): Promise<RefundResult> {
   try {
+    // Handle QR code payments differently - they don't have PayMongo payment IDs
+    if (isQRCodePayment(bookingInfo.paymentMethod)) {
+      return await processQRCodeRefund(request, bookingInfo);
+    }
+
     // Find the PayMongo payment ID
     let paymentId: string | null = null;
 
@@ -312,6 +317,71 @@ async function processAutomaticRefund(
 }
 
 /**
+ * Process QR code refund (automatic when initiated by business)
+ */
+async function processQRCodeRefund(
+  request: RefundRequest, 
+  bookingInfo: BookingPaymentInfo
+): Promise<RefundResult> {
+  try {
+    // Create refund record for QR code payment
+    const refundId = await createRefundRecord({
+      booking_id: request.bookingId,
+      user_id: bookingInfo.userId,
+      amount: request.amount,
+      reason: request.reason,
+      status: 'completed', // QR refunds are automatically completed when initiated by business
+      refund_type: 'automatic',
+      payment_method: normalizePaymentMethod(bookingInfo.paymentMethod),
+      transaction_id: bookingInfo.transactionId || undefined,
+      processed_by: request.initiatedBy,
+      notes: request.notes || undefined,
+      metadata: JSON.stringify({
+        initiated_by_type: request.initiatedByType,
+        original_amount: bookingInfo.amount,
+        qr_refund_type: 'business_initiated',
+        auto_completed: true
+      }),
+      initiated_at: new Date(),
+      processed_at: new Date(),
+      completed_at: new Date()
+    });
+
+    // Log audit trail
+    await logRefundAudit({
+      refund_id: refundId,
+      action: 'qr_refund_completed',
+      new_status: 'completed',
+      performed_by: request.initiatedBy,
+      performed_by_type: request.initiatedByType,
+      details: `QR code refund automatically completed for booking ${request.bookingId}`,
+      ip_address: request.ipAddress
+    });
+
+    // Send completion notification to customer
+    try {
+      await sendRefundCompletionNotification(refundId);
+    } catch (notificationError) {
+      console.error('Error sending QR refund completion notification:', notificationError);
+      // Continue with the process even if notifications fail
+    }
+
+    return {
+      success: true,
+      refundId: refundId,
+      refundType: 'automatic',
+      paymentMethod: normalizePaymentMethod(bookingInfo.paymentMethod),
+      message: 'QR code refund has been automatically processed and completed',
+      instructions: generateQRRefundInstructions(request.amount)
+    };
+
+  } catch (error) {
+    console.error('Error processing QR code refund:', error);
+    throw error;
+  }
+}
+
+/**
  * Process manual refund (for QR codes or when automatic fails)
  */
 async function processManualRefund(
@@ -436,22 +506,30 @@ async function getBookingPaymentInfo(bookingId: number): Promise<BookingPaymentI
 }
 
 /**
- * Determine refund type based on payment method
+ * Determine refund type based on payment method and who initiated the refund
  */
-function determineRefundType(paymentMethod: string): { refundType: 'automatic' | 'manual', canAutoProcess: boolean } {
+function determineRefundType(paymentMethod: string, initiatedByType: string): { refundType: 'automatic' | 'manual', canAutoProcess: boolean } {
   const normalizedMethod = normalizePaymentMethod(paymentMethod);
   
-  // QR code payments require manual processing with approval workflow
+  // QR code payments: automatic when initiated by business, manual when initiated by customer
   if (isQRCodePayment(paymentMethod)) {
-    return { refundType: 'manual', canAutoProcess: false };
+    if (initiatedByType === 'provider' || initiatedByType === 'admin') {
+      return { refundType: 'automatic', canAutoProcess: true };
+    } else {
+      return { refundType: 'manual', canAutoProcess: false };
+    }
   }
 
-  // Cash payments require manual processing with approval workflow
+  // Cash payments: automatic when initiated by business, manual when initiated by customer
   if (normalizedMethod === 'cash') {
-    return { refundType: 'manual', canAutoProcess: false };
+    if (initiatedByType === 'provider' || initiatedByType === 'admin') {
+      return { refundType: 'automatic', canAutoProcess: true };
+    } else {
+      return { refundType: 'manual', canAutoProcess: false };
+    }
   }
 
-  // PayMongo electronic payments can be auto-processed
+  // PayMongo electronic payments can always be auto-processed
   if (['gcash', 'card', 'paymaya'].includes(normalizedMethod)) {
     return { refundType: 'automatic', canAutoProcess: true };
   }
@@ -547,6 +625,28 @@ function generateManualRefundInstructions(paymentMethod: string, amount: number)
   }
   
   return instructions;
+}
+
+/**
+ * Generate QR refund instructions for business-initiated refunds
+ */
+function generateQRRefundInstructions(amount: number): string[] {
+  return [
+    'QR CODE REFUND COMPLETED:',
+    'This refund has been automatically processed by the cremation business.',
+    '',
+    'REFUND DETAILS:',
+    `• Amount: ₱${amount.toFixed(2)}`,
+    '• Status: Completed',
+    '• Method: QR Code Payment',
+    '',
+    'CUSTOMER NOTIFICATION:',
+    '• Email confirmation sent to customer',
+    '• SMS notification sent to customer',
+    '• Refund receipt available in system',
+    '',
+    'NOTE: This QR code refund was automatically completed because it was initiated by the cremation business.'
+  ];
 }
 
 /**
