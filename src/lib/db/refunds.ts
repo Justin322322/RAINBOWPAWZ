@@ -226,11 +226,23 @@ export async function logRefundAudit(auditLog: Omit<RefundAuditLog, 'id' | 'crea
  * Get refund by ID with audit trail
  */
 export async function getRefundById(refundId: number): Promise<RefundRecord | null> {
-  const results = await query(`
-    SELECT * FROM refunds WHERE id = ?
-  `, [refundId]) as RefundRecord[];
+  console.log('getRefundById called with:', refundId);
   
-  return results.length > 0 ? results[0] : null;
+  try {
+    // Ensure tables exist before querying
+    await ensureRefundsTable();
+    
+    const results = await query(`
+      SELECT * FROM refunds WHERE id = ?
+    `, [refundId]) as RefundRecord[];
+    
+    console.log('getRefundById results:', { refundId, resultCount: results.length, results });
+    
+    return results.length > 0 ? results[0] : null;
+  } catch (error) {
+    console.error('Error in getRefundById:', error);
+    throw error;
+  }
 }
 
 /**

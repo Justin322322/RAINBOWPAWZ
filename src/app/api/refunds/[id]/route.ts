@@ -24,14 +24,22 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    console.log('GET /api/refunds/[id] called');
+    
     const authResult = await verifySecureAuth(request);
     if (!authResult) {
+      console.log('Authentication failed');
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const resolvedParams = await params;
+    console.log('Resolved params:', resolvedParams);
+    
     const refundId = parseInt(resolvedParams.id);
+    console.log('Parsed refund ID:', refundId);
+    
     if (isNaN(refundId)) {
+      console.log('Invalid refund ID:', resolvedParams.id);
       return NextResponse.json({ error: 'Invalid refund ID' }, { status: 400 });
     }
 
