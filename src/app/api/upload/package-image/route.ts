@@ -80,7 +80,7 @@ export async function POST(request: NextRequest) {
     // Check if package_data table exists
     try {
       const tableExists = await query(
-        "SELECT COUNT(*) as count FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = 'service_packages'"
+        "SELECT COUNT(*) as count FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = 'package_data'"
       ) as any[];
       
       if (!tableExists || tableExists[0].count === 0) {

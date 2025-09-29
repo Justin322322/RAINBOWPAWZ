@@ -15,7 +15,7 @@ export async function GET(
       }, { status: 400 });
     }
 
-    // Check if package_data table exists
+    // Check if service_packages table exists
     const tableCheckQuery = `
       SELECT COUNT(*) as count
       FROM information_schema.tables

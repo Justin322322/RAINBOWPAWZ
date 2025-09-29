@@ -14,6 +14,16 @@ export async function GET(
   }
 
   try {
+    // Check if package_data table exists first
+    const tableExistsRows = (await query(
+      `SELECT COUNT(*) AS cnt FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'package_data'`
+    )) as Array<{ cnt: number }>;
+    const hasPackageData = Array.isArray(tableExistsRows) && Number(tableExistsRows[0]?.cnt || 0) > 0;
+    
+    if (!hasPackageData) {
+      return NextResponse.json({ error: 'Image service not available' }, { status: 404 });
+    }
+
     const rows = (await query(
       `SELECT image_data FROM package_data WHERE id = ? LIMIT 1`,
       [imageId]

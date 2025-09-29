@@ -276,16 +276,26 @@ export async function GET(
     // Database fallback from package_data (convert base64 rows to streaming URLs)
     if (processedImages.length === 0) {
       try {
-        const dbImgs = (await query(
-          `SELECT id, image_data FROM package_data WHERE package_id = ? ORDER BY display_order ASC LIMIT 12`,
-          [packageId]
-        )) as Array<{ id: number; image_data: string }>;
-        const ids = dbImgs
-          .filter(r => typeof r.image_data === 'string' && r.image_data.startsWith('data:image/'))
-          .map(r => r.id);
-        if (ids.length > 0) {
-          processedImages = ids.map((imgId) => `/api/image/package-data/${imgId}`);
-          console.log(`Package ${packageId} using ${ids.length} images from package_data via streaming endpoints`);
+        // Check if package_data table exists first
+        const tableExistsRows = (await query(
+          `SELECT COUNT(*) AS cnt FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'package_data'`
+        )) as Array<{ cnt: number }>;
+        const hasPackageData = Array.isArray(tableExistsRows) && Number(tableExistsRows[0]?.cnt || 0) > 0;
+        
+        if (hasPackageData) {
+          const dbImgs = (await query(
+            `SELECT id, image_data FROM package_data WHERE package_id = ? ORDER BY display_order ASC LIMIT 12`,
+            [packageId]
+          )) as Array<{ id: number; image_data: string }>;
+          const ids = dbImgs
+            .filter(r => typeof r.image_data === 'string' && r.image_data.startsWith('data:image/'))
+            .map(r => r.id);
+          if (ids.length > 0) {
+            processedImages = ids.map((imgId) => `/api/image/package-data/${imgId}`);
+            console.log(`Package ${packageId} using ${ids.length} images from package_data via streaming endpoints`);
+          }
+        } else {
+          console.log('package_data table not found; skipping DB image fallback');
         }
       } catch (dbErr) {
         console.warn('package_data fallback failed:', dbErr);
