@@ -252,7 +252,7 @@ const MapWithServicesList = React.memo(function MapWithServicesList({
   if (isLoading) {
     return (
       <SectionLoader
-        message="Loading services and mu..."
+        message="Loading services and providers..."
         minHeight="min-h-[600px]"
         withBackground={true}
         withShadow={true}
