@@ -803,7 +803,7 @@ export default function MapComponent({
           alignItems: 'center',
           gap: '10px'
         }}>
-          <div style={{ color: '#2F7B5F', fontWeight: 'bold' }}>Loading mu...</div>
+          <div style={{ color: '#2F7B5F', fontWeight: 'bold' }}>Loading map...</div>
           <div style={{
             width: '40px',
             height: '40px',

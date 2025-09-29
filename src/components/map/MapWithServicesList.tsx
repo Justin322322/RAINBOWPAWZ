@@ -23,7 +23,7 @@ const MapComponent = dynamic(
     ssr: false,
     loading: () => (
       <SectionLoader
-        message="Loading mu..."
+        message="Loading map..."
         minHeight="h-[500px]"
         withBackground={true}
         rounded={true}
