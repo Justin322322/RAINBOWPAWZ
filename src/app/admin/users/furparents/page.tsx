@@ -7,7 +7,6 @@ import {
   MagnifyingGlassIcon,
   FunnelIcon,
   XMarkIcon,
-  MapPinIcon,
   PhoneIcon,
   EnvelopeIcon,
   UserCircleIcon,
