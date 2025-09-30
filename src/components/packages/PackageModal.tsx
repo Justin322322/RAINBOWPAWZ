@@ -63,6 +63,22 @@ const PackageModal: React.FC<PackageModalProps> = ({
   const { showToast } = useToast();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   
+  // Safely parse API responses that might be JSON or plain text/HTML
+  const parseResponseSafely = useCallback(async (response: Response): Promise<{ ok: boolean; status: number; data: any; text?: string }> => {
+    const contentType = response.headers.get('content-type') || '';
+    try {
+      if (contentType.includes('application/json')) {
+        const data = await response.json();
+        return { ok: response.ok, status: response.status, data };
+      }
+      const text = await response.text();
+      return { ok: response.ok, status: response.status, data: null, text };
+    } catch (e) {
+      // Final fallback
+      return { ok: response.ok, status: response.status, data: null };
+    }
+  }, []);
+  
   // Form state
   const [formData, setFormData] = useState<PackageFormData>({
     name: '',
@@ -662,12 +678,13 @@ const PackageModal: React.FC<PackageModalProps> = ({
         credentials: 'include'
       });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to upload image');
+      const parsed = await parseResponseSafely(response);
+      if (!parsed.ok) {
+        const reason = parsed.data?.error || parsed.text || `Upload failed (${parsed.status})`;
+        throw new Error(reason);
       }
 
-      const result = await response.json();
+      const result = parsed.data;
 
       // Add image to form data immediately for real-time feedback
       setFormData(prev => ({
@@ -811,9 +828,14 @@ const PackageModal: React.FC<PackageModalProps> = ({
         credentials: 'include'
       });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        const errorMessage = errorData.error || `Failed to ${mode} package`;
+      const parsed = await parseResponseSafely(response);
+      if (!parsed.ok) {
+        let errorMessage = parsed.data?.error || parsed.text || `Failed to ${mode} package`;
+        if (parsed.status === 401) errorMessage = 'Unauthorized. Please log in again.';
+        if (parsed.status === 403) errorMessage = 'Forbidden. Only business accounts can create packages.';
+        if (parsed.status === 413 || (parsed.text && parsed.text.toLowerCase().includes('entity too large'))) {
+          errorMessage = 'The request is too large. Reduce image count/size and try again.';
+        }
         showToast(errorMessage, 'error');
         throw new Error(errorMessage);
       }
