@@ -73,7 +73,7 @@ const PackageModal: React.FC<PackageModalProps> = ({
       }
       const text = await response.text();
       return { ok: response.ok, status: response.status, data: null, text };
-    } catch (e) {
+    } catch {
       // Final fallback
       return { ok: response.ok, status: response.status, data: null };
     }
@@ -718,7 +718,7 @@ const PackageModal: React.FC<PackageModalProps> = ({
         fileInputRef.current.value = '';
       }
     }
-  }, [errors.images, formData.images.length, showToast]);
+  }, [errors.images, formData.images.length, showToast, parseResponseSafely]);
 
   const handleRemoveImage = useCallback((index: number) => {
     console.log('Removing image at index:', index);
@@ -865,7 +865,7 @@ const PackageModal: React.FC<PackageModalProps> = ({
     } finally {
       setIsSubmitting(false);
     }
-  }, [formData, mode, packageId, validateForm, showToast, onClose, onSuccess]);
+  }, [formData, mode, packageId, validateForm, showToast, onClose, onSuccess, parseResponseSafely]);
 
   if (!isOpen) return null;
 
