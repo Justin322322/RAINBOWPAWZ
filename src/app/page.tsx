@@ -184,7 +184,7 @@ export default function Home() {
                     : 'after:w-0 hover:after:w-full'
                 }`}
               >
-                Memorial Services
+                Our Services
               </a>
               <a onClick={(e) => handleSmoothScroll(e, 'how-it-works')}
                 className={`text-base modern-text text-white hover:text-white transition-all duration-300 relative after:content-[''] after:absolute after:-bottom-2 after:left-0 after:h-0.5 after:bg-white after:transition-all after:duration-300 cursor-pointer ${
@@ -321,7 +321,7 @@ export default function Home() {
             loop
             muted
             playsInline
-            className="absolute top-0 left-0 w-full h-full object-cover"
+            className="absolute top-0 left-0 w-full h-full object-cover object-[90%_center] sm:object-[85%_center] md:object-center"
           >
             <source src="/dog.mp4" type="video/mp4" />
           </video>
@@ -391,36 +391,31 @@ export default function Home() {
       <section id="services" className="scroll-mt-16 pt-16 pb-24 bg-white relative z-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
-            <h2 className="section-title">Memorial Services</h2>
+            <h2 className="section-title">Our Services</h2>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             {[
               {
-                icon: HeartIcon,
-                title: "Private Memorial",
-                description: "An intimate farewell ceremony in our serene memorial hall, personalized to honor your beloved companion's unique spirit.",
+                title: "Cremation",
+                description: "Respectful cremation services with careful handling and clear, transparent options for your pet's final farewell.",
                 features: [
-                  "2-3 hours duration",
-                  "Up to 30 guests",
-                  "Personalized tribute"
+                  "Individual or communal",
+                  "Secure chain of custody",
+                  "Ashes return options"
                 ]
               },
               {
-                icon: SparklesIcon,
-                title: "Memorial Ceremonies",
-                description: "Beautiful ceremonies to celebrate your pet's life, including memorial services and tribute presentations.",
-                features: ["Dignified Farewell"]
-              },
-              {
-                icon: HomeIcon,
-                title: "Home Services",
-                description: "Compassionate at-home memorial services for a peaceful farewell in familiar surroundings.",
-                features: ["In-Home Care"]
+                title: "Funeral",
+                description: "Thoughtful funeral arrangements including viewing, ceremony coordination, and support to honor your beloved companion.",
+                features: [
+                  "Viewing and ceremony",
+                  "Tribute coordination",
+                  "Family support"
+                ]
               }
             ].map((service, index) => (
               <div key={index} className="service-card">
-                <service.icon className="service-icon" />
                 <h3 className="service-title">{service.title}</h3>
                 <p className="service-description">{service.description}</p>
                 <div className="mt-auto">
