@@ -114,7 +114,7 @@ export async function GET(
           }
         }
       }
-    } catch (e) {
+    } catch {
       // Silent fallback - we just won't populate if anything fails
     }
 

@@ -315,6 +315,13 @@ function BookingDetailsPage({ userData }: BookingDetailsProps) {
     return t.replace(/Receipt:\s*\S+/gi, '').trim();
   })();
 
+  const parsedAddOns = (() => {
+    const t = booking?.notes || '';
+    if (!t) return '';
+    const m = t.match(/Selected Add-ons:\s*(.+?)(?:\n|$)/i);
+    return m ? m[1].trim() : '';
+  })();
+
   const getPaymentMethodLabel = (method?: string) => {
     if (!method) return 'Not specified';
     switch (method) {
@@ -653,16 +660,16 @@ function BookingDetailsPage({ userData }: BookingDetailsProps) {
               <div className="p-6">
                 {/* Service Details */}
                 <div>
-                  <h2 className="text-xl md:text-2xl font-bold text-gray-900">Service Details</h2>
-                  <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-6">
+                  <h2 className="text-2xl font-bold text-gray-900">Service details</h2>
+                  <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-8">
                     <div>
-                      <p className="text-base font-semibold text-gray-700">Service Package</p>
-                      <p className="mt-1 text-lg md:text-xl font-medium text-gray-900">{booking.service_name}</p>
-                      <p className="mt-2 text-2xl font-bold text-gray-900">₱{parseFloat(booking.price.toString()).toLocaleString()}</p>
+                      <p className="text-sm text-gray-700">Service package</p>
+                      <p className="mt-1 text-xl font-semibold text-gray-900">{booking.service_name}</p>
+                      <p className="mt-2 text-3xl font-bold text-gray-900">₱{parseFloat(booking.price.toString()).toLocaleString()}</p>
                     </div>
                     <div>
-                      <p className="text-base font-semibold text-gray-700">Processing Time</p>
-                      <p className="mt-1 text-lg md:text-xl font-medium text-gray-900">{booking.processing_time}</p>
+                      <p className="text-sm text-gray-700">Processing time</p>
+                      <p className="mt-1 text-xl font-semibold text-gray-900">{booking.processing_time}</p>
                     </div>
                   </div>
                 </div>
@@ -672,20 +679,20 @@ function BookingDetailsPage({ userData }: BookingDetailsProps) {
 
                 {/* Pet Information */}
                 <div>
-                  <h2 className="text-xl md:text-2xl font-bold text-gray-900">Pet Information</h2>
-                  <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-6 items-start">
+                  <h2 className="text-2xl font-bold text-gray-900">Pet information</h2>
+                  <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-8 items-start">
                     <div className="sm:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-6">
                       <div>
-                        <p className="text-base font-semibold text-gray-700">Pet Name</p>
-                        <p className="mt-1 text-lg md:text-xl font-medium text-gray-900">{booking.pet_name}</p>
+                        <p className="text-sm text-gray-700">Pet name</p>
+                        <p className="mt-1 text-xl font-semibold text-gray-900">{booking.pet_name}</p>
                       </div>
                       <div>
-                        <p className="text-base font-semibold text-gray-700">Pet Type</p>
-                        <p className="mt-1 text-lg md:text-xl font-medium text-gray-900">{booking.pet_type}</p>
+                        <p className="text-sm text-gray-700">Pet type</p>
+                        <p className="mt-1 text-xl font-semibold text-gray-900">{booking.pet_type}</p>
                       </div>
                       <div className="sm:col-span-2">
-                        <p className="text-base font-semibold text-gray-700">Cause of Death</p>
-                        <p className="mt-1 text-lg font-medium text-gray-900">{booking.cause_of_death || 'Not specified'}</p>
+                        <p className="text-sm text-gray-700">Cause of death</p>
+                        <p className="mt-1 text-lg font-semibold text-gray-900">{booking.cause_of_death || 'Not specified'}</p>
                       </div>
                     </div>
                     <div className="sm:col-span-1">
@@ -708,8 +715,11 @@ function BookingDetailsPage({ userData }: BookingDetailsProps) {
 
                 {/* Special Requests & Add-ons */}
                 <div>
-                  <h2 className="text-xl md:text-2xl font-bold text-gray-900">Special Requests</h2>
-                  <p className="mt-3 text-lg text-gray-800 leading-relaxed">{filteredSpecialNotes || 'None'}</p>
+                  <h2 className="text-2xl font-bold text-gray-900">Special requests</h2>
+                  <p className="mt-3 text-base md:text-lg text-gray-800 leading-relaxed">{filteredSpecialNotes || 'None'}</p>
+                  {parsedAddOns && (
+                    <p className="mt-2 text-base text-gray-800"><span className="font-semibold">Selected add-ons:</span> {parsedAddOns}</p>
+                  )}
                 </div>
 
                 {/* Separator */}
@@ -717,26 +727,26 @@ function BookingDetailsPage({ userData }: BookingDetailsProps) {
 
                 {/* Customer Information */}
                 <div>
-                  <h2 className="text-xl md:text-2xl font-bold text-gray-900">Customer Information</h2>
-                  <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-6">
+                  <h2 className="text-2xl font-bold text-gray-900">Customer information</h2>
+                  <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-8">
                     <div>
-                      <p className="text-base font-semibold text-gray-700">Name</p>
-                      <p className="mt-1 text-lg md:text-xl font-medium text-gray-900">{booking.first_name} {booking.last_name}</p>
+                      <p className="text-sm text-gray-700">Name</p>
+                      <p className="mt-1 text-xl font-semibold text-gray-900">{booking.first_name} {booking.last_name}</p>
                     </div>
                     <div>
-                      <p className="text-base font-semibold text-gray-700">Email</p>
-                      <a href={`mailto:${booking.email}`} className="mt-1 text-lg font-medium text-blue-700 hover:text-blue-900 flex items-center">
+                      <p className="text-sm text-gray-700">Email</p>
+                      <a href={`mailto:${booking.email}`} className="mt-1 text-xl font-semibold text-blue-700 hover:text-blue-900 flex items-center">
                         <EnvelopeIcon className="h-4 w-4 mr-2" />{booking.email}
                       </a>
                     </div>
                     <div>
-                      <p className="text-base font-semibold text-gray-700">Phone</p>
+                      <p className="text-sm text-gray-700">Phone</p>
                       {booking.phone ? (
-                        <a href={`tel:${booking.phone}`} className="mt-1 text-lg font-medium text-blue-700 hover:text-blue-900 flex items-center">
+                        <a href={`tel:${booking.phone}`} className="mt-1 text-xl font-semibold text-blue-700 hover:text-blue-900 flex items-center">
                           <PhoneIcon className="h-4 w-4 mr-2" />{booking.phone}
                         </a>
                       ) : (
-                        <p className="mt-1 text-lg text-gray-500">Not provided</p>
+                        <p className="mt-1 text-xl text-gray-500">Not provided</p>
                       )}
                     </div>
                   </div>
@@ -747,19 +757,19 @@ function BookingDetailsPage({ userData }: BookingDetailsProps) {
 
                 {/* Payment & Delivery */}
                 <div>
-                  <h2 className="text-xl md:text-2xl font-bold text-gray-900">Payment & Delivery</h2>
-                  <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-6">
+                  <h2 className="text-2xl font-bold text-gray-900">Payment & delivery</h2>
+                  <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-8">
                     <div>
-                      <p className="text-base font-semibold text-gray-700">Payment Method</p>
-                      <p className="mt-1 text-lg font-medium text-gray-900 flex items-center"><CreditCardIcon className="h-4 w-4 mr-2 text-gray-400" />{getPaymentMethodLabel(booking.payment_method)}</p>
+                      <p className="text-sm text-gray-700">Payment method</p>
+                      <p className="mt-1 text-xl font-semibold text-gray-900 flex items-center"><CreditCardIcon className="h-4 w-4 mr-2 text-gray-400" />{getPaymentMethodLabel(booking.payment_method)}</p>
                     </div>
                     <div>
-                      <p className="text-base font-semibold text-gray-700">Delivery Option</p>
-                      <p className="mt-1 text-lg font-medium text-gray-900 flex items-center"><TruckIcon className="h-4 w-4 mr-2 text-gray-400" />{booking.delivery_option || 'pickup'}</p>
+                      <p className="text-sm text-gray-700">Delivery option</p>
+                      <p className="mt-1 text-xl font-semibold text-gray-900 flex items-center"><TruckIcon className="h-4 w-4 mr-2 text-gray-400" />{booking.delivery_option || 'pickup'}</p>
                     </div>
                     <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
-                      <p className="text-base font-semibold text-gray-700">Total Amount</p>
-                      <p className="mt-1 text-2xl font-bold text-gray-900">₱{parseFloat(booking.price.toString()).toLocaleString()}</p>
+                      <p className="text-sm text-gray-700">Total amount</p>
+                      <p className="mt-1 text-3xl font-extrabold text-gray-900">₱{parseFloat(booking.price.toString()).toLocaleString()}</p>
                     </div>
                   </div>
                   {booking.payment_method === 'qr_manual' && (
