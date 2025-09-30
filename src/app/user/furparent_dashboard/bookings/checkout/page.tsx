@@ -239,6 +239,43 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
   };
 
   // Handle image removal
+  // Persist form state to sessionStorage so refresh doesn't clear inputs
+  useEffect(() => {
+    try {
+      const cached = sessionStorage.getItem('checkout_form_state');
+      if (cached) {
+        const s = JSON.parse(cached);
+        if (s) {
+          setPetName(s.petName || '');
+          setPetBreed(s.petBreed || '');
+          setPetGender(s.petGender || '');
+          setPetDob(s.petDob || '');
+          setPetDod(s.petDod || '');
+          setPetWeight(s.petWeight || '');
+          setCauseOfDeath(s.causeOfDeath || '');
+          setPetType(s.petType || '');
+          setPetSpecialNotes(s.petSpecialNotes || '');
+        }
+      }
+    } catch {}
+  }, []);
+
+  useEffect(() => {
+    const payload = {
+      petName,
+      petBreed,
+      petGender,
+      petDob,
+      petDod,
+      petWeight,
+      causeOfDeath,
+      petType,
+      petSpecialNotes,
+    };
+    try {
+      sessionStorage.setItem('checkout_form_state', JSON.stringify(payload));
+    } catch {}
+  }, [petName, petBreed, petGender, petDob, petDod, petWeight, causeOfDeath, petType, petSpecialNotes]);
   const handleRemoveImage = () => {
     setPetImageFile(null);
     setPetImagePreview(null);
@@ -1151,9 +1188,9 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
     const overage = Number(bookingData.package.overageFeePerKg || 0);
     const weight = petWeight ? parseFloat(petWeight) : NaN;
 
+    const basePkg = Number(bookingData.package.price) || 0;
+
     if (!tiers.length || isNaN(weight)) {
-      // If tiers not applicable, fall back to base package price
-      const basePkg = Number(bookingData.package.price) || 0;
       return basePkg + delivery + addOnsTotal;
     }
 
@@ -1196,8 +1233,6 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
       }
     }
 
-    // Include the package base price as a base service fee if defined
-    const basePkg = Number(bookingData.package.price) || 0;
     return basePkg + base + delivery + addOnsTotal;
   };
 
