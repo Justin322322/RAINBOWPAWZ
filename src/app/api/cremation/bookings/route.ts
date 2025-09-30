@@ -498,6 +498,8 @@ export async function POST(request: NextRequest) {
       petName,
       petType,
       petImageUrl,
+      pet_dob,
+      pet_date_of_death,
       causeOfDeath,
       paymentMethod,
       deliveryOption,
@@ -654,6 +656,19 @@ export async function POST(request: NextRequest) {
       availableColumns.push('pet_type');
       placeholders.push('?');
       values.push(petType);
+    }
+
+    // Pet dates if schema supports them
+    if (columns.includes('pet_dob')) {
+      availableColumns.push('pet_dob');
+      placeholders.push('?');
+      values.push(pet_dob || null);
+    }
+
+    if (columns.includes('pet_date_of_death')) {
+      availableColumns.push('pet_date_of_death');
+      placeholders.push('?');
+      values.push(pet_date_of_death || null);
     }
 
     // Handle pet image URL with more flexibility

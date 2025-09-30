@@ -232,6 +232,8 @@ export async function GET(request: NextRequest) {
             price: booking.base_price || booking.total_price || booking.price || 0,
             pet_name: booking.pet_name || 'Unknown Pet',
             pet_type: booking.pet_type || 'Unknown Type',
+            pet_dob: booking.pet_dob || null,
+            pet_date_of_death: booking.pet_date_of_death || null,
             refund: refundData
           };
         }));
@@ -607,7 +609,9 @@ export async function GET(request: NextRequest) {
                   total_amount: booking.total_price || booking.base_price || booking.price || 0,
                   price: booking.base_price || booking.total_price || booking.price || 0,
                   pet_name: booking.pet_name || 'Unknown Pet',
-                  pet_type: booking.pet_type || 'Unknown Type'
+                pet_type: booking.pet_type || 'Unknown Type',
+                pet_dob: booking.pet_dob || null,
+                pet_date_of_death: booking.pet_date_of_death || null
                 };
               }));
 
@@ -913,7 +917,9 @@ export async function GET(request: NextRequest) {
                 total_amount: booking.total_price || booking.base_price || booking.price || 0,
                 price: booking.base_price || booking.total_price || booking.price || 0,
                 pet_name: booking.pet_name || 'Pet',
-                pet_type: booking.pet_type || 'Unknown'
+                pet_type: booking.pet_type || 'Unknown',
+                pet_dob: booking.pet_dob || null,
+                pet_date_of_death: booking.pet_date_of_death || null
               };
             });
 
@@ -973,7 +979,9 @@ export async function GET(request: NextRequest) {
                 total_amount: booking.total_price || booking.base_price || booking.price || 0,
                 price: booking.base_price || booking.total_price || booking.price || 0,
                 pet_name: booking.pet_name || 'Pet',
-                pet_type: booking.pet_type || 'Unknown'
+              pet_type: booking.pet_type || 'Unknown',
+              pet_dob: booking.pet_dob || null,
+              pet_date_of_death: booking.pet_date_of_death || null
               }));
 
               return NextResponse.json({ bookings: formattedBookings });

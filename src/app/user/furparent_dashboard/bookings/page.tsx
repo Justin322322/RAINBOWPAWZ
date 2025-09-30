@@ -63,6 +63,8 @@ interface BookingData {
   pet_type: string;
   pet_breed?: string;
   pet_image_url?: string;
+  pet_dob?: string | null;
+  pet_date_of_death?: string | null;
   cause_of_death?: string;
   payment_method?: string;
   payment_status?: 'not_paid' | 'partially_paid' | 'paid';

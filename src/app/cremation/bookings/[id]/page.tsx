@@ -648,144 +648,138 @@ function BookingDetailsPage({ userData }: BookingDetailsProps) {
               className="mb-6"
             />
 
-            {/* Main Content Grid */}
-            <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-              {/* Left Column - Main Information */}
-              <div className="xl:col-span-2 space-y-6">
+            {/* Unified Details Card */}
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+              <div className="p-6">
                 {/* Service Details */}
-                <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-                  <div className="px-6 py-4 border-b border-gray-200">
-                    <h2 className="text-lg font-medium text-gray-900">Service Details</h2>
-                  </div>
-                  <div className="p-6">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                      <div>
-                        <h3 className="text-sm font-medium text-gray-500 mb-1">Service Package</h3>
-                        <p className="text-base font-medium text-gray-900">{booking.service_name}</p>
-                        <p className="text-lg font-semibold text-gray-900 mt-1">₱{parseFloat(booking.price.toString()).toLocaleString()}</p>
-                      </div>
-                      <div>
-                        <h3 className="text-sm font-medium text-gray-500 mb-1">Processing Time</h3>
-                        <p className="text-base font-medium text-gray-900">{booking.processing_time}</p>
-                      </div>
+                <div>
+                  <h2 className="text-base font-semibold text-gray-900">Service Details</h2>
+                  <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-6">
+                    <div>
+                      <p className="text-sm text-gray-500">Service Package</p>
+                      <p className="mt-1 text-base font-medium text-gray-900">{booking.service_name}</p>
+                      <p className="mt-1 text-lg font-semibold text-gray-900">₱{parseFloat(booking.price.toString()).toLocaleString()}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-500">Processing Time</p>
+                      <p className="mt-1 text-base font-medium text-gray-900">{booking.processing_time}</p>
                     </div>
                   </div>
                 </div>
+
+                {/* Separator */}
+                <div className="my-6 border-t border-gray-200" />
 
                 {/* Pet Information */}
-                <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-                  <div className="px-6 py-4 border-b border-gray-200">
-                    <h2 className="text-lg font-medium text-gray-900">Pet Information</h2>
-                  </div>
-                  <div className="p-6">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                <div>
+                  <h2 className="text-base font-semibold text-gray-900">Pet Information</h2>
+                  <div className="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-6 items-start">
+                    <div className="sm:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-6">
                       <div>
-                        <h3 className="text-sm font-medium text-gray-500 mb-1">Pet Name</h3>
-                        <p className="text-base font-medium text-gray-900">{booking.pet_name}</p>
+                        <p className="text-sm text-gray-500">Pet Name</p>
+                        <p className="mt-1 text-base font-medium text-gray-900">{booking.pet_name}</p>
                       </div>
                       <div>
-                        <h3 className="text-sm font-medium text-gray-500 mb-1">Pet Type</h3>
-                        <p className="text-base font-medium text-gray-900">{booking.pet_type}</p>
+                        <p className="text-sm text-gray-500">Pet Type</p>
+                        <p className="mt-1 text-base font-medium text-gray-900">{booking.pet_type}</p>
                       </div>
-                      {booking.cause_of_death && (
-                        <div className="col-span-1 sm:col-span-2">
-                          <h3 className="text-sm font-medium text-gray-500 mb-1">Cause of Death</h3>
-                          <p className="text-base font-medium text-gray-900">{booking.cause_of_death}</p>
-                        </div>
-                      )}
+                      <div className="sm:col-span-2">
+                        <p className="text-sm text-gray-500">Cause of Death</p>
+                        <p className="mt-1 text-base font-medium text-gray-900">{booking.cause_of_death || 'Not specified'}</p>
+                      </div>
+                    </div>
+                    <div className="sm:col-span-1">
+                      <div className="w-full max-w-[180px] border rounded-lg overflow-hidden bg-gray-50">
+                        <Image
+                          src={booking.pet_image_url || '/icons/pet-placeholder.png'}
+                          alt={booking.pet_name}
+                          width={360}
+                          height={360}
+                          className="w-full h-auto object-cover"
+                          onError={(e) => { (e.target as HTMLImageElement).src = '/icons/pet-placeholder.png'; }}
+                        />
+                      </div>
                     </div>
                   </div>
                 </div>
 
-                {/* Special Requests (receipt line removed) */}
-                {filteredSpecialNotes && (
-                  <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-                    <div className="px-6 py-4 border-b border-gray-200">
-                      <h2 className="text-lg font-medium text-gray-900">Special Requests</h2>
-                    </div>
-                    <div className="p-6">
-                      <p className="text-gray-700 leading-relaxed">{filteredSpecialNotes}</p>
-                    </div>
-                  </div>
-                )}
-              </div>
+                {/* Separator */}
+                <div className="my-6 border-t border-gray-200" />
 
-              {/* Right Column - Customer & Payment Info */}
-              <div className="space-y-6">
+                {/* Special Requests & Add-ons */}
+                <div>
+                  <h2 className="text-base font-semibold text-gray-900">Special Requests</h2>
+                  <p className="mt-2 text-gray-700 leading-relaxed">{filteredSpecialNotes || 'None'}</p>
+                </div>
+
+                {/* Separator */}
+                <div className="my-6 border-t border-gray-200" />
+
                 {/* Customer Information */}
-                <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-                  <div className="px-6 py-4 border-b border-gray-200">
-                    <h2 className="text-lg font-medium text-gray-900">Customer Information</h2>
-                  </div>
-                  <div className="p-6 space-y-4">
+                <div>
+                  <h2 className="text-base font-semibold text-gray-900">Customer Information</h2>
+                  <div className="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-6">
                     <div>
-                      <h3 className="text-sm font-medium text-gray-500 mb-1">Name</h3>
-                      <p className="text-base font-medium text-gray-900">{booking.first_name} {booking.last_name}</p>
+                      <p className="text-sm text-gray-500">Name</p>
+                      <p className="mt-1 text-base font-medium text-gray-900">{booking.first_name} {booking.last_name}</p>
                     </div>
                     <div>
-                      <h3 className="text-sm font-medium text-gray-500 mb-1">Email</h3>
-                      <a href={`mailto:${booking.email}`} className="text-blue-600 hover:text-blue-800 flex items-center">
-                        <EnvelopeIcon className="h-4 w-4 mr-2" />
-                        {booking.email}
+                      <p className="text-sm text-gray-500">Email</p>
+                      <a href={`mailto:${booking.email}`} className="mt-1 text-base font-medium text-blue-600 hover:text-blue-800 flex items-center">
+                        <EnvelopeIcon className="h-4 w-4 mr-2" />{booking.email}
                       </a>
                     </div>
                     <div>
-                      <h3 className="text-sm font-medium text-gray-500 mb-1">Phone</h3>
+                      <p className="text-sm text-gray-500">Phone</p>
                       {booking.phone ? (
-                        <a href={`tel:${booking.phone}`} className="text-blue-600 hover:text-blue-800 flex items-center">
-                          <PhoneIcon className="h-4 w-4 mr-2" />
-                          {booking.phone}
+                        <a href={`tel:${booking.phone}`} className="mt-1 text-base font-medium text-blue-600 hover:text-blue-800 flex items-center">
+                          <PhoneIcon className="h-4 w-4 mr-2" />{booking.phone}
                         </a>
                       ) : (
-                        <p className="text-gray-500">Not provided</p>
+                        <p className="mt-1 text-base text-gray-500">Not provided</p>
                       )}
                     </div>
                   </div>
                 </div>
 
-                {/* Payment and Delivery Information */}
-                <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-                  <div className="px-6 py-4 border-b border-gray-200">
-                    <h2 className="text-lg font-medium text-gray-900">Payment & Delivery</h2>
-                  </div>
-                  <div className="p-6 space-y-4">
+                {/* Separator */}
+                <div className="my-6 border-t border-gray-200" />
+
+                {/* Payment & Delivery */}
+                <div>
+                  <h2 className="text-base font-semibold text-gray-900">Payment & Delivery</h2>
+                  <div className="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-6">
                     <div>
-                      <h3 className="text-sm font-medium text-gray-500 mb-1">Payment Method</h3>
-                      <p className="text-base font-medium text-gray-900 flex items-center">
-                        <CreditCardIcon className="h-4 w-4 mr-2 text-gray-400" />
-                        {getPaymentMethodLabel(booking.payment_method)}
-                      </p>
+                      <p className="text-sm text-gray-500">Payment Method</p>
+                      <p className="mt-1 text-base font-medium text-gray-900 flex items-center"><CreditCardIcon className="h-4 w-4 mr-2 text-gray-400" />{getPaymentMethodLabel(booking.payment_method)}</p>
                     </div>
                     <div>
-                      <h3 className="text-sm font-medium text-gray-500 mb-1">Delivery Option</h3>
-                      <p className="text-base font-medium text-gray-900 flex items-center">
-                        <TruckIcon className="h-4 w-4 mr-2 text-gray-400" />
-                        {booking.delivery_option || 'Pickup'}
-                      </p>
+                      <p className="text-sm text-gray-500">Delivery Option</p>
+                      <p className="mt-1 text-base font-medium text-gray-900 flex items-center"><TruckIcon className="h-4 w-4 mr-2 text-gray-400" />{booking.delivery_option || 'pickup'}</p>
                     </div>
                     <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
-                      <h3 className="text-sm font-medium text-gray-700 mb-1">Total Amount</h3>
-                      <p className="text-xl font-semibold text-gray-900">₱{parseFloat(booking.price.toString()).toLocaleString()}</p>
+                      <p className="text-sm text-gray-700">Total Amount</p>
+                      <p className="mt-1 text-xl font-semibold text-gray-900">₱{parseFloat(booking.price.toString()).toLocaleString()}</p>
                     </div>
-                    {booking.payment_method === 'qr_manual' && (
-                      <div>
-                        <h3 className="text-sm font-medium text-gray-500 mb-2">Payment Receipt</h3>
-                        {getReceiptUrlFromNotes(booking.notes) ? (
-                          <div className="border rounded-lg overflow-hidden bg-gray-50">
-                            <Image src={getReceiptUrlFromNotes(booking.notes) as string} alt="Payment Receipt" width={800} height={600} className="w-full h-auto object-contain" />
-                          </div>
-                        ) : (
-                          <p className="text-sm text-gray-500">Receipt pending upload/confirmation.</p>
-                        )}
-                      </div>
-                    )}
-                    {booking.delivery_option === 'delivery' && booking.delivery_address && (
-                      <div>
-                        <h3 className="text-sm font-medium text-gray-500 mb-1">Delivery Address</h3>
-                        <p className="text-base font-medium text-gray-900">{booking.delivery_address}</p>
-                      </div>
-                    )}
                   </div>
+                  {booking.payment_method === 'qr_manual' && (
+                    <div className="mt-4">
+                      <p className="text-sm font-medium text-gray-500 mb-2">Payment Receipt</p>
+                      {getReceiptUrlFromNotes(booking.notes) ? (
+                        <div className="border rounded-lg overflow-hidden bg-gray-50">
+                          <Image src={getReceiptUrlFromNotes(booking.notes) as string} alt="Payment Receipt" width={800} height={600} className="w-full h-auto object-contain" />
+                        </div>
+                      ) : (
+                        <p className="text-sm text-gray-500">Receipt pending upload/confirmation.</p>
+                      )}
+                    </div>
+                  )}
+                  {booking.delivery_option === 'delivery' && booking.delivery_address && (
+                    <div className="mt-4">
+                      <p className="text-sm font-medium text-gray-500">Delivery Address</p>
+                      <p className="mt-1 text-base font-medium text-gray-900">{booking.delivery_address}</p>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
