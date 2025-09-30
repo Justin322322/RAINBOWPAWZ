@@ -54,6 +54,9 @@ const PackageModal: React.FC<PackageModalProps> = ({
   packageId,
   initialData
 }) => {
+  // Single source of truth for base pet types used in the checkboxes
+  const BASE_PET_TYPES = ['Dogs', 'Cats', 'Birds', 'Rabbits', 'Hamsters', 'Guinea Pigs', 'Fish', 'Reptiles', 'Other'];
+
   const { showToast } = useToast();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   
@@ -84,7 +87,7 @@ const PackageModal: React.FC<PackageModalProps> = ({
       { sizeCategory: 'Small (0–10 kg)', weightRangeMin: 0, weightRangeMax: 10, price: 0 },
       { sizeCategory: 'Medium (11–25 kg)', weightRangeMin: 11, weightRangeMax: 25, price: 0 },
       { sizeCategory: 'Large (26–40 kg)', weightRangeMin: 26, weightRangeMax: 40, price: 0 },
-      { sizeCategory: 'Extra Large (41+ kg)', weightRangeMin: 41, weightRangeMax: null, price: 0 }
+      { sizeCategory: 'Extra Large (41–60 kg)', weightRangeMin: 41, weightRangeMax: 60, price: 0 }
     ]
   });
 
@@ -126,7 +129,16 @@ const PackageModal: React.FC<PackageModalProps> = ({
   useEffect(() => {
     if (initialData && isOpen) {
       console.log('🔥 Applying initialData:', initialData);
-      setFormData(prev => ({ ...prev, ...initialData }));
+      const incomingSupported = Array.isArray(initialData.supportedPetTypes) ? initialData.supportedPetTypes : [];
+      const incomingCustoms = incomingSupported.filter((t) => !BASE_PET_TYPES.includes(t));
+
+      // Auto-check Other if custom types exist
+      const ensuredSupported = incomingCustoms.length > 0 && !incomingSupported.includes('Other')
+        ? [...incomingSupported, 'Other']
+        : incomingSupported;
+
+      setCustomPetTypes(incomingCustoms);
+      setFormData(prev => ({ ...prev, ...initialData, supportedPetTypes: ensuredSupported }));
     }
   }, [initialData, isOpen]);
 
@@ -242,7 +254,7 @@ const PackageModal: React.FC<PackageModalProps> = ({
         { sizeCategory: 'Small (0–10 kg)', weightRangeMin: 0, weightRangeMax: 10, price: 0 },
         { sizeCategory: 'Medium (11–25 kg)', weightRangeMin: 11, weightRangeMax: 25, price: 0 },
         { sizeCategory: 'Large (26–40 kg)', weightRangeMin: 26, weightRangeMax: 40, price: 0 },
-        { sizeCategory: 'Extra Large (41+ kg)', weightRangeMin: 41, weightRangeMax: null, price: 0 }
+        { sizeCategory: 'Extra Large (41–60 kg)', weightRangeMin: 41, weightRangeMax: 60, price: 0 }
       ]
     });
     setErrors({});
@@ -306,6 +318,12 @@ const PackageModal: React.FC<PackageModalProps> = ({
       console.log('🔥 Setting form data with inclusions:', pkg.inclusions);
       console.log('🔥 Setting form data with addOns:', pkg.addOns);
       
+      const pkgSupported: string[] = Array.isArray(pkg.supportedPetTypes) ? pkg.supportedPetTypes : [];
+      const pkgCustoms = pkgSupported.filter((t: string) => !BASE_PET_TYPES.includes(t));
+      const ensuredSupported = pkgCustoms.length > 0 && !pkgSupported.includes('Other')
+        ? [...pkgSupported, 'Other']
+        : pkgSupported;
+
       setFormData({
         name: pkg.name || '',
         description: pkg.description || '',
@@ -325,16 +343,19 @@ const PackageModal: React.FC<PackageModalProps> = ({
         customCategories: pkg.customCategories || [],
         customCremationTypes: pkg.customCremationTypes || [],
         customProcessingTimes: pkg.customProcessingTimes || [],
-        supportedPetTypes: pkg.supportedPetTypes || [],
+        supportedPetTypes: ensuredSupported,
         sizePricing: (pkg.sizePricing && pkg.sizePricing.length > 0)
           ? pkg.sizePricing
           : [
               { sizeCategory: 'Small (0–10 kg)', weightRangeMin: 0, weightRangeMax: 10, price: 0 },
               { sizeCategory: 'Medium (11–25 kg)', weightRangeMin: 11, weightRangeMax: 25, price: 0 },
               { sizeCategory: 'Large (26–40 kg)', weightRangeMin: 26, weightRangeMax: 40, price: 0 },
-              { sizeCategory: 'Extra Large (41+ kg)', weightRangeMin: 41, weightRangeMax: null, price: 0 }
+              { sizeCategory: 'Extra Large (41–60 kg)', weightRangeMin: 41, weightRangeMax: 60, price: 0 }
             ]
       });
+
+      // Populate custom pet types list for UI removal
+      setCustomPetTypes(pkgCustoms);
       
       // Reset animation states when loading edit data
       // setRemovingInclusions(new Set());
@@ -1122,7 +1143,7 @@ const PackageModal: React.FC<PackageModalProps> = ({
                   <div className="mt-4">
                     <label className="block text-sm font-medium text-gray-700 mb-2">Supported Pet Types</label>
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                      {['Dogs', 'Cats', 'Birds', 'Rabbits', 'Hamsters', 'Guinea Pigs', 'Fish', 'Reptiles', 'Other'].map((petType) => (
+                      {BASE_PET_TYPES.map((petType) => (
                         <label key={petType} className="flex items-center">
                           <input
                             type="checkbox"
