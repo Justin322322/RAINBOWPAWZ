@@ -297,7 +297,6 @@ function ApplicationDetailContent({ id }: ApplicationDetailContentProps) {
       }
     }
 
-    console.log('Document URL processing:', { original: url, processed: processedUrl });
     setSelectedDocument({ url: processedUrl, type });
     setIsDocumentModalOpen(true);
   };

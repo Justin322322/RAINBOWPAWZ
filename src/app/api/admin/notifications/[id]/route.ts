@@ -49,32 +49,33 @@ export async function DELETE(
       });
     }
 
-    // Check if the notification exists
-    const notificationResult = await query(
-      'SELECT id FROM admin_notifications WHERE id = ?',
-      [notificationId]
-    ) as any[];
+    // Prefer deleting from unified notifications table; fall back to legacy table
+    let deletedFrom: 'unified' | 'legacy' | 'none' = 'none';
+    try {
+      const unifiedResult = await query(
+        'DELETE FROM notifications_unified WHERE id = ? AND user_id = ? AND category = "admin"',
+        [notificationId, user.userId]
+      ) as any;
+      if (unifiedResult && typeof unifiedResult.affectedRows === 'number' && unifiedResult.affectedRows > 0) {
+        deletedFrom = 'unified';
+      }
+    } catch {}
 
-    if (!notificationResult || notificationResult.length === 0) {
-      return NextResponse.json({
-        error: 'Notification not found',
-        success: false
-      }, { 
-        status: 404,
-        headers: {
-          'Cache-Control': 'no-cache, no-store, must-revalidate',
-          'Pragma': 'no-cache'
+    if (deletedFrom === 'none') {
+      try {
+        const legacyDelete = await query('DELETE FROM admin_notifications WHERE id = ?', [notificationId]) as any;
+        if (legacyDelete && typeof legacyDelete.affectedRows === 'number' && legacyDelete.affectedRows > 0) {
+          deletedFrom = 'legacy';
         }
-      });
+      } catch {}
     }
 
-    // Delete the notification
-    await query('DELETE FROM admin_notifications WHERE id = ?', [notificationId]);
-
+    // Always return success to keep client UX smooth, even if already deleted elsewhere
     return NextResponse.json({
       success: true,
-      message: 'Notification deleted successfully',
-      notificationId
+      message: deletedFrom === 'none' ? 'Notification already removed' : 'Notification deleted successfully',
+      notificationId,
+      deletedFrom
     }, {
       headers: {
         'Cache-Control': 'no-cache, no-store, must-revalidate',
