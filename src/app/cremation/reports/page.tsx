@@ -8,9 +8,7 @@ import { useToast } from '@/context/ToastContext';
 import {
     ChartBarIcon,
     ArrowDownTrayIcon,
-    CalendarDaysIcon,
     CurrencyDollarIcon,
-    CheckCircleIcon,
     XCircleIcon,
     ClockIcon,
     ArrowPathIcon
@@ -159,9 +157,11 @@ function CremationReportsPage({ userData }: { userData: any }) {
                             totalRefunded,
                             pendingRefunds: pending.length,
                             refundRate: refundRate.toFixed(2)
-                        },
-                        monthlyData: refundSeries
+                        }
                     };
+                    // If server didn't provide a revenue series, keep monthlyData as-is
+                    // and attach refunds series separately for possible future use
+                    (merged as any).refundMonthlyData = refundSeries;
                 }
             } catch {
                 // If refund fetch fails, keep server data as-is
@@ -316,21 +316,44 @@ ${reportData.topServices.map((service: any, index: number) =>
                 )}
             </div>
 
-            {/* Bookings distribution */}
+            {/* Revenue focus chart */}
             <div className="bg-white rounded-xl shadow-md border border-gray-100 p-6 mb-8">
-                <h2 className="text-lg font-medium text-gray-800 mb-4">Bookings Status Mix</h2>
+                <div className="flex items-center justify-between mb-2">
+                    <h2 className="text-lg font-medium text-gray-800">Revenue Trend</h2>
+                    {!loading && (
+                      <span className="text-sm text-gray-500">Monthly</span>
+                    )}
+                </div>
                 {loading ? (
                   <StatsCardSkeleton count={1} />
                 ) : (
-                  <StatusPieChart
-                    data={[
-                      { name: 'Completed', value: reportData.stats.completedBookings || 0 },
-                      { name: 'Pending', value: reportData.stats.pendingBookings || 0 },
-                      { name: 'Cancelled', value: reportData.stats.cancelledBookings || 0 }
-                    ]}
+                  <RefundsLineChart
+                    // reuse line chart component for revenue series
+                    data={
+                      Array.isArray((reportData as any).monthlyData)
+                        ? (reportData as any).monthlyData
+                        : ((reportData as any).refundMonthlyData || [])
+                    }
                     height={260}
                   />
                 )}
+            </div>
+
+            {/* Bookings distribution */}
+            <div className="bg-white rounded-xl shadow-md border border-gray-100 p-6 mb-8">
+              <h2 className="text-lg font-medium text-gray-800 mb-4">Bookings Status Mix</h2>
+              {loading ? (
+                <StatsCardSkeleton count={1} />
+              ) : (
+                <StatusPieChart
+                  data={[
+                    { name: 'Completed', value: reportData.stats.completedBookings || 0 },
+                    { name: 'Pending', value: reportData.stats.pendingBookings || 0 },
+                    { name: 'Cancelled', value: reportData.stats.cancelledBookings || 0 }
+                  ]}
+                  height={260}
+                />
+              )}
             </div>
 
             {/* Top Services */}
