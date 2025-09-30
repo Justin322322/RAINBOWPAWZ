@@ -1152,7 +1152,9 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
     const weight = petWeight ? parseFloat(petWeight) : NaN;
 
     if (!tiers.length || isNaN(weight)) {
-      return delivery + addOnsTotal;
+      // If tiers not applicable, fall back to base package price
+      const basePkg = Number(bookingData.package.price) || 0;
+      return basePkg + delivery + addOnsTotal;
     }
 
     // Select the highest tier with a defined price (> 0) whose min is <= weight.
@@ -1194,7 +1196,9 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
       }
     }
 
-    return base + delivery + addOnsTotal;
+    // Include the package base price as a base service fee if defined
+    const basePkg = Number(bookingData.package.price) || 0;
+    return basePkg + base + delivery + addOnsTotal;
   };
 
   return (
