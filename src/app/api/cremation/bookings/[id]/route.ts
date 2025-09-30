@@ -71,7 +71,7 @@ export async function GET(
     const booking = bookingResult[0];
 
     // Fallback: if pet_dob / pet_date_of_death are missing on bookings table,
-    // try to infer them from the user's pets table using creation time proximity
+    // try to infer them from the user's pets table using name match first, then creation time proximity
     let fallbackPetDob: string | null = null;
     let fallbackPetDod: string | null = null;
     try {
@@ -85,32 +85,52 @@ export async function GET(
           const petColRows = await query(
             `SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS
              WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'pets'
-             AND COLUMN_NAME IN ('date_of_birth','date_of_death')`
+             AND COLUMN_NAME IN ('date_of_birth','date_of_death','name','updated_at','created_at')`
           ) as Array<{ COLUMN_NAME: string }>;
           const petCols = new Set((petColRows || []).map(r => r.COLUMN_NAME));
           const selectDob = petCols.has('date_of_birth') ? 'p.date_of_birth' : 'NULL as date_of_birth';
           const selectDod = petCols.has('date_of_death') ? 'p.date_of_death' : 'NULL as date_of_death';
 
-          // Find the pet most likely tied to this booking: created at or just before booking
-          const pets = await query(
-            `SELECT p.pet_id, p.user_id, ${selectDob}, ${selectDod}, p.created_at
-             FROM pets p
-             WHERE p.user_id = ?
-             ORDER BY p.created_at DESC
-             LIMIT 5`,
-            [booking.user_id]
-          ) as any[];
+          // 1) Try an exact case-insensitive name match for this user's pet
+          if (booking.pet_name && petCols.has('name')) {
+            try {
+              const nameMatch = await query(
+                `SELECT ${selectDob}, ${selectDod}
+                 FROM pets p
+                 WHERE p.user_id = ? AND LOWER(p.name) = LOWER(?)
+                 ORDER BY ${petCols.has('updated_at') ? 'p.updated_at DESC' : 'p.created_at DESC'}
+                 LIMIT 1`,
+                [booking.user_id, booking.pet_name]
+              ) as any[];
+              if (Array.isArray(nameMatch) && nameMatch.length > 0) {
+                fallbackPetDob = nameMatch[0]?.date_of_birth || fallbackPetDob;
+                fallbackPetDod = nameMatch[0]?.date_of_death || fallbackPetDod;
+              }
+            } catch {}
+          }
 
-          if (Array.isArray(pets) && pets.length > 0) {
-            // Prefer the latest pet created at or before booking.created_at (+5s tolerance)
-            const bookingCreated = new Date(booking.created_at).getTime();
-            const match = pets.find((pet: any) => {
-              const petCreated = new Date(pet.created_at).getTime();
-              return petCreated <= bookingCreated + 5000;
-            }) || pets[0];
+          // 2) If still missing, fall back to proximity by created_at
+          if (!fallbackPetDob || !fallbackPetDod) {
+            const pets = await query(
+              `SELECT p.pet_id, p.user_id, ${selectDob}, ${selectDod}, p.created_at
+               FROM pets p
+               WHERE p.user_id = ?
+               ORDER BY p.created_at DESC
+               LIMIT 5`,
+              [booking.user_id]
+            ) as any[];
 
-            fallbackPetDob = match?.date_of_birth || null;
-            fallbackPetDod = match?.date_of_death || null;
+            if (Array.isArray(pets) && pets.length > 0) {
+              // Prefer the latest pet created at or before booking.created_at (+5s tolerance)
+              const bookingCreated = new Date(booking.created_at).getTime();
+              const match = pets.find((pet: any) => {
+                const petCreated = new Date(pet.created_at).getTime();
+                return petCreated <= bookingCreated + 5000;
+              }) || pets[0];
+
+              fallbackPetDob = fallbackPetDob || match?.date_of_birth || null;
+              fallbackPetDod = fallbackPetDod || match?.date_of_death || null;
+            }
           }
         }
       }
