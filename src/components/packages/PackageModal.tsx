@@ -686,6 +686,17 @@ const PackageModal: React.FC<PackageModalProps> = ({
     } else {
       const anyValid = formData.sizePricing.some((sp) => sp.price > 0);
       if (!anyValid) newErrors.price = 'Provide at least one size price';
+      // When using overage, enforce a finite max on the last paid tier so overage can apply
+      const overageEnabled = Number(formData.overageFeePerKg || 0) > 0;
+      if (overageEnabled) {
+        const paidTiersSorted = [...formData.sizePricing]
+          .filter((sp) => Number(sp.price) > 0)
+          .sort((a, b) => Number(a.weightRangeMin) - Number(b.weightRangeMin));
+        const lastPaid = paidTiersSorted[paidTiersSorted.length - 1];
+        if (lastPaid && (lastPaid.weightRangeMax === null || lastPaid.weightRangeMax === undefined)) {
+          newErrors.price = 'Set a maximum weight for the last priced tier to enable overage beyond it';
+        }
+      }
     }
     if (formData.inclusions.length === 0) newErrors.inclusions = 'At least one inclusion is required';
     if (!formData.conditions.trim()) newErrors.conditions = 'Conditions are required';
