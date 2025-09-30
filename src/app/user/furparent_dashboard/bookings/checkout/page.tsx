@@ -1083,30 +1083,16 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
       return delivery + addOnsTotal;
     }
 
-    const tier = tiers.find((t: any) => {
-      const min = Number(t.weightRangeMin);
-      const max = t.weightRangeMax == null ? Infinity : Number(t.weightRangeMax);
-      return weight >= min && weight <= max;
-    });
+    // Select the highest tier whose min is <= weight
+    const sortedByMin = [...tiers].sort((a: any, b: any) => Number(a.weightRangeMin) - Number(b.weightRangeMin));
+    const matchedTier = sortedByMin.filter((t: any) => weight >= Number(t.weightRangeMin)).pop();
 
     let base = 0;
-    if (tier) {
-      base = Number(tier.price) || 0;
-      // Check if pet exceeds this tier's maximum weight
-      const tierMax = tier.weightRangeMax == null ? Infinity : Number(tier.weightRangeMax);
+    if (matchedTier) {
+      base = Number(matchedTier.price) || 0;
+      const tierMax = matchedTier.weightRangeMax == null ? Infinity : Number(matchedTier.weightRangeMax);
       if (weight > tierMax && isFinite(tierMax) && overage > 0) {
         base += (weight - tierMax) * overage;
-      }
-    } else {
-      // Pet weight exceeds all tiers - use highest tier as base and calculate overage
-      const sorted = [...tiers].sort((a: any, b: any) => Number(a.weightRangeMin) - Number(b.weightRangeMin));
-      const last = sorted[sorted.length - 1];
-      if (last) {
-        base = Number(last.price) || 0;
-        const lastMax = last.weightRangeMax == null ? Infinity : Number(last.weightRangeMax);
-        if (weight > lastMax && isFinite(lastMax) && overage > 0) {
-          base += (weight - lastMax) * overage;
-        }
       }
     }
 
