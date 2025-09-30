@@ -324,6 +324,27 @@ const PackageModal: React.FC<PackageModalProps> = ({
         ? [...pkgSupported, 'Other']
         : pkgSupported;
 
+      // Normalize size pricing: convert legacy 41+ tiers to 41–60 for editing
+      const normalizedSizePricing = (pkg.sizePricing && pkg.sizePricing.length > 0)
+        ? pkg.sizePricing.map((sp: any) => {
+            const min = Number(sp.weightRangeMin);
+            const max = sp.weightRangeMax === undefined ? null : (sp.weightRangeMax === null ? null : Number(sp.weightRangeMax));
+            if (min === 41 && (max === null || isNaN(Number(max)))) {
+              return {
+                ...sp,
+                sizeCategory: 'Extra Large (41–60 kg)',
+                weightRangeMin: 41,
+                weightRangeMax: 60,
+              };
+            }
+            // Also fix legacy label text if present
+            if (typeof sp.sizeCategory === 'string' && sp.sizeCategory.includes('41+')) {
+              return { ...sp, sizeCategory: 'Extra Large (41–60 kg)', weightRangeMax: typeof max === 'number' ? max : 60 };
+            }
+            return sp;
+          })
+        : [];
+
       setFormData({
         name: pkg.name || '',
         description: pkg.description || '',
@@ -344,8 +365,8 @@ const PackageModal: React.FC<PackageModalProps> = ({
         customCremationTypes: pkg.customCremationTypes || [],
         customProcessingTimes: pkg.customProcessingTimes || [],
         supportedPetTypes: ensuredSupported,
-        sizePricing: (pkg.sizePricing && pkg.sizePricing.length > 0)
-          ? pkg.sizePricing
+        sizePricing: (normalizedSizePricing && normalizedSizePricing.length > 0)
+          ? normalizedSizePricing
           : [
               { sizeCategory: 'Small (0–10 kg)', weightRangeMin: 0, weightRangeMax: 10, price: 0 },
               { sizeCategory: 'Medium (11–25 kg)', weightRangeMin: 11, weightRangeMax: 25, price: 0 },
@@ -714,8 +735,14 @@ const PackageModal: React.FC<PackageModalProps> = ({
           .filter((sp) => Number(sp.price) > 0)
           .sort((a, b) => Number(a.weightRangeMin) - Number(b.weightRangeMin));
         const lastPaid = paidTiersSorted[paidTiersSorted.length - 1];
-        if (lastPaid && (lastPaid.weightRangeMax === null || lastPaid.weightRangeMax === undefined)) {
-          newErrors.price = 'Set a maximum weight for the last priced tier to enable overage beyond it';
+        if (lastPaid) {
+          // Treat legacy 41+ tier as 41–60 for validation
+          const effectiveMax = (lastPaid.weightRangeMax === null || lastPaid.weightRangeMax === undefined)
+            ? (Number(lastPaid.weightRangeMin) === 41 ? 60 : null)
+            : Number(lastPaid.weightRangeMax);
+          if (effectiveMax === null || Number.isNaN(effectiveMax)) {
+            newErrors.price = 'Set a maximum weight for the last priced tier to enable overage beyond it';
+          }
         }
       }
     }
@@ -960,12 +987,7 @@ const PackageModal: React.FC<PackageModalProps> = ({
                             {formData.sizePricing.map((sp, idx) => {
                               // Extract weight range from sizeCategory or use weightRangeMin/Max
                               const getWeightRange = () => {
-                                // If sizeCategory already has proper format (e.g., "Small (0–10 kg)"), use it
-                                if (sp.sizeCategory && sp.sizeCategory.includes('(') && sp.sizeCategory.includes('kg')) {
-                                  return sp.sizeCategory;
-                                }
-                                
-                                // Generate proper tier name based on weight ranges
+                                // Always compute from min/max for consistency, ignore stored text
                                 const min = sp.weightRangeMin !== undefined ? sp.weightRangeMin : 0;
                                 const max = sp.weightRangeMax !== undefined ? sp.weightRangeMax : null;
                                 
@@ -979,7 +1001,7 @@ const PackageModal: React.FC<PackageModalProps> = ({
                                   tierName = 'Medium';
                                 } else if (min === 26 && max === 40) {
                                   tierName = 'Large';
-                                } else if (min === 41 && max === null) {
+                                } else if (min === 41 && (max === 60 || max === null)) {
                                   tierName = 'Extra Large';
                                 } else {
                                   // Fallback for custom ranges
