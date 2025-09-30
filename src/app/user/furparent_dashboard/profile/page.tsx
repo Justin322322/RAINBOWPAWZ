@@ -37,6 +37,7 @@ const parseAddress = (addressString: string) => {
   if (!addressString || addressString.trim() === '') {
     return {
       streetAddress: '',
+      barangay: '',
       city: '',
       province: '',
       postalCode: ''
@@ -51,6 +52,7 @@ const parseAddress = (addressString: string) => {
 
   // Try to identify each component based on position and content
   let streetAddress = '';
+  let barangay = '';
   let city = '';
   let province = '';
   let postalCode = '';
@@ -61,28 +63,23 @@ const parseAddress = (addressString: string) => {
   }
 
   if (parts.length >= 2) {
-    // Check if the second part looks like a postal code (numbers only or starts with numbers)
+    // Prefer format: Street, Barangay, City, Province, Postal
+    // Heuristics: if second part is numeric, it's postal; else treat as barangay
     if (/^\d/.test(parts[1])) {
       postalCode = parts[1];
-      if (parts.length >= 3) {
-        city = parts[2];
-      }
-      if (parts.length >= 4) {
-        province = parts[3];
-      }
+      if (parts.length >= 3) city = parts[2];
+      if (parts.length >= 4) province = parts[3];
     } else {
-      city = parts[1];
-      if (parts.length >= 3) {
-        province = parts[2];
-      }
-      if (parts.length >= 4) {
-        postalCode = parts[3];
-      }
+      barangay = parts[1];
+      if (parts.length >= 3) city = parts[2];
+      if (parts.length >= 4) province = parts[3];
+      if (parts.length >= 5) postalCode = parts[4];
     }
   }
 
   return {
     streetAddress: streetAddress || '',
+    barangay: barangay || '',
     city: city || '',
     province: province || '',
     postalCode: postalCode || ''
@@ -141,6 +138,7 @@ function ProfilePage({ userData: initialUserData }: ProfilePageProps) {
     phone: '',
     address: '',
     streetAddress: '',
+    barangay: '',
     city: '',
     province: '',
     postalCode: ''
@@ -237,6 +235,7 @@ function ProfilePage({ userData: initialUserData }: ProfilePageProps) {
         phone: userData.phone || '',
         address: userData.address || '',
         streetAddress: parsedAddress.streetAddress,
+        barangay: parsedAddress.barangay,
         city: parsedAddress.city,
         province: parsedAddress.province,
         postalCode: parsedAddress.postalCode
@@ -266,6 +265,7 @@ function ProfilePage({ userData: initialUserData }: ProfilePageProps) {
         phone: userData.phone || '',
         address: userData.address || '',
         streetAddress: parsedAddress.streetAddress,
+        barangay: parsedAddress.barangay,
         city: parsedAddress.city,
         province: parsedAddress.province,
         postalCode: parsedAddress.postalCode
@@ -529,6 +529,7 @@ function ProfilePage({ userData: initialUserData }: ProfilePageProps) {
       // Combine segmented address for saving
       const addressParts = [
         contactInfo.streetAddress?.trim(),
+        contactInfo.barangay?.trim(),
         contactInfo.city?.trim(),
         contactInfo.province?.trim(),
         contactInfo.postalCode?.trim()
@@ -765,6 +766,7 @@ function ProfilePage({ userData: initialUserData }: ProfilePageProps) {
           ...prev,
           address,
           streetAddress: parts.streetAddress,
+          barangay: parts.barangay,
           city: parts.city,
           province: parts.province,
           postalCode: parts.postalCode
@@ -782,6 +784,7 @@ function ProfilePage({ userData: initialUserData }: ProfilePageProps) {
             ...prev,
             address: fallbackAddress,
             streetAddress: parts.streetAddress,
+            barangay: parts.barangay,
             city: parts.city,
             province: parts.province,
             postalCode: parts.postalCode
@@ -1069,7 +1072,8 @@ function ProfilePage({ userData: initialUserData }: ProfilePageProps) {
                           }
                         />
                       </div>
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                        <Input id="fp-barangay" name="fp-barangay" label={undefined} placeholder="Barangay" value={contactInfo.barangay} onChange={(e) => setContactInfo(prev => ({ ...prev, barangay: e.target.value }))} size="lg" />
                         <Input id="fp-city" name="fp-city" label={undefined} placeholder="City/Municipality" value={contactInfo.city} onChange={(e) => setContactInfo(prev => ({ ...prev, city: e.target.value }))} size="lg" />
                         <Input id="fp-province" name="fp-province" label={undefined} placeholder="Province" value={contactInfo.province} onChange={(e) => setContactInfo(prev => ({ ...prev, province: e.target.value }))} size="lg" />
                         <Input id="fp-postal" name="fp-postal" label={undefined} placeholder="Postal Code (optional)" value={contactInfo.postalCode} onChange={(e) => setContactInfo(prev => ({ ...prev, postalCode: e.target.value }))} size="lg" />

@@ -82,6 +82,7 @@ const PersonalAccountModal: React.FC<PersonalAccountModalProps> = ({ isOpen, onC
     email: '',
     sex: '',
     streetAddress: '',
+    barangay: '',
     city: '',
     province: '',
     postalCode: '',
@@ -140,6 +141,7 @@ const PersonalAccountModal: React.FC<PersonalAccountModalProps> = ({ isOpen, onC
     if (!formData.email.trim()) missingFields.push('Email Address');
     if (!formData.sex) missingFields.push('Sex');
     if (!formData.streetAddress.trim()) missingFields.push('Street Address');
+    if (!formData.barangay.trim()) missingFields.push('Barangay');
     if (!formData.city.trim()) missingFields.push('City');
     if (!formData.province.trim()) missingFields.push('Province');
     if (!formData.password) missingFields.push('Password');
@@ -188,6 +190,7 @@ const PersonalAccountModal: React.FC<PersonalAccountModalProps> = ({ isOpen, onC
         // Combine address fields into single address string (only include non-empty fields)
         const addressParts = [];
         if (formData.streetAddress?.trim()) addressParts.push(formData.streetAddress.trim());
+        if (formData.barangay?.trim()) addressParts.push(formData.barangay.trim());
         if (formData.city?.trim()) addressParts.push(formData.city.trim());
         if (formData.province?.trim()) addressParts.push(formData.province.trim());
         if (formData.postalCode?.trim()) addressParts.push(formData.postalCode.trim());
@@ -379,7 +382,17 @@ const PersonalAccountModal: React.FC<PersonalAccountModalProps> = ({ isOpen, onC
                   required
                   size="lg"
                 />
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                  <Input
+                    label="Barangay"
+                    id="barangay"
+                    name="barangay"
+                    value={formData.barangay}
+                    onChange={handleChange}
+                    placeholder="Barangay 1"
+                    required
+                    size="lg"
+                  />
                   <Input
                     label="City/Municipality"
                     id="city"

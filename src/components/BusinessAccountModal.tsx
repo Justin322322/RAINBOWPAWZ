@@ -84,6 +84,7 @@ const BusinessAccountModal: React.FC<BusinessAccountModalProps> = ({ isOpen, onC
     sex: '',
     businessName: '',
     businessStreetAddress: '',
+    businessBarangay: '',
     businessCity: '',
     businessProvince: '',
     businessPostalCode: '',
@@ -163,6 +164,7 @@ const BusinessAccountModal: React.FC<BusinessAccountModalProps> = ({ isOpen, onC
     if (!formData.email.trim()) missingFields.push('Email Address');
     if (!formData.businessName.trim()) missingFields.push('Business Name');
     if (!formData.businessStreetAddress.trim()) missingFields.push('Business Street Address');
+    if (!formData.businessBarangay.trim()) missingFields.push('Business Barangay');
     if (!formData.businessCity.trim()) missingFields.push('Business City');
     if (!formData.businessProvince.trim()) missingFields.push('Business Province');
     if (!formData.businessPhone.trim()) missingFields.push('Business Phone');
@@ -294,6 +296,7 @@ const BusinessAccountModal: React.FC<BusinessAccountModalProps> = ({ isOpen, onC
       // Combine address fields into single address string (only include non-empty fields)
       const businessAddressParts = [];
       if (formData.businessStreetAddress?.trim()) businessAddressParts.push(formData.businessStreetAddress.trim());
+      if (formData.businessBarangay?.trim()) businessAddressParts.push(formData.businessBarangay.trim());
       if (formData.businessCity?.trim()) businessAddressParts.push(formData.businessCity.trim());
       if (formData.businessProvince?.trim()) businessAddressParts.push(formData.businessProvince.trim());
       if (formData.businessPostalCode?.trim()) businessAddressParts.push(formData.businessPostalCode.trim());
@@ -477,7 +480,17 @@ const BusinessAccountModal: React.FC<BusinessAccountModalProps> = ({ isOpen, onC
                     required
                     size="lg"
                   />
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <Input
+                      label="Barangay"
+                      id="businessBarangay"
+                      name="businessBarangay"
+                      value={formData.businessBarangay}
+                      onChange={handleChange}
+                      placeholder="Barangay 1"
+                      required
+                      size="lg"
+                    />
                     <Input
                       label="City/Municipality"
                       id="businessCity"
