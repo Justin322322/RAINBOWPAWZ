@@ -161,6 +161,8 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
     petName?: string;
     petType?: string;
     petWeight?: string;
+    petDob?: string;
+    petDod?: string;
     selectedDate?: string;
     selectedTimeSlot?: string;
     deliveryAddress?: string;
@@ -345,6 +347,46 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
       return false;
     }
     return true;
+  };
+
+  // Validate pet dates: birth not in future; passing not in future; passing >= birth
+  const validatePetDates = () => {
+    let ok = true;
+    const today = new Date();
+    const todayStr = today.toISOString().slice(0, 10);
+
+    // Clear previous errors first
+    setValidationErrors(prev => ({ ...prev, petDob: undefined, petDod: undefined }));
+
+    const addError = (key: 'petDob' | 'petDod', message: string) => {
+      ok = false;
+      setValidationErrors(prev => ({ ...prev, [key]: message }));
+    };
+
+    const isFuture = (ds: string) => {
+      if (!ds) return false;
+      return ds > todayStr;
+    };
+
+    if (petDob) {
+      if (isFuture(petDob)) {
+        addError('petDob', 'Date of Birth cannot be in the future');
+      }
+    }
+
+    if (petDod) {
+      if (isFuture(petDod)) {
+        addError('petDod', 'Date of Passing cannot be in the future');
+      }
+    }
+
+    if (petDob && petDod) {
+      if (petDod < petDob) {
+        addError('petDod', 'Date of Passing cannot be before Date of Birth');
+      }
+    }
+
+    return ok;
   };
 
   // Validate date selection
@@ -729,9 +771,10 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
     const isDateValid = validateDateSelection();
     const isTimeSlotValid = validateTimeSlotSelection();
     const isDeliveryAddressValid = validateDeliveryAddress();
+    const arePetDatesValid = validatePetDates();
 
     // Check if all validations passed
-    if (!isPetNameValid || !isPetTypeValid || !isPetWeightValid || !isDateValid || !isTimeSlotValid || !isDeliveryAddressValid) {
+    if (!isPetNameValid || !isPetTypeValid || !isPetWeightValid || !isDateValid || !isTimeSlotValid || !isDeliveryAddressValid || !arePetDatesValid) {
       // Scroll to the first error field
       const firstErrorField = document.querySelector('.error-field');
       if (firstErrorField) {
@@ -1340,30 +1383,45 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
                             </select>
                           </div>
 
-                          <div>
+                          <div className={validationErrors.petDob && validationErrors.formSubmitted ? 'error-field' : ''}>
                             <label className="block text-sm font-medium text-gray-700 mb-2">
                               Date of Birth
                             </label>
                             <input
                               type="date"
                               value={petDob}
-                              onChange={(e) => setPetDob(e.target.value)}
+                              onChange={(e) => {
+                                setPetDob(e.target.value);
+                                setValidationErrors(prev => ({ ...prev, petDob: undefined }));
+                              }}
                               className="w-full p-3 border border-gray-300 rounded-md focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)]"
+                              max={new Date().toISOString().slice(0, 10)}
                             />
+                            {validationErrors.petDob && validationErrors.formSubmitted && (
+                              <p className="mt-1 text-sm text-red-600">{validationErrors.petDob}</p>
+                            )}
                           </div>
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                          <div>
+                          <div className={validationErrors.petDod && validationErrors.formSubmitted ? 'error-field' : ''}>
                             <label className="block text-sm font-medium text-gray-700 mb-2">
                               Date of Passing <span className="text-gray-500 text-xs">(optional)</span>
                             </label>
                             <input
                               type="date"
                               value={petDod}
-                              onChange={(e) => setPetDod(e.target.value)}
+                              onChange={(e) => {
+                                setPetDod(e.target.value);
+                                setValidationErrors(prev => ({ ...prev, petDod: undefined }));
+                              }}
                               className="w-full p-3 border border-gray-300 rounded-md focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)]"
+                              min={petDob || undefined}
+                              max={new Date().toISOString().slice(0, 10)}
                             />
+                            {validationErrors.petDod && validationErrors.formSubmitted && (
+                              <p className="mt-1 text-sm text-red-600">{validationErrors.petDod}</p>
+                            )}
                           </div>
                           <div>
                             <label className="block text-sm font-medium text-gray-700 mb-2">
