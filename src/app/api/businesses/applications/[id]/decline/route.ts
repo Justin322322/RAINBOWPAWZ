@@ -119,9 +119,18 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
       );
     }
 
-    // Validate and sanitize requiredDocuments if provided
+    // Validate and sanitize requiredDocuments only when requesting documents
     let sanitizedRequiredDocuments: string[] | undefined;
-    if (requiredDocuments) {
+    if (requestDocuments) {
+      if (!requiredDocuments || !Array.isArray(requiredDocuments) || requiredDocuments.length === 0) {
+        return NextResponse.json(
+          {
+            message: 'Please select at least one required document when requesting documents.',
+            allowedDocuments: Array.from(ALLOWED_DOCUMENT_TYPES)
+          },
+          { status: 400 }
+        );
+      }
       const validationResult = validateAndSanitizeRequiredDocuments(requiredDocuments);
       if (validationResult === null) {
         return NextResponse.json(

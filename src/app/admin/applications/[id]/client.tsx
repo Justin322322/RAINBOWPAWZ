@@ -361,11 +361,11 @@ function ApplicationDetailContent({ id }: ApplicationDetailContentProps) {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          note,
-          requestDocuments,
-          requiredDocuments: requiredDocuments || [],
-        }),
+        body: JSON.stringify(
+          requestDocuments
+            ? { note, requestDocuments, requiredDocuments: requiredDocuments || [] }
+            : { note, requestDocuments }
+        ),
       });
 
       if (response.ok) {
