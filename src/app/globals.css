@@ -110,17 +110,6 @@
     }
   }
 
-  /* Report page layout helpers */
-  .report-card {
-    border: 1px solid var(--border-light);
-    border-radius: 0.75rem;
-    background: white;
-    padding: 1.25rem;
-  }
-  @media (min-width: 768px) {
-    .report-card { padding: 1.5rem; }
-  }
-
   /* Dashboard typography override: force sans-serif for headings inside dashboards */
   .dashboard-typography h1,
   .dashboard-typography h2,

@@ -293,8 +293,8 @@ ${reportData.topServices.map((service: any, index: number) =>
 
             {/* Removed headline metric tiles for a cleaner report layout */}
 
-            {/* Refunds Section: compact summary + line chart */}
-            <div className="report-card shadow-md mb-8">
+            {/* Refunds Section: compact cards + line chart */}
+            <div className="bg-white rounded-xl shadow-md border border-gray-100 p-6 mb-8">
                 <div className="flex items-center justify-between mb-4">
                     <h2 className="text-lg font-medium text-gray-800">Refunds Overview</h2>
                     {!loading && (
@@ -316,60 +316,44 @@ ${reportData.topServices.map((service: any, index: number) =>
                 )}
             </div>
 
-            {/* Revenue Overview (primary focus) */}
-            <div className="report-card shadow-md mb-10">
-                <div className="flex items-center justify-between">
-                    <div>
-                      <h2 className="text-xl font-semibold text-gray-900">Revenue Overview</h2>
-                      <p className="text-sm text-gray-500">Monthly revenue trend and quick summary</p>
-                    </div>
+            {/* Revenue focus chart */}
+            <div className="bg-white rounded-xl shadow-md border border-gray-100 p-6 mb-8">
+                <div className="flex items-center justify-between mb-2">
+                    <h2 className="text-lg font-medium text-gray-800">Revenue Trend</h2>
                     {!loading && (
                       <span className="text-sm text-gray-500">Monthly</span>
                     )}
                 </div>
-                {!loading && (
-                  <div className="mt-4 flex flex-wrap gap-6 text-sm text-gray-600">
-                    <div className="flex items-center gap-2"><CurrencyDollarIcon className="h-4 w-4 text-gray-500" /><span>Total Revenue:</span><strong className="text-gray-900">₱{reportData.stats.totalRevenue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong></div>
-                    <div className="flex items-center gap-2"><ChartBarIcon className="h-4 w-4 text-gray-500" /><span>Avg / Booking:</span><strong className="text-gray-900">₱{reportData.stats.averageRevenue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong></div>
-                  </div>
-                )}
-                <div className="mt-6">
-                  {loading ? (
-                    <StatsCardSkeleton count={1} />
-                  ) : (
-                    <RefundsLineChart
-                      data={
-                        Array.isArray((reportData as any).monthlyData)
-                          ? (reportData as any).monthlyData
-                          : ((reportData as any).refundMonthlyData || [])
-                      }
-                      height={300}
-                    />
-                  )}
-                </div>
-            </div>
-
-            {/* Secondary insights */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-12">
-              <div className="report-card shadow-md">
-                <h2 className="text-lg font-medium text-gray-800 mb-4">Bookings Status Mix</h2>
                 {loading ? (
                   <StatsCardSkeleton count={1} />
                 ) : (
-                  <StatusPieChart
-                    data={[
-                      { name: 'Completed', value: reportData.stats.completedBookings || 0 },
-                      { name: 'Pending', value: reportData.stats.pendingBookings || 0 },
-                      { name: 'Cancelled', value: reportData.stats.cancelledBookings || 0 }
-                    ]}
+                  <RefundsLineChart
+                    // reuse line chart component for revenue series
+                    data={
+                      Array.isArray((reportData as any).monthlyData)
+                        ? (reportData as any).monthlyData
+                        : ((reportData as any).refundMonthlyData || [])
+                    }
                     height={260}
                   />
                 )}
-              </div>
-              <div className="report-card shadow-md">
-                <h2 className="text-lg font-medium text-gray-800 mb-4">Notes</h2>
-                <p className="text-sm text-gray-600">This section is reserved for additional insights (e.g., top services or seasonal trends). We can wire these once the API exposes the series.</p>
-              </div>
+            </div>
+
+            {/* Bookings distribution */}
+            <div className="bg-white rounded-xl shadow-md border border-gray-100 p-6 mb-8">
+              <h2 className="text-lg font-medium text-gray-800 mb-4">Bookings Status Mix</h2>
+              {loading ? (
+                <StatsCardSkeleton count={1} />
+              ) : (
+                <StatusPieChart
+                  data={[
+                    { name: 'Completed', value: reportData.stats.completedBookings || 0 },
+                    { name: 'Pending', value: reportData.stats.pendingBookings || 0 },
+                    { name: 'Cancelled', value: reportData.stats.cancelledBookings || 0 }
+                  ]}
+                  height={260}
+                />
+              )}
             </div>
 
             {/* Top Services */}
