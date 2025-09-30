@@ -1339,6 +1339,8 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
                                 setTimeout(() => {
                                   setCalculatedPrice(calculateTotalPrice());
                                 }, 0);
+                            // Clear validation error once a valid number is entered
+                            setValidationErrors(prev => ({ ...prev, petWeight: undefined }));
                               }
                             }}
                             onBlur={() => {
@@ -1858,12 +1860,10 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
                       const tiers = Array.isArray(bookingData.package.sizePricing) ? bookingData.package.sizePricing : [];
                       const overage = Number(bookingData.package.overageFeePerKg || 0);
                       
-                      // Find the appropriate tier
-                      const tier = tiers.find((t: any) => {
-                        const min = Number(t.weightRangeMin);
-                        const max = t.weightRangeMax == null ? Infinity : Number(t.weightRangeMax);
-                        return weight >= min && weight <= max;
-                      });
+                      // Find the applicable tier using the same selection as total price:
+                      // select the highest tier whose min is <= weight
+                      const sortedByMin = [...tiers].sort((a: any, b: any) => Number(a.weightRangeMin) - Number(b.weightRangeMin));
+                      const tier = sortedByMin.filter((t: any) => weight >= Number(t.weightRangeMin)).pop();
                       
                       let basePrice = 0;
                       let overagePrice = 0;
@@ -1891,15 +1891,15 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
                           else if (min <= 40) _tierName = 'Large';
                           else _tierName = 'Extra Large';
                         }
+                        tierName = _tierName;
                         const tierMax = tier.weightRangeMax == null ? Infinity : Number(tier.weightRangeMax);
                         if (weight > tierMax && isFinite(tierMax) && overage > 0) {
                           overagePrice = (weight - tierMax) * overage;
                           overageWeight = weight - tierMax;
                         }
                       } else {
-                        // Use the highest tier as base and calculate overage
-                        const sorted = [...tiers].sort((a: any, b: any) => Number(a.weightRangeMin) - Number(b.weightRangeMin));
-                        const last = sorted[sorted.length - 1];
+                        // Fallback: highest tier
+                        const last = sortedByMin[sortedByMin.length - 1];
                         if (last) {
                           basePrice = Number(last.price) || 0;
                           // Generate proper tier name for highest tier
@@ -1921,6 +1921,7 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
                             else if (min <= 40) _tierName = 'Large';
                             else _tierName = 'Extra Large';
                           }
+                          tierName = _tierName;
                           const lastMax = last.weightRangeMax == null ? Infinity : Number(last.weightRangeMax);
                           if (weight > lastMax && isFinite(lastMax) && overage > 0) {
                             overagePrice = (weight - lastMax) * overage;
