@@ -470,17 +470,18 @@ const BusinessAccountModal: React.FC<BusinessAccountModalProps> = ({ isOpen, onC
               <div className="mt-6">
                 <h4 className="text-sm font-medium text-gray-700 mb-4">Business Address</h4>
                 <div className="space-y-4">
-                  <Input
-                    label="Street Address"
-                    id="businessStreetAddress"
-                    name="businessStreetAddress"
-                    value={formData.businessStreetAddress}
-                    onChange={handleChange}
-                    placeholder="123 Business Street"
-                    required
-                    size="lg"
-                  />
-                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <Input
+                      label="Street Address"
+                      id="businessStreetAddress"
+                      name="businessStreetAddress"
+                      value={formData.businessStreetAddress}
+                      onChange={handleChange}
+                      placeholder="123 Business Street"
+                      required
+                      size="lg"
+                      hideOptionalHint
+                    />
                     <Input
                       label="Barangay"
                       id="businessBarangay"
@@ -490,7 +491,10 @@ const BusinessAccountModal: React.FC<BusinessAccountModalProps> = ({ isOpen, onC
                       placeholder="Barangay 1"
                       required
                       size="lg"
+                      hideOptionalHint
                     />
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <Input
                       label="City/Municipality"
                       id="businessCity"
@@ -500,6 +504,7 @@ const BusinessAccountModal: React.FC<BusinessAccountModalProps> = ({ isOpen, onC
                       placeholder="Balanga City"
                       required
                       size="lg"
+                      hideOptionalHint
                     />
                     <Input
                       label="Province"
@@ -510,6 +515,7 @@ const BusinessAccountModal: React.FC<BusinessAccountModalProps> = ({ isOpen, onC
                       placeholder="Bataan"
                       required
                       size="lg"
+                      hideOptionalHint
                     />
                     <Input
                       label="Postal Code"
@@ -519,6 +525,7 @@ const BusinessAccountModal: React.FC<BusinessAccountModalProps> = ({ isOpen, onC
                       onChange={handleChange}
                       placeholder="2100"
                       size="lg"
+                      hideOptionalHint
                     />
                   </div>
                 </div>

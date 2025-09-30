@@ -372,17 +372,18 @@ const PersonalAccountModal: React.FC<PersonalAccountModalProps> = ({ isOpen, onC
             <div>
               <h4 className="text-sm font-medium text-gray-700 mb-4">Home Address</h4>
               <div className="space-y-4">
-                <Input
-                  label="Street Address"
-                  id="streetAddress"
-                  name="streetAddress"
-                  value={formData.streetAddress}
-                  onChange={handleChange}
-                  placeholder="123 Main Street"
-                  required
-                  size="lg"
-                />
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <Input
+                    label="Street Address"
+                    id="streetAddress"
+                    name="streetAddress"
+                    value={formData.streetAddress}
+                    onChange={handleChange}
+                    placeholder="123 Main Street"
+                    required
+                    size="lg"
+                    hideOptionalHint
+                  />
                   <Input
                     label="Barangay"
                     id="barangay"
@@ -392,7 +393,10 @@ const PersonalAccountModal: React.FC<PersonalAccountModalProps> = ({ isOpen, onC
                     placeholder="Barangay 1"
                     required
                     size="lg"
+                    hideOptionalHint
                   />
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <Input
                     label="City/Municipality"
                     id="city"
@@ -402,6 +406,7 @@ const PersonalAccountModal: React.FC<PersonalAccountModalProps> = ({ isOpen, onC
                     placeholder="Balanga City"
                     required
                     size="lg"
+                    hideOptionalHint
                   />
                   <Input
                     label="Province"
@@ -412,6 +417,7 @@ const PersonalAccountModal: React.FC<PersonalAccountModalProps> = ({ isOpen, onC
                     placeholder="Bataan"
                     required
                     size="lg"
+                    hideOptionalHint
                   />
                   <Input
                     label="Postal Code"
@@ -421,6 +427,7 @@ const PersonalAccountModal: React.FC<PersonalAccountModalProps> = ({ isOpen, onC
                     onChange={handleChange}
                     placeholder="2100"
                     size="lg"
+                    hideOptionalHint
                   />
                 </div>
               </div>

@@ -115,6 +115,7 @@ function CremationProfilePage({ userData }: { userData: any }) {
     phone: '',
     address: '',
     streetAddress: '',
+    barangay: '',
     city: '',
     province: '',
     postalCode: ''
@@ -280,14 +281,15 @@ function CremationProfilePage({ userData }: { userData: any }) {
 
       // Helper to parse a combined address string to parts
       const parseAddress = (addr: string | null | undefined) => {
-        const result = { streetAddress: '', city: '', province: '', postalCode: '' };
+        const result = { streetAddress: '', barangay: '', city: '', province: '', postalCode: '' };
         if (!addr) return result;
         const parts = addr.split(',').map(p => p.trim()).filter(Boolean);
         if (parts.length > 0) result.streetAddress = parts[0] || '';
-        if (parts.length > 1) result.city = parts[1] || '';
-        if (parts.length > 2) result.province = parts[2] || '';
-        if (parts.length > 3) {
-          const maybePostal = parts[3].replace(/[^0-9]/g, '');
+        if (parts.length > 1) result.barangay = parts[1] || '';
+        if (parts.length > 2) result.city = parts[2] || '';
+        if (parts.length > 3) result.province = parts[3] || '';
+        if (parts.length > 4) {
+          const maybePostal = parts[4].replace(/[^0-9]/g, '');
           result.postalCode = maybePostal || '';
         }
         return result;
@@ -305,6 +307,7 @@ function CremationProfilePage({ userData }: { userData: any }) {
           phone: data.profile.business_phone || data.profile.phone || '',
           address: combinedAddr,
           streetAddress: parsed.streetAddress,
+          barangay: parsed.barangay,
           city: parsed.city,
           province: parsed.province,
           postalCode: parsed.postalCode
@@ -435,6 +438,7 @@ function CremationProfilePage({ userData }: { userData: any }) {
       // Combine segmented address fields (fallback to single street if others empty)
       const combinedAddress = [
         (contactInfo.streetAddress || contactInfo.address || '').trim(),
+        contactInfo.barangay?.trim(),
         contactInfo.city?.trim(),
         contactInfo.province?.trim(),
         contactInfo.postalCode?.trim()
@@ -491,6 +495,7 @@ function CremationProfilePage({ userData }: { userData: any }) {
                 const parts = addr.split(',').map((p:string) => p.trim());
                 const segment = {
                   streetAddress: parts[0] || '',
+                  barangay: '',
                   city: parts[1] || '',
                   province: parts[2] || '',
                   postalCode: (parts[3] || '').replace(/[^0-9]/g,'')
@@ -499,6 +504,7 @@ function CremationProfilePage({ userData }: { userData: any }) {
                   ...prev, 
                   address: addr,
                   streetAddress: segment.streetAddress,
+                  barangay: segment.barangay,
                   city: segment.city,
                   province: segment.province,
                   postalCode: segment.postalCode
@@ -830,26 +836,37 @@ function CremationProfilePage({ userData }: { userData: any }) {
                                         <ProfileInput label="Email Address" type="email" value={contactInfo.email} onChange={(value) => startContactTransition(() => setContactInfo(prev => ({ ...prev, email: value })))} required icon={<EnvelopeIcon className="h-5 w-5" />} />
                                         <PhilippinePhoneInput id="phone" name="phone" label="Phone Number" value={contactInfo.phone} onChange={(value) => startContactTransition(() => setContactInfo(prev => ({ ...prev, phone: value })))} />
                                         <div className="space-y-4">
-                                          <div>
-                                            <label className="block text-sm font-medium text-gray-700">Street Address</label>
+                                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            <div>
+                                              <label className="block text-sm font-medium text-gray-700">Street Address</label>
+                                              <Input
+                                                id="streetAddress"
+                                                name="streetAddress"
+                                                value={contactInfo.streetAddress}
+                                                onChange={(e) => setContactInfo(prev => ({ ...prev, streetAddress: e.target.value }))}
+                                                placeholder="123 Main Street"
+                                                size="lg"
+                                                autoComplete="street-address"
+                                                rightIcon={
+                                                  <button
+                                                    type="button"
+                                                    onClick={(e) => { e.preventDefault(); handleGetLocation(); }}
+                                                    disabled={isGettingLocation}
+                                                    className="text-sm font-medium text-[var(--primary-green)] hover:text-[var(--primary-green-hover)] disabled:text-gray-400 disabled:cursor-not-allowed"
+                                                  >
+                                                    {isGettingLocation ? 'Detecting...' : 'Use My Location'}
+                                                  </button>
+                                                }
+                                              />
+                                            </div>
                                             <Input
-                                              id="streetAddress"
-                                              name="streetAddress"
-                                              value={contactInfo.streetAddress}
-                                              onChange={(e) => setContactInfo(prev => ({ ...prev, streetAddress: e.target.value }))}
-                                              placeholder="123 Main Street"
+                                              id="barangay"
+                                              name="barangay"
+                                              label={undefined}
+                                              placeholder="Barangay"
+                                              value={contactInfo.barangay}
+                                              onChange={(e) => setContactInfo(prev => ({ ...prev, barangay: e.target.value }))}
                                               size="lg"
-                                              autoComplete="street-address"
-                                              rightIcon={
-                                                <button
-                                                  type="button"
-                                                  onClick={(e) => { e.preventDefault(); handleGetLocation(); }}
-                                                  disabled={isGettingLocation}
-                                                  className="text-sm font-medium text-[var(--primary-green)] hover:text-[var(--primary-green-hover)] disabled:text-gray-400 disabled:cursor-not-allowed"
-                                                >
-                                                  {isGettingLocation ? 'Detecting...' : 'Use My Location'}
-                                                </button>
-                                              }
                                             />
                                           </div>
                                           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -875,7 +892,7 @@ function CremationProfilePage({ userData }: { userData: any }) {
                                               id="postalCode"
                                               name="postalCode"
                                               label={undefined}
-                                              placeholder="Postal Code (optional)"
+                                              placeholder="Postal Code"
                                               value={contactInfo.postalCode}
                                               onChange={(e) => setContactInfo(prev => ({ ...prev, postalCode: e.target.value }))}
                                               size="lg"

@@ -44,6 +44,7 @@ interface InputProps
   labelClassName?: string;
   errorClassName?: string;
   required?: boolean;
+  hideOptionalHint?: boolean;
 }
 
 const Input = forwardRef<HTMLInputElement, InputProps>(
@@ -61,6 +62,7 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
     labelClassName,
     errorClassName,
     required,
+    hideOptionalHint,
     ...props 
   }, ref) => {
     // If there's an error, set the variant to error
@@ -76,7 +78,7 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
               labelClassName
             )}
           >
-            {label} {!required && <span className="text-gray-500 text-xs">(optional)</span>}
+            {label} {!required && !hideOptionalHint && <span className="text-gray-500 text-xs">(optional)</span>}
           </label>
         )}
         
