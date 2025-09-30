@@ -141,7 +141,7 @@ function CremationReportsPage({ userData }: { userData: any }) {
                         }
                     };
                 }
-            } catch (_) {
+            } catch {
                 // If refund fetch fails, keep server data as-is
             }
 
