@@ -13,7 +13,7 @@ import {
     ClockIcon,
     ArrowPathIcon
 } from '@heroicons/react/24/outline';
-import { RefundsLineChart, StatusPieChart, type LinePoint } from '@/components/ui/Chart';
+import { RefundsLineChart, StatusPieChart, BookingsBarChart, type LinePoint } from '@/components/ui/Chart';
 import { StatsCardSkeleton } from '@/app/cremation/components/LoadingComponents';
 
 function CremationReportsPage({ userData }: { userData: any }) {
@@ -291,29 +291,6 @@ ${reportData.topServices.map((service: any, index: number) =>
 
             {/* Removed headline metric tiles for a cleaner report layout */}
 
-            {/* Refunds Section: compact summary + line chart */}
-            <div className="bg-white rounded-xl shadow-md border border-gray-100 p-6 mb-8">
-                <div className="flex items-center justify-between mb-4">
-                    <h2 className="text-lg font-medium text-gray-800">Refunds Overview</h2>
-                    {!loading && (
-                        <span className="text-sm text-gray-500">Last 6 months</span>
-                    )}
-                </div>
-                {!loading && (
-                  <div className="flex flex-wrap gap-6 text-sm text-gray-600 mb-2">
-                    <div className="flex items-center gap-2"><XCircleIcon className="h-4 w-4 text-gray-500" /><span>Total Refunds:</span><strong className="text-gray-900">{reportData.stats.totalRefunds}</strong></div>
-                    <div className="flex items-center gap-2"><CurrencyDollarIcon className="h-4 w-4 text-gray-500" /><span>Total Refunded:</span><strong className="text-gray-900">₱{reportData.stats.totalRefunded.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong></div>
-                    <div className="flex items-center gap-2"><ClockIcon className="h-4 w-4 text-gray-500" /><span>Pending:</span><strong className="text-gray-900">{reportData.stats.pendingRefunds}</strong></div>
-                    <div className="flex items-center gap-2"><ChartBarIcon className="h-4 w-4 text-gray-500" /><span>Refund Rate:</span><strong className="text-gray-900">{reportData.stats.refundRate}%</strong></div>
-                  </div>
-                )}
-                {!loading && (
-                    <div className="mt-6">
-                        <RefundsLineChart data={(reportData.monthlyData as any) || []} height={220} />
-                    </div>
-                )}
-            </div>
-
             {/* Revenue Overview (primary focus) */}
             <div className="bg-white rounded-xl shadow-md border border-gray-100 p-6 mb-8">
               <div className="flex items-center justify-between mb-2">
@@ -332,7 +309,7 @@ ${reportData.topServices.map((service: any, index: number) =>
                 {loading ? (
                   <StatsCardSkeleton count={1} />
                 ) : (
-                  <RefundsLineChart
+                  <BookingsBarChart
                     data={(reportData.monthlyData as any) || []}
                     height={300}
                   />
@@ -340,8 +317,9 @@ ${reportData.topServices.map((service: any, index: number) =>
               </div>
             </div>
 
-            {/* Bookings distribution */}
-            <div className="bg-white rounded-xl shadow-md border border-gray-100 p-6 mb-8">
+            {/* Secondary row: Bookings (pie) + Refunds Overview side-by-side */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+              <div className="bg-white rounded-xl shadow-md border border-gray-100 p-6">
                 <h2 className="text-lg font-medium text-gray-800 mb-4">Bookings Status Mix</h2>
                 {loading ? (
                   <StatsCardSkeleton count={1} />
@@ -355,6 +333,28 @@ ${reportData.topServices.map((service: any, index: number) =>
                     height={260}
                   />
                 )}
+              </div>
+              <div className="bg-white rounded-xl shadow-md border border-gray-100 p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-lg font-medium text-gray-800">Refunds Overview</h2>
+                  {!loading && (
+                    <span className="text-sm text-gray-500">Last 6 months</span>
+                  )}
+                </div>
+                {!loading && (
+                  <div className="flex flex-wrap gap-6 text-sm text-gray-600 mb-2">
+                    <div className="flex items-center gap-2"><XCircleIcon className="h-4 w-4 text-gray-500" /><span>Total Refunds:</span><strong className="text-gray-900">{reportData.stats.totalRefunds}</strong></div>
+                    <div className="flex items-center gap-2"><CurrencyDollarIcon className="h-4 w-4 text-gray-500" /><span>Total Refunded:</span><strong className="text-gray-900">₱{reportData.stats.totalRefunded.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong></div>
+                    <div className="flex items-center gap-2"><ClockIcon className="h-4 w-4 text-gray-500" /><span>Pending:</span><strong className="text-gray-900">{reportData.stats.pendingRefunds}</strong></div>
+                    <div className="flex items-center gap-2"><ChartBarIcon className="h-4 w-4 text-gray-500" /><span>Refund Rate:</span><strong className="text-gray-900">{reportData.stats.refundRate}%</strong></div>
+                  </div>
+                )}
+                {!loading && (
+                  <div className="mt-6">
+                    <RefundsLineChart data={(reportData.monthlyData as any) || []} height={220} />
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* Top Services */}
