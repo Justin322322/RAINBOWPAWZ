@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import CremationDashboardLayout from '@/components/navigation/CremationDashboardLayout';
 import withBusinessVerification from '@/components/withBusinessVerification';
 import { useToast } from '@/context/ToastContext';
-import MetricTile from '@/components/ui/MetricTile';
+// No metric tiles on reports; focus on charts and tables
 import {
     ChartBarIcon,
     ArrowDownTrayIcon,
@@ -15,7 +15,7 @@ import {
     ClockIcon,
     ArrowPathIcon
 } from '@heroicons/react/24/outline';
-import { RefundsLineChart, BookingsBarChart, StatusPieChart, type LinePoint } from '@/components/ui/Chart';
+import { RefundsLineChart, StatusPieChart, type LinePoint } from '@/components/ui/Chart';
 import { StatsCardSkeleton } from '@/app/cremation/components/LoadingComponents';
 
 function CremationReportsPage({ userData }: { userData: any }) {
@@ -291,19 +291,7 @@ ${reportData.topServices.map((service: any, index: number) =>
                 </div>
             </div>
 
-            {/* Headline metrics */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-8">
-                {loading ? (
-                    <StatsCardSkeleton count={4} />
-                ) : (
-                    <>
-                        <MetricTile icon={<CalendarDaysIcon className="h-5 w-5" />} label="Total Bookings" value={reportData.stats.totalBookings} />
-                        <MetricTile icon={<CheckCircleIcon className="h-5 w-5" />} label="Completed" value={reportData.stats.completedBookings} />
-                        <MetricTile icon={<ClockIcon className="h-5 w-5" />} label="Pending" value={reportData.stats.pendingBookings} />
-                        <MetricTile icon={<CurrencyDollarIcon className="h-5 w-5" />} label="Total Revenue" value={`₱${reportData.stats.totalRevenue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} />
-                    </>
-                )}
-            </div>
+            {/* Removed headline metric tiles for a cleaner report layout */}
 
             {/* Refunds Section: compact cards + line chart */}
             <div className="bg-white rounded-xl shadow-md border border-gray-100 p-6 mb-8">
@@ -313,18 +301,14 @@ ${reportData.topServices.map((service: any, index: number) =>
                         <span className="text-sm text-gray-500">Last 6 months</span>
                     )}
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
-                    {loading ? (
-                        <StatsCardSkeleton count={4} />
-                    ) : (
-                        <>
-                            <MetricTile icon={<XCircleIcon className="h-5 w-5" />} label="Total Refunds" value={reportData.stats.totalRefunds} />
-                            <MetricTile icon={<CurrencyDollarIcon className="h-5 w-5" />} label="Total Refunded" value={`₱${reportData.stats.totalRefunded.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} />
-                            <MetricTile icon={<ClockIcon className="h-5 w-5" />} label="Pending Refunds" value={reportData.stats.pendingRefunds} />
-                            <MetricTile icon={<ChartBarIcon className="h-5 w-5" />} label="Refund Rate" value={`${reportData.stats.refundRate}%`} />
-                        </>
-                    )}
-                </div>
+                {!loading && (
+                  <div className="flex flex-wrap gap-6 text-sm text-gray-600 mb-2">
+                    <div className="flex items-center gap-2"><XCircleIcon className="h-4 w-4 text-gray-500" /><span>Total Refunds:</span><strong className="text-gray-900">{reportData.stats.totalRefunds}</strong></div>
+                    <div className="flex items-center gap-2"><CurrencyDollarIcon className="h-4 w-4 text-gray-500" /><span>Total Refunded:</span><strong className="text-gray-900">₱{reportData.stats.totalRefunded.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong></div>
+                    <div className="flex items-center gap-2"><ClockIcon className="h-4 w-4 text-gray-500" /><span>Pending:</span><strong className="text-gray-900">{reportData.stats.pendingRefunds}</strong></div>
+                    <div className="flex items-center gap-2"><ChartBarIcon className="h-4 w-4 text-gray-500" /><span>Refund Rate:</span><strong className="text-gray-900">{reportData.stats.refundRate}%</strong></div>
+                  </div>
+                )}
                 {!loading && (
                     <div className="mt-6">
                         <RefundsLineChart data={(reportData.monthlyData as any) || []} height={220} />
@@ -332,34 +316,21 @@ ${reportData.topServices.map((service: any, index: number) =>
                 )}
             </div>
 
-            {/* Bookings distribution + revenue per booking */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-                {!loading && (
-                    <>
-                        <div className="bg-white rounded-xl shadow-md border border-gray-100 p-6">
-                            <h2 className="text-lg font-medium text-gray-800 mb-4">Bookings Status Mix</h2>
-                            <StatusPieChart
-                                data={[
-                                    { name: 'Completed', value: reportData.stats.completedBookings || 0 },
-                                    { name: 'Pending', value: reportData.stats.pendingBookings || 0 },
-                                    { name: 'Cancelled', value: reportData.stats.cancelledBookings || 0 }
-                                ]}
-                                height={260}
-                            />
-                        </div>
-                        <div className="bg-white rounded-xl shadow-md border border-gray-100 p-6">
-                            <h2 className="text-lg font-medium text-gray-800 mb-2">Average Revenue per Booking</h2>
-                            <p className="text-3xl font-semibold text-[var(--primary-green)]">₱{reportData.stats.averageRevenue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
-                            <div className="mt-4">
-                                <BookingsBarChart
-                                    data={(reportData.monthlyData as any)?.map((d: any) => ({ label: d.label, value: d.value })) || []}
-                                    height={220}
-                                />
-                            </div>
-                        </div>
-                    </>
+            {/* Bookings distribution */}
+            <div className="bg-white rounded-xl shadow-md border border-gray-100 p-6 mb-8">
+                <h2 className="text-lg font-medium text-gray-800 mb-4">Bookings Status Mix</h2>
+                {loading ? (
+                  <StatsCardSkeleton count={1} />
+                ) : (
+                  <StatusPieChart
+                    data={[
+                      { name: 'Completed', value: reportData.stats.completedBookings || 0 },
+                      { name: 'Pending', value: reportData.stats.pendingBookings || 0 },
+                      { name: 'Cancelled', value: reportData.stats.cancelledBookings || 0 }
+                    ]}
+                    height={260}
+                  />
                 )}
-                {loading && <StatsCardSkeleton count={2} />}
             </div>
 
             {/* Top Services */}
