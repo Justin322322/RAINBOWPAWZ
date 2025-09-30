@@ -15,6 +15,7 @@ import {
     ClockIcon,
     ArrowPathIcon
 } from '@heroicons/react/24/outline';
+import { RefundsLineChart, type LinePoint } from '@/components/ui/Chart';
 import { StatsCardSkeleton } from '@/app/cremation/components/LoadingComponents';
 
 function CremationReportsPage({ userData }: { userData: any }) {
@@ -130,6 +131,26 @@ function CremationReportsPage({ userData }: { userData: any }) {
                     const totalBookings = merged?.stats?.totalBookings ?? merged?.stats?.total_bookings ?? merged?.detailedStats?.totalBookings ?? 0;
                     const refundRate = totalBookings > 0 ? ((totalRefunds / totalBookings) * 100) : 0;
 
+                    // Build simple last 6 month refunded amounts series
+                    const seriesMap = new Map<string, number>();
+                    for (let i = 5; i >= 0; i--) {
+                      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+                      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2,'0')}`;
+                      seriesMap.set(key, 0);
+                    }
+                    completed.forEach((r: any) => {
+                      const d = new Date(r.completed_at || r.processed_at || r.initiated_at);
+                      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2,'0')}`;
+                      if (seriesMap.has(key)) {
+                        seriesMap.set(key, (seriesMap.get(key) || 0) + (Number(r.amount) || 0));
+                      }
+                    });
+                    const refundSeries: LinePoint[] = Array.from(seriesMap.entries()).map(([key, value]) => {
+                      const [, month] = key.split('-');
+                      const label = new Date(2000, Number(month) - 1, 1).toLocaleString('en-US', { month: 'short' });
+                      return { label, value };
+                    });
+
                     merged = {
                         ...merged,
                         stats: {
@@ -138,7 +159,8 @@ function CremationReportsPage({ userData }: { userData: any }) {
                             totalRefunded,
                             pendingRefunds: pending.length,
                             refundRate: refundRate.toFixed(2)
-                        }
+                        },
+                        monthlyData: refundSeries
                     };
                 }
             } catch {
@@ -303,37 +325,30 @@ ${reportData.topServices.map((service: any, index: number) =>
                 )}
             </div>
 
-            {/* Refund Stats */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-                {loading ? (
-                    <StatsCardSkeleton count={4} />
-                ) : (
-                    <>
-                        <StatCard
-                            icon={<XCircleIcon />}
-                            label="Total Refunds"
-                            value={reportData.stats.totalRefunds.toString()}
-                            color="purple"
-                        />
-                        <StatCard
-                            icon={<CurrencyDollarIcon />}
-                            label="Total Refunded"
-                            value={`₱${reportData.stats.totalRefunded.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
-                            color="purple"
-                        />
-                        <StatCard
-                            icon={<ClockIcon />}
-                            label="Pending Refunds"
-                            value={reportData.stats.pendingRefunds.toString()}
-                            color="yellow"
-                        />
-                        <StatCard
-                            icon={<ChartBarIcon />}
-                            label="Refund Rate"
-                            value={`${reportData.stats.refundRate}%`}
-                            color="amber"
-                        />
-                    </>
+            {/* Refunds Section: compact cards + line chart */}
+            <div className="bg-white rounded-xl shadow-md border border-gray-100 p-6 mb-8">
+                <div className="flex items-center justify-between mb-4">
+                    <h2 className="text-lg font-medium text-gray-800">Refunds Overview</h2>
+                    {!loading && (
+                        <span className="text-sm text-gray-500">Last 6 months</span>
+                    )}
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                    {loading ? (
+                        <StatsCardSkeleton count={4} />
+                    ) : (
+                        <>
+                            <StatCard icon={<XCircleIcon />} label="Total Refunds" value={reportData.stats.totalRefunds.toString()} color="purple" />
+                            <StatCard icon={<CurrencyDollarIcon />} label="Total Refunded" value={`₱${reportData.stats.totalRefunded.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} color="purple" />
+                            <StatCard icon={<ClockIcon />} label="Pending Refunds" value={reportData.stats.pendingRefunds.toString()} color="yellow" />
+                            <StatCard icon={<ChartBarIcon />} label="Refund Rate" value={`${reportData.stats.refundRate}%`} color="amber" />
+                        </>
+                    )}
+                </div>
+                {!loading && (
+                    <div className="mt-6">
+                        <RefundsLineChart data={(reportData.monthlyData as any) || []} height={220} />
+                    </div>
                 )}
             </div>
 
