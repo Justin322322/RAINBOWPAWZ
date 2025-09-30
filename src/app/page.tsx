@@ -9,7 +9,7 @@ import LoginModal from '@/components/LoginModal';
 import SignupOptionModal from '@/components/SignupOptionModal';
 import PersonalAccountModal from '@/components/PersonalAccountModal';
 import BusinessAccountModal from '@/components/BusinessAccountModal';
-import { SparklesIcon, CalendarIcon, HeartIcon, HomeIcon, CheckIcon, MapPinIcon, Bars3Icon, XMarkIcon } from '@heroicons/react/24/outline';
+import { SparklesIcon, CalendarIcon, HeartIcon, CheckIcon, MapPinIcon, Bars3Icon, XMarkIcon } from '@heroicons/react/24/outline';
 
 export default function Home() {
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
