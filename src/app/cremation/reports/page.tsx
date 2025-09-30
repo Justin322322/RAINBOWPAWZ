@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import CremationDashboardLayout from '@/components/navigation/CremationDashboardLayout';
 import withBusinessVerification from '@/components/withBusinessVerification';
 import { useToast } from '@/context/ToastContext';
-import StatCard from '@/components/ui/StatCard';
+import MetricTile from '@/components/ui/MetricTile';
 import {
     ChartBarIcon,
     ArrowDownTrayIcon,
@@ -291,36 +291,16 @@ ${reportData.topServices.map((service: any, index: number) =>
                 </div>
             </div>
 
-            {/* Stats Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            {/* Headline metrics */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-8">
                 {loading ? (
                     <StatsCardSkeleton count={4} />
                 ) : (
                     <>
-                        <StatCard
-                            icon={<CalendarDaysIcon />}
-                            label="Total Bookings"
-                            value={reportData.stats.totalBookings.toString()}
-                            color="blue"
-                        />
-                        <StatCard
-                            icon={<CheckCircleIcon />}
-                            label="Completed"
-                            value={reportData.stats.completedBookings.toString()}
-                            color="green"
-                        />
-                        <StatCard
-                            icon={<ClockIcon />}
-                            label="Pending"
-                            value={reportData.stats.pendingBookings.toString()}
-                            color="yellow"
-                        />
-                        <StatCard
-                            icon={<CurrencyDollarIcon />}
-                            label="Total Revenue"
-                            value={`₱${reportData.stats.totalRevenue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
-                            color="amber"
-                        />
+                        <MetricTile icon={<CalendarDaysIcon className="h-5 w-5" />} label="Total Bookings" value={reportData.stats.totalBookings} />
+                        <MetricTile icon={<CheckCircleIcon className="h-5 w-5" />} label="Completed" value={reportData.stats.completedBookings} />
+                        <MetricTile icon={<ClockIcon className="h-5 w-5" />} label="Pending" value={reportData.stats.pendingBookings} />
+                        <MetricTile icon={<CurrencyDollarIcon className="h-5 w-5" />} label="Total Revenue" value={`₱${reportData.stats.totalRevenue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} />
                     </>
                 )}
             </div>
@@ -333,15 +313,15 @@ ${reportData.topServices.map((service: any, index: number) =>
                         <span className="text-sm text-gray-500">Last 6 months</span>
                     )}
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
                     {loading ? (
                         <StatsCardSkeleton count={4} />
                     ) : (
                         <>
-                            <StatCard icon={<XCircleIcon />} label="Total Refunds" value={reportData.stats.totalRefunds.toString()} color="purple" />
-                            <StatCard icon={<CurrencyDollarIcon />} label="Total Refunded" value={`₱${reportData.stats.totalRefunded.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} color="purple" />
-                            <StatCard icon={<ClockIcon />} label="Pending Refunds" value={reportData.stats.pendingRefunds.toString()} color="yellow" />
-                            <StatCard icon={<ChartBarIcon />} label="Refund Rate" value={`${reportData.stats.refundRate}%`} color="amber" />
+                            <MetricTile icon={<XCircleIcon className="h-5 w-5" />} label="Total Refunds" value={reportData.stats.totalRefunds} />
+                            <MetricTile icon={<CurrencyDollarIcon className="h-5 w-5" />} label="Total Refunded" value={`₱${reportData.stats.totalRefunded.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} />
+                            <MetricTile icon={<ClockIcon className="h-5 w-5" />} label="Pending Refunds" value={reportData.stats.pendingRefunds} />
+                            <MetricTile icon={<ChartBarIcon className="h-5 w-5" />} label="Refund Rate" value={`${reportData.stats.refundRate}%`} />
                         </>
                     )}
                 </div>
