@@ -1353,51 +1353,6 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
                           </div>
                         </div>
 
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Weight (kg) {(bookingData?.package?.overageFeePerKg > 0 || bookingData?.package?.pricingMode === 'by_size') && <span className="text-red-500">*</span>}
-                          </label>
-                          <input
-                            type="number"
-                            value={petWeight}
-                            onChange={(e) => {
-                              setPetWeight(e.target.value);
-                              const weight = parseFloat(e.target.value);
-
-                              // Live price feedback for size-based pricing
-                              if (!isNaN(weight) && bookingData?.package?.pricingMode === 'by_size') {
-                                // Force a re-render by updating state
-                                setTimeout(() => {
-                                  setCalculatedPrice(calculateTotalPrice());
-                                }, 0);
-                            // Clear validation error once a valid number is entered
-                            setValidationErrors(prev => ({ ...prev, petWeight: undefined }));
-                              }
-                            }}
-                            onBlur={() => {
-                              // Validate on blur if size-based pricing is enabled
-                              if (bookingData?.package?.pricingMode === 'by_size') {
-                                validatePetWeight();
-                              }
-                            }}
-                            min="0"
-                            step="0.1"
-                            className={`w-full p-3 border rounded-md focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)] ${
-                              validationErrors.petWeight ? 'border-red-500 error-field' : 'border-gray-300'
-                            }`}
-                            placeholder="Enter weight in kilograms"
-                          />
-                          {validationErrors.petWeight && (
-                            <p className="mt-1 text-sm text-red-600">{validationErrors.petWeight}</p>
-                          )}
-                          {bookingData?.package?.pricingMode === 'by_size' && (
-                            <p className="mt-2 text-sm text-gray-600">
-                              This package uses weight-based pricing. See the pricing breakdown in the Order Summary.
-                            </p>
-                          )}
-                        </div>
-
-
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                           <div>
                             <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -1422,6 +1377,50 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
                               placeholder="Optional - enter cause of death"
                             />
                           </div>
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Weight (kg) {(bookingData?.package?.overageFeePerKg > 0 || bookingData?.package?.pricingMode === 'by_size') && <span className="text-red-500">*</span>}
+                          </label>
+                          <input
+                            type="number"
+                            value={petWeight}
+                            onChange={(e) => {
+                              setPetWeight(e.target.value);
+                              const weight = parseFloat(e.target.value);
+
+                              // Live price feedback for size-based pricing
+                              if (!isNaN(weight) && bookingData?.package?.pricingMode === 'by_size') {
+                                // Force a re-render by updating state
+                                setTimeout(() => {
+                                  setCalculatedPrice(calculateTotalPrice());
+                                }, 0);
+                                // Clear validation error once a valid number is entered
+                                setValidationErrors(prev => ({ ...prev, petWeight: undefined }));
+                              }
+                            }}
+                            onBlur={() => {
+                              // Validate on blur if size-based pricing is enabled
+                              if (bookingData?.package?.pricingMode === 'by_size') {
+                                validatePetWeight();
+                              }
+                            }}
+                            min="0"
+                            step="0.1"
+                            className={`w-full p-3 border rounded-md focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)] ${
+                              validationErrors.petWeight ? 'border-red-500 error-field' : 'border-gray-300'
+                            }`}
+                            placeholder="Enter weight in kilograms"
+                          />
+                          {validationErrors.petWeight && (
+                            <p className="mt-1 text-sm text-red-600">{validationErrors.petWeight}</p>
+                          )}
+                          {bookingData?.package?.pricingMode === 'by_size' && (
+                            <p className="mt-2 text-sm text-gray-600">
+                              This package uses weight-based pricing. See the pricing breakdown in the Order Summary.
+                            </p>
+                          )}
                         </div>
 
                         <div>
