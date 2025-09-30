@@ -430,7 +430,7 @@ export default function PendingVerificationPage() {
 
             {/* Document Upload Section */}
             <AnimatePresence>
-              {documentsRequired && (
+              {documentsRequired && requiredDocuments.length > 0 && (
                 <motion.div
                   initial={{ opacity: 0, height: 0 }}
                   animate={{ opacity: 1, height: 'auto' }}
@@ -521,7 +521,7 @@ export default function PendingVerificationPage() {
                           </div>
                         )}
                         <div className="grid grid-cols-1 gap-4">
-                          {availableDocuments.business_permit_path && (
+                          {availableDocuments.business_permit_path && requiredDocuments.includes('business_permit') && (
                             <div className="border rounded-lg p-3">
                               <div className="text-sm font-medium mb-2">Business Permit</div>
                               <div className="w-full overflow-hidden rounded">
@@ -529,7 +529,7 @@ export default function PendingVerificationPage() {
                               </div>
                             </div>
                           )}
-                          {availableDocuments.bir_certificate_path && (
+                          {availableDocuments.bir_certificate_path && requiredDocuments.includes('bir_certificate') && (
                             <div className="border rounded-lg p-3">
                               <div className="text-sm font-medium mb-2">BIR Certificate</div>
                               <div className="w-full overflow-hidden rounded">
@@ -537,7 +537,7 @@ export default function PendingVerificationPage() {
                               </div>
                             </div>
                           )}
-                          {availableDocuments.government_id_path && (
+                          {availableDocuments.government_id_path && requiredDocuments.includes('government_id') && (
                             <div className="border rounded-lg p-3">
                               <div className="text-sm font-medium mb-2">Government ID</div>
                               <div className="w-full overflow-hidden rounded">
