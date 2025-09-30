@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useCallback, useRef, useEffect } from 'react';
+import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import useDebounce from '@/hooks/useDebounce';
 import { XMarkIcon, ExclamationTriangleIcon, PlusIcon, CheckIcon } from '@heroicons/react/24/outline';
 import { ImageUploader } from '@/components/packages/ImageUploader';
@@ -46,6 +46,9 @@ interface PackageModalProps {
   initialData?: Partial<PackageFormData>;
 }
 
+// Hoist BASE_PET_TYPES to module scope to keep a stable reference and avoid hook deps churn
+const BASE_PET_TYPES = ['Dogs', 'Cats', 'Birds', 'Rabbits', 'Hamsters', 'Guinea Pigs', 'Fish', 'Reptiles', 'Other'];
+
 const PackageModal: React.FC<PackageModalProps> = ({
   isOpen,
   onClose,
@@ -54,9 +57,8 @@ const PackageModal: React.FC<PackageModalProps> = ({
   packageId,
   initialData
 }) => {
-  // Single source of truth for base pet types used in the checkboxes
-  // Move to top-level constant to avoid hook deps warnings
-  const BASE_PET_TYPES = ['Dogs', 'Cats', 'Birds', 'Rabbits', 'Hamsters', 'Guinea Pigs', 'Fish', 'Reptiles', 'Other'];
+  // Keep a memoized reference (redundant since hoisted, but ensures lint happiness if referenced in deps)
+  const BASE_PET_TYPES_MEMO = useMemo(() => BASE_PET_TYPES, []);
 
   const { showToast } = useToast();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -131,7 +133,7 @@ const PackageModal: React.FC<PackageModalProps> = ({
     if (initialData && isOpen) {
       console.log('🔥 Applying initialData:', initialData);
       const incomingSupported = Array.isArray(initialData.supportedPetTypes) ? initialData.supportedPetTypes : [];
-      const incomingCustoms = incomingSupported.filter((t) => !BASE_PET_TYPES.includes(t));
+      const incomingCustoms = incomingSupported.filter((t) => !BASE_PET_TYPES_MEMO.includes(t));
 
       // Auto-check Other if custom types exist
       const ensuredSupported = incomingCustoms.length > 0 && !incomingSupported.includes('Other')
@@ -141,7 +143,7 @@ const PackageModal: React.FC<PackageModalProps> = ({
       setCustomPetTypes(incomingCustoms);
       setFormData(prev => ({ ...prev, ...initialData, supportedPetTypes: ensuredSupported }));
     }
-  }, [initialData, isOpen, BASE_PET_TYPES]);
+  }, [initialData, isOpen, BASE_PET_TYPES_MEMO]);
 
   // Monitor formData changes for debugging
   useEffect(() => {
@@ -320,7 +322,7 @@ const PackageModal: React.FC<PackageModalProps> = ({
       console.log('🔥 Setting form data with addOns:', pkg.addOns);
       
       const pkgSupported: string[] = Array.isArray(pkg.supportedPetTypes) ? pkg.supportedPetTypes : [];
-      const pkgCustoms = pkgSupported.filter((t: string) => !BASE_PET_TYPES.includes(t));
+      const pkgCustoms = pkgSupported.filter((t: string) => !BASE_PET_TYPES_MEMO.includes(t));
       const ensuredSupported = pkgCustoms.length > 0 && !pkgSupported.includes('Other')
         ? [...pkgSupported, 'Other']
         : pkgSupported;
@@ -388,7 +390,7 @@ const PackageModal: React.FC<PackageModalProps> = ({
     } finally {
       setIsLoading(false);
     }
-  }, [packageId, showToast, BASE_PET_TYPES]);
+  }, [packageId, showToast, BASE_PET_TYPES_MEMO]);
 
   // Track form initialization to prevent unstable dependency loops
   const formInitialized = useRef(false);
@@ -1166,7 +1168,7 @@ const PackageModal: React.FC<PackageModalProps> = ({
                   <div className="mt-4">
                     <label className="block text-sm font-medium text-gray-700 mb-2">Supported Pet Types</label>
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                      {BASE_PET_TYPES.map((petType) => (
+                      {BASE_PET_TYPES_MEMO.map((petType) => (
                         <label key={petType} className="flex items-center">
                           <input
                             type="checkbox"

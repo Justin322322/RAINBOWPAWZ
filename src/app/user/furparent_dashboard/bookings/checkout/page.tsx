@@ -268,22 +268,7 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
     setValidationErrors({ formSubmitted: false });
   };
 
-  // Validate a field - use inline errors only
-  const validateField = (fieldName: string, value: string, displayName: string) => {
-    if (!value.trim()) {
-      // Set validation error for inline display
-      setValidationErrors(prev => ({
-        ...prev,
-        [fieldName]: `${displayName} is required`,
-        formSubmitted: true
-      }));
-      return false;
-    }
-
-    // Clear validation error if field is valid
-    clearValidationError(fieldName);
-    return true;
-  };
+  // Removed unused validateField helper (inline validation handled elsewhere)
 
   // Handle pet name change with validation
   const handlePetNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -340,58 +325,9 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
     }
   };
 
-  // Validate delivery address if delivery option is selected
-  const validateDeliveryAddress = () => {
-    if (deliveryOption === 'delivery' && currentUserData && (!currentUserData.address && !currentUserData.city)) {
-      setValidationErrors(prev => ({
-        ...prev,
-        deliveryAddress: "Your profile does not have a delivery address. Please update your profile before selecting delivery.",
-        formSubmitted: true
-      }));
-      return false;
-    }
-    return true;
-  };
+  // Removed unused validateDeliveryAddress helper (address checks occur in computeValidationErrors)
 
-  // Validate pet dates: birth not in future; passing not in future; passing >= birth
-  const validatePetDates = () => {
-    let ok = true;
-    const today = new Date();
-    const todayStr = today.toISOString().slice(0, 10);
-
-    // Clear previous errors first
-    setValidationErrors(prev => ({ ...prev, petDob: undefined, petDod: undefined }));
-
-    const addError = (key: 'petDob' | 'petDod', message: string) => {
-      ok = false;
-      setValidationErrors(prev => ({ ...prev, [key]: message }));
-    };
-
-    const isFuture = (ds: string) => {
-      if (!ds) return false;
-      return ds > todayStr;
-    };
-
-    if (petDob) {
-      if (isFuture(petDob)) {
-        addError('petDob', 'Date of Birth cannot be in the future');
-      }
-    }
-
-    if (petDod) {
-      if (isFuture(petDod)) {
-        addError('petDod', 'Date of Passing cannot be in the future');
-      }
-    }
-
-    if (petDob && petDod) {
-      if (petDod < petDob) {
-        addError('petDod', 'Date of Passing cannot be before Date of Birth');
-      }
-    }
-
-    return ok;
-  };
+  // Removed unused validatePetDates helper (date logic handled by updateDateErrors/computeValidationErrors)
 
   // Live updater to clear/set date errors immediately when user changes values
   const updateDateErrors = (dob: string, dod: string) => {
@@ -414,31 +350,9 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
     setValidationErrors(next);
   };
 
-  // Validate date selection
-  const validateDateSelection = () => {
-    if (!selectedDate) {
-      setValidationErrors(prev => ({
-        ...prev,
-        selectedDate: "Please select a date for your booking",
-        formSubmitted: true
-      }));
-      return false;
-    }
-    return true;
-  };
+  // Removed unused validateDateSelection helper (covered in computeValidationErrors)
 
-  // Validate time slot selection
-  const validateTimeSlotSelection = () => {
-    if (!selectedTimeSlot) {
-      setValidationErrors(prev => ({
-        ...prev,
-        selectedTimeSlot: "Please select a time slot for your booking",
-        formSubmitted: true
-      }));
-      return false;
-    }
-    return true;
-  };
+  // Removed unused validateTimeSlotSelection helper (covered in computeValidationErrors)
 
   // Compute all form validation errors in one pass
   const computeValidationErrors = () => {
