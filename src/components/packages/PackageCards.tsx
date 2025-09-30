@@ -44,7 +44,7 @@ const PackageCard = React.memo<{
 
   return (
     <div
-      className={`border rounded-xl overflow-hidden shadow-md hover:shadow-lg transition-shadow ${
+      className={`border rounded-xl overflow-hidden shadow-md hover:shadow-lg transition-shadow h-full flex flex-col ${
         pkg.isActive ? 'border-gray-100' : 'border-red-200 bg-red-50'
       }`}
     >
@@ -78,7 +78,7 @@ const PackageCard = React.memo<{
         )}
       </div>
 
-      <div className="p-5 xs:p-4 sm:p-4">
+      <div className="p-5 xs:p-4 sm:p-4 flex flex-col flex-grow">
         <div className="flex justify-between mb-2">
           <h3 className="text-lg font-medium text-gray-800">{pkg.name}</h3>
           {pkg.pricingMode === 'by_size' ? (
@@ -171,13 +171,13 @@ const PackageCard = React.memo<{
           </div>
         )}
 
-        <div className="flex flex-col gap-3 mt-4">
+        <div className="flex flex-col gap-3 mt-auto">
           {/* Action buttons with labels */}
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-2 w-full">
             {onDetails && (
               <button
                 onClick={handleDetails}
-                className="flex items-center px-3 py-2 text-sm text-gray-600 hover:bg-gray-50 rounded-md transition-colors border border-gray-400"
+                className="flex items-center justify-center px-3 py-2 text-sm text-gray-600 hover:bg-gray-50 rounded-md transition-colors border border-gray-400 flex-1 basis-0 min-w-[120px]"
               >
                 <InformationCircleIcon className="h-4 w-4 mr-1" />
                 Details
@@ -186,7 +186,7 @@ const PackageCard = React.memo<{
 
             <button
               onClick={handleEdit}
-              className="flex items-center px-3 py-2 text-sm text-white bg-blue-600 hover:bg-blue-700 rounded-md transition-colors"
+              className="flex items-center justify-center px-3 py-2 text-sm text-white bg-blue-600 hover:bg-blue-700 rounded-md transition-colors flex-1 basis-0 min-w-[120px]"
             >
               <PencilIcon className="h-4 w-4 mr-1" />
               Edit
@@ -194,7 +194,7 @@ const PackageCard = React.memo<{
 
             <button
               onClick={handleDelete}
-              className="flex items-center px-3 py-2 text-sm text-white bg-red-600 hover:bg-red-700 rounded-md transition-colors"
+              className="flex items-center justify-center px-3 py-2 text-sm text-white bg-red-600 hover:bg-red-700 rounded-md transition-colors flex-1 basis-0 min-w-[120px]"
             >
               <TrashIcon className="h-4 w-4 mr-1" />
               Delete

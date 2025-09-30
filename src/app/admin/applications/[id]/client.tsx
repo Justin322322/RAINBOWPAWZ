@@ -514,11 +514,11 @@ function ApplicationDetailContent({ id }: ApplicationDetailContentProps) {
                 <div>
                   <p className="text-sm font-medium text-gray-500">Location</p>
                   <p className="mt-1 text-sm text-gray-900">
+                    {safeValue(application.address, '')}
+                    {application.address && (application.city || application.province) ? ', ' : ''}
                     {safeValue(application.city, '')}
                     {application.city && application.province ? ', ' : ''}
                     {safeValue(application.province, '')}
-                    {(application.city || application.province) && application.zip ? ' ' : ''}
-                    {safeValue(application.zip, '')}
                   </p>
                 </div>
               </div>
@@ -550,10 +550,6 @@ function ApplicationDetailContent({ id }: ApplicationDetailContentProps) {
                 <div>
                   <p className="text-sm font-medium text-gray-500">Phone</p>
                   <p className="mt-1 text-sm text-gray-900">{safeValue(application.phone)}</p>
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-gray-500">Address</p>
-                  <p className="mt-1 text-sm text-gray-900">{safeValue(application.address)}</p>
                 </div>
               </div>
             </div>
