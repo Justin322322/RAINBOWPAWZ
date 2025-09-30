@@ -761,7 +761,10 @@ export async function GET(request: NextRequest) {
           service_name: booking.service_name || 'Unknown Service',
           service_description: booking.service_description || 'No description available',
           pet_name: booking.pet_name || 'Unknown Pet',
-          pet_type: booking.pet_type || 'Unknown Type'
+          pet_type: booking.pet_type || 'Unknown Type',
+          // Ensure certificate fields are always present
+          pet_dob: booking.pet_dob || null,
+          pet_date_of_death: booking.pet_date_of_death || null
         };
       }));
 
@@ -1092,6 +1095,31 @@ export async function POST(request: NextRequest) {
       if (bookingData.petId) {
         // Use existing pet ID from cart
         petId = bookingData.petId;
+
+        // If DOB/DOD provided during checkout, persist them on the existing pet
+        try {
+          const petCols = await query(`
+            SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS
+            WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'pets'
+          `) as any[];
+          const petColSet = new Set((petCols || []).map((r:any) => String(r.COLUMN_NAME).toLowerCase()));
+          const updates: string[] = [];
+          const params: any[] = [];
+          if ((bookingData.petDob || bookingData.pet_dob) && petColSet.has('date_of_birth')) {
+            updates.push('date_of_birth = ?');
+            params.push(bookingData.petDob || bookingData.pet_dob);
+          }
+          if ((bookingData.petDateOfDeath || bookingData.pet_date_of_death) && petColSet.has('date_of_death')) {
+            updates.push('date_of_death = ?');
+            params.push(bookingData.petDateOfDeath || bookingData.pet_date_of_death);
+          }
+          if (updates.length > 0) {
+            params.push(petId);
+            await query(`UPDATE pets SET ${updates.join(', ')} WHERE pet_id = ?`, params);
+          }
+        } catch {
+          // non-fatal; continue
+        }
       } else {
         // Create pet record (include date fields if available)
         const petResult = await query(`
