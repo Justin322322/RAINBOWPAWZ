@@ -8,9 +8,7 @@ import { useToast } from '@/context/ToastContext';
 import {
     ChartBarIcon,
     ArrowDownTrayIcon,
-    CalendarDaysIcon,
     CurrencyDollarIcon,
-    CheckCircleIcon,
     XCircleIcon,
     ClockIcon,
     ArrowPathIcon
@@ -293,7 +291,7 @@ ${reportData.topServices.map((service: any, index: number) =>
 
             {/* Removed headline metric tiles for a cleaner report layout */}
 
-            {/* Refunds Section: compact cards + line chart */}
+            {/* Refunds Section: compact summary + line chart */}
             <div className="bg-white rounded-xl shadow-md border border-gray-100 p-6 mb-8">
                 <div className="flex items-center justify-between mb-4">
                     <h2 className="text-lg font-medium text-gray-800">Refunds Overview</h2>
@@ -314,6 +312,32 @@ ${reportData.topServices.map((service: any, index: number) =>
                         <RefundsLineChart data={(reportData.monthlyData as any) || []} height={220} />
                     </div>
                 )}
+            </div>
+
+            {/* Revenue Overview (primary focus) */}
+            <div className="bg-white rounded-xl shadow-md border border-gray-100 p-6 mb-8">
+              <div className="flex items-center justify-between mb-2">
+                <h2 className="text-lg font-medium text-gray-800">Revenue Overview</h2>
+                {!loading && (
+                  <span className="text-sm text-gray-500">Monthly</span>
+                )}
+              </div>
+              {!loading && (
+                <div className="flex flex-wrap gap-6 text-sm text-gray-600">
+                  <div className="flex items-center gap-2"><CurrencyDollarIcon className="h-4 w-4 text-gray-500" /><span>Total Revenue:</span><strong className="text-gray-900">₱{reportData.stats.totalRevenue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong></div>
+                  <div className="flex items-center gap-2"><ChartBarIcon className="h-4 w-4 text-gray-500" /><span>Avg / Booking:</span><strong className="text-gray-900">₱{reportData.stats.averageRevenue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong></div>
+                </div>
+              )}
+              <div className="mt-6">
+                {loading ? (
+                  <StatsCardSkeleton count={1} />
+                ) : (
+                  <RefundsLineChart
+                    data={(reportData.monthlyData as any) || []}
+                    height={300}
+                  />
+                )}
+              </div>
             </div>
 
             {/* Bookings distribution */}
