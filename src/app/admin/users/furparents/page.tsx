@@ -905,10 +905,7 @@ const AdminFurParentsPage = React.memo(function AdminFurParentsPage() {
                                   <span className="truncate">{user.phone_number}</span>
                                 </div>
                               )}
-                              <div className="flex items-center">
-                                <MapPinIcon className="h-3 w-3 mr-1 flex-shrink-0" />
-                                <span className="truncate">{user.address || 'No address provided'}</span>
-                              </div>
+                              {/* Location intentionally hidden from admin view */}
                               <div className="text-xs text-gray-500 mt-2">
                                 {user.completedBookings || 0} bookings • Joined {formatDate(user.created_at)}
                               </div>
@@ -1269,10 +1266,7 @@ const AdminFurParentsPage = React.memo(function AdminFurParentsPage() {
                 <PhoneIcon className="h-5 w-5 text-green-600" />
                 <span className="text-sm text-gray-700">{selectedUser?.phone_number || 'No phone number'}</span>
               </div>
-              <div className="flex items-center gap-3">
-                <MapPinIcon className="h-5 w-5 text-green-600" />
-                <span className="text-sm text-gray-700">{selectedUser?.address || 'No address provided'}</span>
-              </div>
+              {/* Location intentionally hidden from admin view */}
             </div>
 
             {/* Separator */}

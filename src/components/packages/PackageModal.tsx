@@ -789,9 +789,24 @@ const PackageModal: React.FC<PackageModalProps> = ({
       const url = mode === 'create' ? '/api/packages' : `/api/packages/${packageId}`;
       const method = mode === 'create' ? 'POST' : 'PATCH';
 
+      // Attach auth token explicitly to mitigate cookie issues in production
+      let authHeader: Record<string, string> = { 'Content-Type': 'application/json' };
+      try {
+        const cookieString = typeof document !== 'undefined' ? document.cookie : '';
+        const token = cookieString
+          .split(';')
+          .map(c => c.trim())
+          .find(c => c.startsWith('auth_token='))?.split('=')[1];
+        if (token) {
+          authHeader = { ...authHeader, Authorization: `Bearer ${decodeURIComponent(token)}` };
+        }
+      } catch {
+        // ignore token extraction errors
+      }
+
       const response = await fetch(url, {
         method,
-        headers: { 'Content-Type': 'application/json' },
+        headers: authHeader,
         body: JSON.stringify(formData),
         credentials: 'include'
       });
