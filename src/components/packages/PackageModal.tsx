@@ -55,6 +55,7 @@ const PackageModal: React.FC<PackageModalProps> = ({
   initialData
 }) => {
   // Single source of truth for base pet types used in the checkboxes
+  // Move to top-level constant to avoid hook deps warnings
   const BASE_PET_TYPES = ['Dogs', 'Cats', 'Birds', 'Rabbits', 'Hamsters', 'Guinea Pigs', 'Fish', 'Reptiles', 'Other'];
 
   const { showToast } = useToast();

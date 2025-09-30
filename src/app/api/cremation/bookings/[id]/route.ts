@@ -15,7 +15,17 @@ export async function GET(
       return NextResponse.json({ error: 'Booking ID is required' }, { status: 400 });
     }
 
-    // Try to fetch booking FROM bookings table with all related data
+    // Detect optional columns in bookings table for safe SELECT
+    const columnsRows = await query(
+      `SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS
+       WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'bookings'
+       AND COLUMN_NAME IN ('pet_dob','pet_date_of_death')`
+    ) as Array<{ COLUMN_NAME: string }>;
+    const colSet = new Set((columnsRows || []).map(r => r.COLUMN_NAME));
+    const petDobSelect = colSet.has('pet_dob') ? 'sb.pet_dob' : 'NULL as pet_dob';
+    const petDodSelect = colSet.has('pet_date_of_death') ? 'sb.pet_date_of_death' : 'NULL as pet_date_of_death';
+
+    // Build query with available columns
     const bookingQuery = `
       SELECT
         sb.id,
@@ -35,8 +45,8 @@ export async function GET(
         sb.pet_type,
         sb.cause_of_death,
         sb.pet_image_url,
-        sb.pet_dob,
-        sb.pet_date_of_death,
+        ${petDobSelect},
+        ${petDodSelect},
         u.user_id,
         u.first_name,
         u.last_name,
