@@ -337,7 +337,8 @@ function ApplicationDetailContent({ id }: ApplicationDetailContentProps) {
           setIsApprovalSuccess(false);
           setSuccessBusinessName('');
 
-          // Fetch updated data
+          // Update local state immediately and refresh data
+          setApplication(prev => prev ? { ...prev, status: 'approved', verificationStatus: 'approved' } : prev);
           fetchApplicationData();
         }, 3000);
       } else {
@@ -388,7 +389,7 @@ function ApplicationDetailContent({ id }: ApplicationDetailContentProps) {
         setSuccessBusinessName(application!.businessName);
         setIsDeclineSuccess(true);
 
-        // Reset success state after animation completes and force a hard reload
+        // Reset success state after animation completes and refresh state
         setTimeout(() => {
           setIsDeclineSuccess(false);
           setSuccessBusinessName('');
@@ -406,8 +407,9 @@ function ApplicationDetailContent({ id }: ApplicationDetailContentProps) {
             // Failed to store status in storage
           }
 
-          // Force a hard reload of the page to ensure all UI elements are updated
-          window.location.href = `/admin/applications/${id}?t=${Date.now()}&status=${newStatus}`;
+          // Update local state immediately and refresh data without full reload
+          setApplication(prev => prev ? { ...prev, status: newStatus, verificationStatus: newStatus } : prev);
+          fetchApplicationData();
         }, 1500);
       } else {
         const errorData = await response.json();
@@ -648,8 +650,8 @@ function ApplicationDetailContent({ id }: ApplicationDetailContentProps) {
                 // Get the actual status from verification_status if available, otherwise use status
                 const actualStatus = application.verificationStatus || application.status;
 
-                // Only show approve/decline buttons for pending or reviewing applications
-                if (actualStatus === 'pending' || actualStatus === 'reviewing') {
+                // Show approve/decline buttons for actionable statuses
+                if (actualStatus === 'pending' || actualStatus === 'reviewing' || actualStatus === 'documents_required') {
                   return (
                     <div className="grid grid-cols-1 gap-4">
                       <button

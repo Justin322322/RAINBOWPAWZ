@@ -499,19 +499,19 @@ const AdminServicesPage = React.memo(function AdminServicesPage() {
       {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
         <StatCard
-          icon={<FireIcon className="text-green-800" />}
+          icon={<FireIcon />}
           label="Active Services"
           value={typeof stats.activeServices === 'number' ? stats.activeServices : 0}
           color="green"
         />
         <StatCard
-          icon={<QueueListIcon className="text-blue-800" />}
+          icon={<QueueListIcon />}
           label="Total Bookings"
           value={typeof stats.totalBookings === 'number' ? stats.totalBookings : 0}
           color="blue"
         />
         <StatCard
-          icon={<ShieldCheckIcon className="text-purple-800" />}
+          icon={<ShieldCheckIcon />}
           label="Service Providers"
           value={typeof stats.verifiedCenters === 'number' ? stats.verifiedCenters : 0}
           color="purple"
