@@ -15,7 +15,7 @@ import {
     ClockIcon,
     ArrowPathIcon
 } from '@heroicons/react/24/outline';
-import { RefundsLineChart, type LinePoint } from '@/components/ui/Chart';
+import { RefundsLineChart, BookingsBarChart, StatusPieChart, type LinePoint } from '@/components/ui/Chart';
 import { StatsCardSkeleton } from '@/app/cremation/components/LoadingComponents';
 
 function CremationReportsPage({ userData }: { userData: any }) {
@@ -352,26 +352,34 @@ ${reportData.topServices.map((service: any, index: number) =>
                 )}
             </div>
 
-            {/* Additional Stats */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-8">
-                {loading ? (
-                    <StatsCardSkeleton count={2} />
-                ) : (
+            {/* Bookings distribution + revenue per booking */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+                {!loading && (
                     <>
-                        <StatCard
-                            icon={<CurrencyDollarIcon />}
-                            label="Average Revenue per Booking"
-                            value={`₱${reportData.stats.averageRevenue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
-                            color="green"
-                        />
-                        <StatCard
-                            icon={<XCircleIcon />}
-                            label="Cancelled Bookings"
-                            value={reportData.stats.cancelledBookings.toString()}
-                            color="amber"
-                        />
+                        <div className="bg-white rounded-xl shadow-md border border-gray-100 p-6">
+                            <h2 className="text-lg font-medium text-gray-800 mb-4">Bookings Status Mix</h2>
+                            <StatusPieChart
+                                data={[
+                                    { name: 'Completed', value: reportData.stats.completedBookings || 0 },
+                                    { name: 'Pending', value: reportData.stats.pendingBookings || 0 },
+                                    { name: 'Cancelled', value: reportData.stats.cancelledBookings || 0 }
+                                ]}
+                                height={260}
+                            />
+                        </div>
+                        <div className="bg-white rounded-xl shadow-md border border-gray-100 p-6">
+                            <h2 className="text-lg font-medium text-gray-800 mb-2">Average Revenue per Booking</h2>
+                            <p className="text-3xl font-semibold text-[var(--primary-green)]">₱{reportData.stats.averageRevenue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                            <div className="mt-4">
+                                <BookingsBarChart
+                                    data={(reportData.monthlyData as any)?.map((d: any) => ({ label: d.label, value: d.value })) || []}
+                                    height={220}
+                                />
+                            </div>
+                        </div>
                     </>
                 )}
+                {loading && <StatsCardSkeleton count={2} />}
             </div>
 
             {/* Top Services */}
