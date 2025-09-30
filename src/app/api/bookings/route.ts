@@ -1062,7 +1062,7 @@ export async function POST(request: NextRequest) {
         // Use existing pet ID from cart
         petId = bookingData.petId;
       } else {
-        // Create pet record
+        // Create pet record (include date fields if available)
         const petResult = await query(`
           INSERT INTO pets (
             user_id,
@@ -1073,8 +1073,10 @@ export async function POST(request: NextRequest) {
             age,
             weight,
             photo_path,
+            date_of_birth,
+            date_of_death,
             special_notes
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `, [
           userId,
           bookingData.petName,
@@ -1084,6 +1086,8 @@ export async function POST(request: NextRequest) {
           bookingData.petAge || null,
           bookingData.petWeight || null,
           bookingData.petImageUrl || null,
+          bookingData.petDob || bookingData.pet_dob || null,
+          bookingData.petDateOfDeath || bookingData.pet_date_of_death || null,
           bookingData.petSpecialNotes || null
         ]) as any;
 
@@ -1134,6 +1138,16 @@ export async function POST(request: NextRequest) {
       if (columnNames.includes('pet_type')) {
         insertColumns.push('pet_type');
         insertValues.push(bookingData.petType);
+      }
+
+      // Add pet date fields to bookings if columns exist
+      if (columnNames.includes('pet_dob')) {
+        insertColumns.push('pet_dob');
+        insertValues.push(bookingData.petDob || bookingData.pet_dob || null);
+      }
+      if (columnNames.includes('pet_date_of_death')) {
+        insertColumns.push('pet_date_of_death');
+        insertValues.push(bookingData.petDateOfDeath || bookingData.pet_date_of_death || null);
       }
 
       if (columnNames.includes('provider_name')) {

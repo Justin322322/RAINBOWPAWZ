@@ -166,6 +166,9 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
     selectedDate?: string;
     selectedTimeSlot?: string;
     deliveryAddress?: string;
+    providerId?: string;
+    packageId?: string;
+    receipt?: string;
     formSubmitted: boolean;
   }>({
     formSubmitted: false
@@ -435,6 +438,50 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
       return false;
     }
     return true;
+  };
+
+  // Compute all form validation errors in one pass
+  const computeValidationErrors = () => {
+    const errs: typeof validationErrors = { formSubmitted: true } as any;
+
+    // Required basic fields
+    if (!petName.trim()) errs.petName = 'Pet name is required';
+    if (!petType) errs.petType = 'Pet type is required';
+
+    // Size-based pricing requires numeric weight > 0
+    if (bookingData?.package?.pricingMode === 'by_size') {
+      const weightNum = Number(petWeight);
+      if (!petWeight || !Number.isFinite(weightNum) || weightNum <= 0) {
+        errs.petWeight = 'Valid pet weight is required for size-based pricing';
+      }
+    }
+
+    // Date/time required
+    if (!selectedDate) errs.selectedDate = 'Please select a date for your booking';
+    if (!selectedTimeSlot) errs.selectedTimeSlot = 'Please select a time slot for your booking';
+
+    // Delivery address when delivery is chosen
+    if (deliveryOption === 'delivery' && currentUserData && (!currentUserData.address && !currentUserData.city)) {
+      errs.deliveryAddress = 'Your profile does not have a delivery address. Please update your profile before selecting delivery.';
+    }
+
+    // Provider/package required
+    if (!providerId) errs.providerId = 'Missing provider. Please reselect a provider.';
+    if (!packageId) errs.packageId = 'Missing package. Please reselect a package.';
+
+    // Payment receipt required for manual QR
+    if (paymentMethod === 'qr_manual' && !receiptFile) {
+      errs.receipt = 'Payment receipt is required for QR transfer payments';
+    }
+
+    // DOB/DOD rules
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const isFuture = (ds: string) => ds && ds > todayStr;
+    if (petDob && isFuture(petDob)) errs.petDob = 'Date of Birth cannot be in the future';
+    if (petDod && isFuture(petDod)) errs.petDod = 'Date of Passing cannot be in the future';
+    if (petDob && petDod && petDod < petDob) errs.petDod = 'Date of Passing cannot be before Date of Birth';
+
+    return errs;
   };
 
   // Validate pet weight when package has per kg pricing
@@ -777,32 +824,18 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
       return;
     }
 
-    // Mark the form as submitted to show all validation errors
-    setValidationErrors(prev => ({ ...prev, formSubmitted: true }));
-
-    // Require receipt for manual QR transfer before proceeding
-    if (paymentMethod === 'qr_manual' && !receiptFile) {
+    // Single-pass validation across all fields
+    const nextErrors = computeValidationErrors();
+    setValidationErrors(nextErrors);
+    const hasErrors = Object.keys(nextErrors).some(k => (k !== 'formSubmitted') && (nextErrors as any)[k]);
+    if ((nextErrors as any).receipt) {
       showToast('Please upload your payment receipt before proceeding.', 'error');
-      return;
     }
-
-    // Validate all required fields using our validation functions
-    const isPetNameValid = validateField('petName', petName, 'Pet name');
-    const isPetTypeValid = validateField('petType', petType, 'Pet type');
-    const isPetWeightValid = validatePetWeight();
-    const isDateValid = validateDateSelection();
-    const isTimeSlotValid = validateTimeSlotSelection();
-    const isDeliveryAddressValid = validateDeliveryAddress();
-    const arePetDatesValid = validatePetDates();
-
-    // Check if all validations passed
-    if (!isPetNameValid || !isPetTypeValid || !isPetWeightValid || !isDateValid || !isTimeSlotValid || !isDeliveryAddressValid || !arePetDatesValid) {
-      // Scroll to the first error field
+    if (hasErrors) {
       const firstErrorField = document.querySelector('.error-field');
       if (firstErrorField) {
         firstErrorField.scrollIntoView({ behavior: 'smooth', block: 'center' });
       }
-      // Emit a clear toast now that the form has been submitted and validations ran
       showToast('Please fix the highlighted fields before proceeding', 'warning');
       return;
     }

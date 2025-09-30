@@ -743,6 +743,28 @@ export async function POST(request: NextRequest) {
       ) VALUES (${placeholders.join(', ')})
     `;
 
+    // If we have a petId and provided DOB/DOD, attempt to update pets table to persist dates
+    try {
+      if (petId && (pet_dob || pet_date_of_death)) {
+        const petCols = await query(`
+          SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS
+          WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'pets'
+        `) as any[];
+        const petColNames = new Set(petCols.map((c: any) => String(c.COLUMN_NAME).toLowerCase()));
+        const updates: string[] = [];
+        const uvals: any[] = [];
+        if (pet_dob && petColNames.has('date_of_birth')) { updates.push('date_of_birth = ?'); uvals.push(pet_dob); }
+        if (pet_date_of_death && petColNames.has('date_of_death')) { updates.push('date_of_death = ?'); uvals.push(pet_date_of_death); }
+        if (updates.length > 0) {
+          uvals.push(petId);
+          await query(`UPDATE pets SET ${updates.join(', ')} WHERE pet_id = ?`, uvals);
+        }
+      }
+    } catch (petUpdateErr) {
+      // Non-fatal: log and continue
+      console.error('Failed to persist pet dates to pets table:', petUpdateErr);
+    }
+
     // **🔥 FIX: Use proper transaction management to prevent connection leaks**
     const result = await withTransaction(async (transaction) => {
       const bookingResult = await transaction.query(insertQuery, values) as any;
