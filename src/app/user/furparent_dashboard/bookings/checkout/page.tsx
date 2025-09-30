@@ -1083,16 +1083,42 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
       return delivery + addOnsTotal;
     }
 
-    // Select the highest tier whose min is <= weight
+    // Select the highest tier with a defined price (> 0) whose min is <= weight.
+    // If the highest matching tier has price 0 (user left higher tiers blank),
+    // fall back to the last preceding non-zero tier and apply overage beyond its max.
     const sortedByMin = [...tiers].sort((a: any, b: any) => Number(a.weightRangeMin) - Number(b.weightRangeMin));
-    const matchedTier = sortedByMin.filter((t: any) => weight >= Number(t.weightRangeMin)).pop();
+    const eligibleIndexes = sortedByMin
+      .map((t: any, idx: number) => ({ t, idx }))
+      .filter(({ t }) => weight >= Number(t.weightRangeMin));
 
     let base = 0;
-    if (matchedTier) {
-      base = Number(matchedTier.price) || 0;
-      const tierMax = matchedTier.weightRangeMax == null ? Infinity : Number(matchedTier.weightRangeMax);
-      if (weight > tierMax && isFinite(tierMax) && overage > 0) {
-        base += (weight - tierMax) * overage;
+    if (eligibleIndexes.length > 0) {
+      // Prefer last eligible with price > 0; otherwise, take last eligible
+      const lastPaid = [...eligibleIndexes].reverse().find(({ t }) => Number(t.price) > 0);
+      const chosen = (lastPaid ?? eligibleIndexes[eligibleIndexes.length - 1]).t;
+
+      base = Number(chosen.price) || 0;
+      const chosenMax = chosen.weightRangeMax == null ? Infinity : Number(chosen.weightRangeMax);
+
+      // If chosen has price 0 but there is a previous paid tier, use that as base for overage
+      if (base === 0) {
+        const prevPaidEntry = [...eligibleIndexes]
+          .reverse()
+          .find(({ t }) => Number(t.price) > 0);
+        if (prevPaidEntry) {
+          const prev = prevPaidEntry.t;
+          base = Number(prev.price) || 0;
+          const prevMax = prev.weightRangeMax == null ? Infinity : Number(prev.weightRangeMax);
+          if (weight > prevMax && isFinite(prevMax) && overage > 0) {
+            base += (weight - prevMax) * overage;
+          }
+          return base + delivery + addOnsTotal;
+        }
+      }
+
+      // Normal overage when chosen has a finite max and overage fee
+      if (weight > chosenMax && isFinite(chosenMax) && overage > 0) {
+        base += (weight - chosenMax) * overage;
       }
     }
 
@@ -1860,10 +1886,16 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
                       const tiers = Array.isArray(bookingData.package.sizePricing) ? bookingData.package.sizePricing : [];
                       const overage = Number(bookingData.package.overageFeePerKg || 0);
                       
-                      // Find the applicable tier using the same selection as total price:
-                      // select the highest tier whose min is <= weight
+                      // Find applicable tier for display using same rules as total:
                       const sortedByMin = [...tiers].sort((a: any, b: any) => Number(a.weightRangeMin) - Number(b.weightRangeMin));
-                      const tier = sortedByMin.filter((t: any) => weight >= Number(t.weightRangeMin)).pop();
+                      const eligibleIndexes = sortedByMin
+                        .map((t: any, idx: number) => ({ t, idx }))
+                        .filter(({ t }) => weight >= Number(t.weightRangeMin));
+                      let tier: any | undefined = undefined;
+                      if (eligibleIndexes.length > 0) {
+                        const lastPaid = [...eligibleIndexes].reverse().find(({ t }) => Number(t.price) > 0);
+                        tier = (lastPaid ?? eligibleIndexes[eligibleIndexes.length - 1]).t;
+                      }
                       
                       let basePrice = 0;
                       let overagePrice = 0;
