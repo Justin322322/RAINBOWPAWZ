@@ -23,6 +23,31 @@ const _serviceTypes: Record<number, { name: string; description: string; price: 
   }
 };
 
+// Ensure pet date columns exist on bookings and pets tables (safe, best-effort)
+async function ensurePetDateColumns() {
+  try {
+    const bcols = await query(`
+      SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS
+      WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'bookings'
+    `) as any[];
+    const bset = new Set((bcols || []).map((r:any) => String(r.COLUMN_NAME).toLowerCase()));
+    if (!bset.has('pet_dob')) { try { await query(`ALTER TABLE bookings ADD COLUMN pet_dob DATE NULL`); } catch {}
+    }
+    if (!bset.has('pet_date_of_death')) { try { await query(`ALTER TABLE bookings ADD COLUMN pet_date_of_death DATE NULL`); } catch {}
+    }
+
+    const pcols = await query(`
+      SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS
+      WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'pets'
+    `) as any[];
+    const pset = new Set((pcols || []).map((r:any) => String(r.COLUMN_NAME).toLowerCase()));
+    if (!pset.has('date_of_birth')) { try { await query(`ALTER TABLE pets ADD COLUMN date_of_birth DATE NULL`); } catch {}
+    }
+    if (!pset.has('date_of_death')) { try { await query(`ALTER TABLE pets ADD COLUMN date_of_death DATE NULL`); } catch {}
+    }
+  } catch {}
+}
+
 export async function GET(request: NextRequest) {
   try {
     // First, check if the database is available
@@ -37,6 +62,9 @@ export async function GET(request: NextRequest) {
         warning: 'Database connection unavailable'
       });
     }
+
+    // Best-effort ensure columns exist so responses can include pet dates
+    await ensurePetDateColumns();
 
     // Get user ID from auth token
     const authToken = getAuthTokenFromRequest(request);
@@ -1012,6 +1040,9 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    // Ensure pet date columns exist before insertion
+    await ensurePetDateColumns();
+
     // Get user ID from auth token or from the request body for checkout flow
     let userId, accountType;
     const authToken = getAuthTokenFromRequest(request);

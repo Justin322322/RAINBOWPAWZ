@@ -29,9 +29,48 @@ async function ensurePaymentReceiptsTable() {
   }
 }
 
+// Ensure pet date columns exist on bookings and pets tables (safe, best-effort)
+async function ensurePetDateColumns() {
+  try {
+    // Check bookings table columns
+    const bookingCols = await query(`
+      SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS
+      WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'bookings'
+    `) as any[];
+    const bookingColSet = new Set((bookingCols || []).map((r:any) => String(r.COLUMN_NAME).toLowerCase()));
+
+    // Add columns if missing (PlanetScale may block DDL; ignore failures)
+    if (!bookingColSet.has('pet_dob')) {
+      try { await query(`ALTER TABLE bookings ADD COLUMN pet_dob DATE NULL`); } catch { /* ignore */ }
+    }
+    if (!bookingColSet.has('pet_date_of_death')) {
+      try { await query(`ALTER TABLE bookings ADD COLUMN pet_date_of_death DATE NULL`); } catch { /* ignore */ }
+    }
+
+    // Check pets table columns
+    const petsCols = await query(`
+      SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS
+      WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'pets'
+    `) as any[];
+    const petsColSet = new Set((petsCols || []).map((r:any) => String(r.COLUMN_NAME).toLowerCase()));
+
+    if (!petsColSet.has('date_of_birth')) {
+      try { await query(`ALTER TABLE pets ADD COLUMN date_of_birth DATE NULL`); } catch { /* ignore */ }
+    }
+    if (!petsColSet.has('date_of_death')) {
+      try { await query(`ALTER TABLE pets ADD COLUMN date_of_death DATE NULL`); } catch { /* ignore */ }
+    }
+  } catch {
+    // Best-effort ensure; ignore errors
+  }
+}
+
 export async function GET(request: NextRequest) {
   try {
     console.log('🔍 DEBUG: GET /api/cremation/bookings called');
+
+    // Best-effort ensure columns exist for downstream queries
+    await ensurePetDateColumns();
 
     // Get provider ID from the request query parameters
     const requestUrl = new URL(request.url);
