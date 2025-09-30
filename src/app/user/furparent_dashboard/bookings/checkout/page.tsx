@@ -1406,7 +1406,7 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
                             </select>
                           </div>
 
-                          <div className={validationErrors.petDob && validationErrors.formSubmitted ? 'error-field' : ''}>
+                          <div className={validationErrors.petDob ? 'error-field' : ''}>
                             <label className="block text-sm font-medium text-gray-700 mb-2">
                               Date of Birth
                             </label>
@@ -1421,14 +1421,14 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
                               className="w-full p-3 border border-gray-300 rounded-md focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)]"
                               max={new Date().toISOString().slice(0, 10)}
                             />
-                            {validationErrors.petDob && validationErrors.formSubmitted && (
+                            {validationErrors.petDob && (
                               <p className="mt-1 text-sm text-red-600">{validationErrors.petDob}</p>
                             )}
                           </div>
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                          <div className={validationErrors.petDod && validationErrors.formSubmitted ? 'error-field' : ''}>
+                          <div className={validationErrors.petDod ? 'error-field' : ''}>
                             <label className="block text-sm font-medium text-gray-700 mb-2">
                               Date of Passing <span className="text-gray-500 text-xs">(optional)</span>
                             </label>
@@ -1444,7 +1444,7 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
                               min={petDob || undefined}
                               max={new Date().toISOString().slice(0, 10)}
                             />
-                            {validationErrors.petDod && validationErrors.formSubmitted && (
+                            {validationErrors.petDod && (
                               <p className="mt-1 text-sm text-red-600">{validationErrors.petDod}</p>
                             )}
                           </div>
