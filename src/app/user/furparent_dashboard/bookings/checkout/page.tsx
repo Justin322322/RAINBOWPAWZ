@@ -145,7 +145,8 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
   const [petName, setPetName] = useState('');
   const [petBreed, setPetBreed] = useState('');
   const [petGender, setPetGender] = useState('');
-  const [petAge, setPetAge] = useState('');
+  const [petDob, setPetDob] = useState<string>('');
+  const [petDod, setPetDod] = useState<string>('');
   const [petWeight, setPetWeight] = useState('');
   const [causeOfDeath, setCauseOfDeath] = useState('');
   const [petType, setPetType] = useState('');
@@ -550,7 +551,9 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
                 setPetType(pet.species || '');
                 setPetBreed(pet.breed || '');
                 setPetGender(pet.gender || '');
-                setPetAge(pet.age || '');
+                // Populate dates if available on the pet record
+                if (pet.date_of_birth) setPetDob(pet.date_of_birth);
+                if (pet.date_of_death) setPetDod(pet.date_of_death);
                 setPetWeight(pet.weight?.toString() || '');
                 setPetSpecialNotes(pet.special_notes || '');
               }
@@ -808,7 +811,8 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
             species: petType,
             breed: petBreed || undefined,
             gender: petGender || undefined,
-            age: petAge || undefined,
+            dateOfBirth: petDob || undefined,
+            dateOfDeath: petDod || undefined,
             weight: petWeight ? parseFloat(petWeight) : undefined,
             specialNotes: petSpecialNotes || undefined, // Changed from special_notes to specialNotes
             imagePath: petImageUrl // Changed from image_url to imagePath
@@ -868,6 +872,8 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
         petBreed: petBreed || undefined,
         petWeight: parseFloat(petWeight) || 0,
         petImageUrl, // This will be the image path from the upload
+        pet_dob: petDob || undefined,
+        pet_date_of_death: petDod || undefined,
         causeOfDeath: causeOfDeath || undefined,
         specialRequests: petSpecialNotes || undefined, // Use petSpecialNotes instead of specialRequests
         paymentMethod,
@@ -1336,14 +1342,13 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
 
                           <div>
                             <label className="block text-sm font-medium text-gray-700 mb-2">
-                              Age
+                              Date of Birth
                             </label>
                             <input
-                              type="text"
-                              value={petAge}
-                              onChange={(e) => setPetAge(e.target.value)}
+                              type="date"
+                              value={petDob}
+                              onChange={(e) => setPetDob(e.target.value)}
                               className="w-full p-3 border border-gray-300 rounded-md focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)]"
-                              placeholder="e.g. 5 years, 8 months"
                             />
                           </div>
                         </div>
@@ -1393,17 +1398,30 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
                         </div>
 
 
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Cause of Death <span className="text-gray-500 text-xs">(optional)</span>
-                          </label>
-                          <input
-                            type="text"
-                            value={causeOfDeath}
-                            onChange={(e) => setCauseOfDeath(e.target.value)}
-                            className="w-full p-3 border border-gray-300 rounded-md focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)]"
-                            placeholder="Optional - enter cause of death"
-                          />
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              Date of Passing <span className="text-gray-500 text-xs">(optional)</span>
+                            </label>
+                            <input
+                              type="date"
+                              value={petDod}
+                              onChange={(e) => setPetDod(e.target.value)}
+                              className="w-full p-3 border border-gray-300 rounded-md focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)]"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              Cause of Death <span className="text-gray-500 text-xs">(optional)</span>
+                            </label>
+                            <input
+                              type="text"
+                              value={causeOfDeath}
+                              onChange={(e) => setCauseOfDeath(e.target.value)}
+                              className="w-full p-3 border border-gray-300 rounded-md focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)]"
+                              placeholder="Optional - enter cause of death"
+                            />
+                          </div>
                         </div>
 
                         <div>

@@ -63,6 +63,29 @@ const CremationCertificate: React.FC<CremationCertificateProps> = ({ booking, on
     return null;
   })();
 
+  const getAgeText = () => {
+    if (!booking.pet_dob) return null;
+    const start = new Date(booking.pet_dob);
+    const end = new Date(booking.pet_date_of_death || booking.booking_date);
+    if (isNaN(start.getTime()) || isNaN(end.getTime())) return null;
+    let years = end.getFullYear() - start.getFullYear();
+    let months = end.getMonth() - start.getMonth();
+    let days = end.getDate() - start.getDate();
+    if (days < 0) {
+      months -= 1;
+    }
+    if (months < 0) {
+      years -= 1;
+      months += 12;
+    }
+    if (years < 0) return null;
+    if (years === 0 && months === 0) return null;
+    if (years === 0) return `${months} month${months === 1 ? '' : 's'}`;
+    if (months === 0) return `${years} year${years === 1 ? '' : 's'}`;
+    return `${years} year${years === 1 ? '' : 's'} ${months} month${months === 1 ? '' : 's'}`;
+  };
+  const ageText = getAgeText();
+
   return (
     <div
       className="fixed inset-0 z-[9999] flex items-center justify-center p-4 md:p-6 mt-0"
@@ -459,6 +482,9 @@ const CremationCertificate: React.FC<CremationCertificateProps> = ({ booking, on
                   <p className="mt-2 text-base text-gray-700 font-medium tracking-wide">
                     {lifespan}
                   </p>
+                )}
+                {ageText && (
+                  <p className="text-sm text-gray-600">Age: {ageText}</p>
                 )}
               </div>
 
