@@ -25,6 +25,8 @@ async function ensurePetsTableExists() {
           age VARCHAR(50),
           weight DECIMAL(8,2),
           photo_path VARCHAR(255),
+          date_of_birth DATE NULL,
+          date_of_death DATE NULL,
           special_notes TEXT,
           created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
           updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -33,6 +35,20 @@ async function ensurePetsTableExists() {
       `);
 
       return true;
+    }
+
+    // Ensure new columns exist on existing table
+    const columns = await query(`
+      SELECT COLUMN_NAME FROM information_schema.COLUMNS
+      WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'pets'
+    `) as Array<{ COLUMN_NAME: string }>;
+
+    const colNames = new Set(columns.map(c => c.COLUMN_NAME));
+    if (!colNames.has('date_of_birth')) {
+      try { await query(`ALTER TABLE pets ADD COLUMN date_of_birth DATE NULL`); } catch {}
+    }
+    if (!colNames.has('date_of_death')) {
+      try { await query(`ALTER TABLE pets ADD COLUMN date_of_death DATE NULL`); } catch {}
     }
 
     return true;
@@ -74,6 +90,8 @@ export async function GET(request: NextRequest) {
           age,
           weight,
           photo_path as image_path,
+          date_of_birth,
+          date_of_death,
           special_notes,
           created_at
         FROM pets
@@ -133,6 +151,8 @@ export async function POST(request: NextRequest) {
 
     // Support multiple field names for image path
     const imagePath = body.imagePath || body.image_url || body.photoPath || body.imageUrl;
+    const dateOfBirth: string | null = body.dateOfBirth || body.date_of_birth || null;
+    const dateOfDeath: string | null = body.dateOfDeath || body.date_of_death || null;
 
     // Support multiple field names for special notes
     const _specialNotes = body.specialNotes || body.special_notes || body.notes;
@@ -156,8 +176,10 @@ export async function POST(request: NextRequest) {
           age,
           weight,
           photo_path,
+          date_of_birth,
+          date_of_death,
           special_notes
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `, [
         userId,
         name,
@@ -167,6 +189,8 @@ export async function POST(request: NextRequest) {
         body.age || null,
         weight || null,
         imagePath || null,
+        dateOfBirth || null,
+        dateOfDeath || null,
         body.specialNotes || null
       ]) as any;
 

@@ -15,6 +15,9 @@ interface CremationCertificateProps {
     id: number;
     pet_name: string;
     pet_type: string;
+    pet_image_url?: string | null;
+    pet_dob?: string | null;
+    pet_date_of_death?: string | null;
     first_name?: string;
     last_name?: string;
     booking_date: string;
@@ -43,6 +46,22 @@ const CremationCertificate: React.FC<CremationCertificateProps> = ({ booking, on
   };
 
   const certificateNumber = `RC-${booking.id.toString().padStart(6, '0')}`;
+
+  const getYear = (dateString?: string | null) => {
+    if (!dateString) return null;
+    const d = new Date(dateString);
+    const y = d.getFullYear();
+    return isNaN(y) ? null : y;
+  };
+
+  const lifespan = (() => {
+    const birthYear = getYear(booking.pet_dob);
+    const deathYear = getYear(booking.pet_date_of_death);
+    if (birthYear && deathYear) return `${birthYear}–${deathYear}`;
+    if (birthYear && !deathYear) return `${birthYear}–`;
+    if (!birthYear && deathYear) return `–${deathYear}`;
+    return null;
+  })();
 
   return (
     <div
@@ -416,7 +435,13 @@ const CremationCertificate: React.FC<CremationCertificateProps> = ({ booking, on
             {/* Main Content */}
             <div className="text-center space-y-6 mb-8">
               <div className="flex justify-center mb-6">
-                <HeartIcon className="h-16 w-16 text-red-400 fill-current" />
+                {/* Pet photo or placeholder */}
+                {booking.pet_image_url ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={booking.pet_image_url} alt={booking.pet_name} className="h-24 w-24 rounded-full object-cover border border-gray-300" onError={(e) => { (e.target as HTMLImageElement).src = '/icons/pet-placeholder.png'; }} />
+                ) : (
+                  <HeartIcon className="h-16 w-16 text-red-400 fill-current" />
+                )}
               </div>
 
               <p className="text-lg text-gray-700 leading-relaxed">
@@ -430,6 +455,11 @@ const CremationCertificate: React.FC<CremationCertificateProps> = ({ booking, on
                 <p className="text-lg text-gray-600">
                   Beloved {booking.pet_type}
                 </p>
+                {lifespan && (
+                  <p className="mt-2 text-base text-gray-700 font-medium tracking-wide">
+                    {lifespan}
+                  </p>
+                )}
               </div>
 
               <p className="text-lg text-gray-700 leading-relaxed">
@@ -443,6 +473,26 @@ const CremationCertificate: React.FC<CremationCertificateProps> = ({ booking, on
               <p className="text-lg text-gray-700 leading-relaxed">
                 under the {booking.service_name} service package
               </p>
+
+              {/* Dates Row */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-center mt-4">
+                <div>
+                  <p className="text-sm text-gray-500 mb-1">Date of Birth</p>
+                  <p className="font-semibold text-gray-800">
+                    {booking.pet_dob ? formatDate(booking.pet_dob) : '—'}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500 mb-1">Cremation Date</p>
+                  <p className="font-semibold text-gray-800">{formatDate(booking.booking_date)}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500 mb-1">Date of Passing</p>
+                  <p className="font-semibold text-gray-800">
+                    {booking.pet_date_of_death ? formatDate(booking.pet_date_of_death) : '—'}
+                  </p>
+                </div>
+              </div>
 
               <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-200 mt-6">
                 <p className="text-gray-700 italic">
