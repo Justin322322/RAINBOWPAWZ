@@ -141,7 +141,7 @@ const PackageModal: React.FC<PackageModalProps> = ({
       setCustomPetTypes(incomingCustoms);
       setFormData(prev => ({ ...prev, ...initialData, supportedPetTypes: ensuredSupported }));
     }
-  }, [initialData, isOpen]);
+  }, [initialData, isOpen, BASE_PET_TYPES]);
 
   // Monitor formData changes for debugging
   useEffect(() => {
@@ -388,7 +388,7 @@ const PackageModal: React.FC<PackageModalProps> = ({
     } finally {
       setIsLoading(false);
     }
-  }, [packageId, showToast]);
+  }, [packageId, showToast, BASE_PET_TYPES]);
 
   // Track form initialization to prevent unstable dependency loops
   const formInitialized = useRef(false);
