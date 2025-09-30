@@ -55,7 +55,7 @@ export default function CremationDashboardLayout({
 
   // Render the cremation dashboard with admin-like structure
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 dashboard-typography">
       <CremationSidebar activePage={activePage} />
       <div className="lg:pl-64 transition-all duration-300"> {/* Responsive padding like admin */}
         <CremationNavbar

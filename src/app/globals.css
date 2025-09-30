@@ -110,6 +110,16 @@
     }
   }
 
+  /* Dashboard typography override: force sans-serif for headings inside dashboards */
+  .dashboard-typography h1,
+  .dashboard-typography h2,
+  .dashboard-typography h3,
+  .dashboard-typography h4,
+  .dashboard-typography h5,
+  .dashboard-typography h6 {
+    font-family: var(--font-sans);
+  }
+
   /* Mobile-specific utilities */
   .touch-target {
     min-block-size: 44px;

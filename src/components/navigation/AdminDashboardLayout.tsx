@@ -58,7 +58,7 @@ function AdminDashboardLayout({
 
   // Render the admin dashboard
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 dashboard-typography">
       <AdminSidebar activePage={activePage} />
       <div className="lg:pl-64 transition-all duration-300"> {/* Responsive padding */}
         <AdminNavbar userName={displayName} />
