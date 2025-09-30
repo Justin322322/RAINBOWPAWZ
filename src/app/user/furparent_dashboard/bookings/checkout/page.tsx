@@ -389,6 +389,27 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
     return ok;
   };
 
+  // Live updater to clear/set date errors immediately when user changes values
+  const updateDateErrors = (dob: string, dod: string) => {
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const isFuture = (ds: string) => ds && ds > todayStr;
+
+    // Start with cleared errors
+    let next: typeof validationErrors = { ...validationErrors, petDob: undefined, petDod: undefined };
+
+    if (dob && isFuture(dob)) {
+      next.petDob = 'Date of Birth cannot be in the future';
+    }
+    if (dod && isFuture(dod)) {
+      next.petDod = 'Date of Passing cannot be in the future';
+    }
+    if (dob && dod && dod < dob) {
+      next.petDod = 'Date of Passing cannot be before Date of Birth';
+    }
+
+    setValidationErrors(next);
+  };
+
   // Validate date selection
   const validateDateSelection = () => {
     if (!selectedDate) {
@@ -780,6 +801,8 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
       if (firstErrorField) {
         firstErrorField.scrollIntoView({ behavior: 'smooth', block: 'center' });
       }
+      // Emit a clear toast now that the form has been submitted and validations ran
+      showToast('Please fix the highlighted fields before proceeding', 'warning');
       return;
     }
 
@@ -1391,8 +1414,9 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
                               type="date"
                               value={petDob}
                               onChange={(e) => {
-                                setPetDob(e.target.value);
-                                setValidationErrors(prev => ({ ...prev, petDob: undefined }));
+                                const v = e.target.value;
+                                setPetDob(v);
+                                updateDateErrors(v, petDod);
                               }}
                               className="w-full p-3 border border-gray-300 rounded-md focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)]"
                               max={new Date().toISOString().slice(0, 10)}
@@ -1412,8 +1436,9 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
                               type="date"
                               value={petDod}
                               onChange={(e) => {
-                                setPetDod(e.target.value);
-                                setValidationErrors(prev => ({ ...prev, petDod: undefined }));
+                                const v = e.target.value;
+                                setPetDod(v);
+                                updateDateErrors(petDob, v);
                               }}
                               className="w-full p-3 border border-gray-300 rounded-md focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)]"
                               min={petDob || undefined}
