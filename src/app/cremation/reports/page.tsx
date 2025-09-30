@@ -293,8 +293,8 @@ ${reportData.topServices.map((service: any, index: number) =>
 
             {/* Removed headline metric tiles for a cleaner report layout */}
 
-            {/* Refunds Section: compact cards + line chart */}
-            <div className="bg-white rounded-xl shadow-md border border-gray-100 p-6 mb-8">
+            {/* Refunds Section: compact summary + line chart */}
+            <div className="report-card shadow-md mb-8">
                 <div className="flex items-center justify-between mb-4">
                     <h2 className="text-lg font-medium text-gray-800">Refunds Overview</h2>
                     {!loading && (
@@ -317,7 +317,7 @@ ${reportData.topServices.map((service: any, index: number) =>
             </div>
 
             {/* Revenue Overview (primary focus) */}
-            <div className="bg-white rounded-xl shadow-md border border-gray-100 p-6 mb-10">
+            <div className="report-card shadow-md mb-10">
                 <div className="flex items-center justify-between">
                     <div>
                       <h2 className="text-xl font-semibold text-gray-900">Revenue Overview</h2>
@@ -351,7 +351,7 @@ ${reportData.topServices.map((service: any, index: number) =>
 
             {/* Secondary insights */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-12">
-              <div className="bg-white rounded-xl shadow-md border border-gray-100 p-6">
+              <div className="report-card shadow-md">
                 <h2 className="text-lg font-medium text-gray-800 mb-4">Bookings Status Mix</h2>
                 {loading ? (
                   <StatsCardSkeleton count={1} />
@@ -366,7 +366,7 @@ ${reportData.topServices.map((service: any, index: number) =>
                   />
                 )}
               </div>
-              <div className="bg-white rounded-xl shadow-md border border-gray-100 p-6">
+              <div className="report-card shadow-md">
                 <h2 className="text-lg font-medium text-gray-800 mb-4">Notes</h2>
                 <p className="text-sm text-gray-600">This section is reserved for additional insights (e.g., top services or seasonal trends). We can wire these once the API exposes the series.</p>
               </div>
