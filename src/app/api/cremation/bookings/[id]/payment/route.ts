@@ -19,10 +19,10 @@ export async function PUT(
     const { paymentStatus } = requestBody;
 
     // Validate payment status
-    if (!paymentStatus || !['not_paid', 'partially_paid', 'paid'].includes(paymentStatus)) {
+    if (!paymentStatus || !['not_paid', 'partially_paid', 'paid', 'awaiting_payment_confirmation', 'refunded', 'failed'].includes(paymentStatus)) {
       return NextResponse.json({
         error: 'Valid payment status is required',
-        details: 'Payment status must be one of: not_paid, partially_paid, paid'
+        details: 'Payment status must be one of: not_paid, partially_paid, paid, awaiting_payment_confirmation, refunded, failed'
       }, { status: 400 });
     }
 

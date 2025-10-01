@@ -67,7 +67,7 @@ interface BookingData {
   pet_date_of_death?: string | null;
   cause_of_death?: string;
   payment_method?: string;
-  payment_status?: 'not_paid' | 'partially_paid' | 'paid';
+  payment_status?: 'not_paid' | 'partially_paid' | 'paid' | 'awaiting_payment_confirmation' | 'refunded' | 'failed';
   delivery_option?: string;
   delivery_address?: string;
   delivery_distance?: number;

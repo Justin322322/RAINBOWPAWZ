@@ -108,7 +108,7 @@ const PackageCard = React.memo<{
         <p className="text-sm text-gray-600 mb-3 line-clamp-2">{pkg.description}</p>
 
         {/* Weight-based pricing info */}
-        {pkg.pricingMode === 'by_size' && pkg.sizePricing && Array.isArray(pkg.sizePricing) && pkg.sizePricing.length > 0 && (
+        {pkg.pricingMode === 'by_size' && pkg.sizePricing && Array.isArray(pkg.sizePricing) && pkg.sizePricing.filter((t: any) => Number(t.price) > 0).length > 0 && (
           <div className="mb-3 p-2 bg-gray-50 border border-gray-200 rounded-md">
             <div className="flex items-center mb-1">
               <svg className="h-3 w-3 text-gray-600 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -117,7 +117,7 @@ const PackageCard = React.memo<{
               <span className="text-xs font-medium text-gray-800">Weight-Based Pricing</span>
             </div>
             <div className="space-y-1">
-              {pkg.sizePricing.slice(0, 2).map((tier: any, index: number) => (
+              {pkg.sizePricing.filter((t: any) => Number(t.price) > 0).slice(0, 2).map((tier: any, index: number) => (
                 <div key={index} className="flex justify-between text-xs">
                   <span className="text-gray-700">
                     {tier.sizeCategory} ({tier.weightRangeMin}-{tier.weightRangeMax || '∞'}kg)
@@ -125,8 +125,8 @@ const PackageCard = React.memo<{
                   <span className="font-medium text-gray-800">₱{formatPrice(Number(tier.price))}</span>
                 </div>
               ))}
-              {pkg.sizePricing.length > 2 && (
-                <div className="text-xs text-gray-600">+{pkg.sizePricing.length - 2} more tiers</div>
+              {pkg.sizePricing.filter((t: any) => Number(t.price) > 0).length > 2 && (
+                <div className="text-xs text-gray-600">+{pkg.sizePricing.filter((t: any) => Number(t.price) > 0).length - 2} more tiers</div>
               )}
               {Number(pkg.overageFeePerKg || 0) > 0 && (
                 <div className="text-xs text-gray-600 border-t border-gray-200 pt-1">

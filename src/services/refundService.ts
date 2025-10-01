@@ -105,7 +105,11 @@ export async function processRefund(request: RefundRequest): Promise<RefundResul
     }
 
     // Determine payment method and processing type
-    const { canAutoProcess } = determineRefundType(bookingInfo.paymentMethod, request.initiatedByType);
+    const { canAutoProcess } = determineRefundType(
+      bookingInfo.paymentMethod,
+      bookingInfo.paymentStatus,
+      request.initiatedByType
+    );
 
     if (canAutoProcess) {
       return await processAutomaticRefund(request, bookingInfo);
@@ -507,23 +511,29 @@ async function getBookingPaymentInfo(bookingId: number): Promise<BookingPaymentI
 }
 
 /**
- * Determine refund type based on payment method and who initiated the refund
+ * Determine refund type based on payment method, payment status, and who initiated the refund
  */
-function determineRefundType(paymentMethod: string, initiatedByType: string): { refundType: 'automatic' | 'manual', canAutoProcess: boolean } {
+function determineRefundType(
+  paymentMethod: string,
+  paymentStatus: string,
+  initiatedByType: string
+): { refundType: 'automatic' | 'manual', canAutoProcess: boolean } {
   const normalizedMethod = normalizePaymentMethod(paymentMethod);
+  const normalizedStatus = (paymentStatus || 'not_paid').toLowerCase();
   
-  console.log('Determining refund type:', { paymentMethod, normalizedMethod, initiatedByType });
+  console.log('Determining refund type:', { paymentMethod, normalizedMethod, paymentStatus: normalizedStatus, initiatedByType });
   
-  // QR code payments: automatic when initiated by business, manual when initiated by customer
+  // QR code payments: if already paid (receipt approved), allow automatic refunds regardless of initiator
   if (isQRCodePayment(paymentMethod)) {
+    if (normalizedStatus === 'paid' || normalizedStatus === 'succeeded') {
+      return { refundType: 'automatic', canAutoProcess: true };
+    }
+    // Otherwise, automatic when initiated by business, manual when initiated by customer
     const isBusinessInitiated = initiatedByType === 'provider' || initiatedByType === 'admin' || initiatedByType === 'staff';
     console.log('QR payment detected:', { isBusinessInitiated, result: isBusinessInitiated ? 'automatic' : 'manual' });
-    
-    if (isBusinessInitiated) {
-      return { refundType: 'automatic', canAutoProcess: true };
-    } else {
-      return { refundType: 'manual', canAutoProcess: false };
-    }
+    return isBusinessInitiated
+      ? { refundType: 'automatic', canAutoProcess: true }
+      : { refundType: 'manual', canAutoProcess: false };
   }
 
   // Cash payments: automatic when initiated by business, manual when initiated by customer

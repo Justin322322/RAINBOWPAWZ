@@ -8,7 +8,6 @@ import {
   DevicePhoneMobileIcon,
   EnvelopeIcon,
   Cog6ToothIcon,
-  QrCodeIcon,
   CloudArrowUpIcon,
   XMarkIcon,
   CheckCircleIcon,

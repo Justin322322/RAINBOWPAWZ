@@ -68,7 +68,7 @@ interface _WebhookPayload {
 
 export interface PaymentStatus {
   booking_id: number;
-  payment_status: 'not_paid' | 'partially_paid' | 'paid';
+  payment_status: 'not_paid' | 'partially_paid' | 'paid' | 'awaiting_payment_confirmation' | 'refunded' | 'failed';
   payment_method: string;
   transaction_id?: number;
   amount_paid?: number;

@@ -128,11 +128,11 @@ export const PackageDetailsModal: React.FC<PackageDetailsModalProps> = ({
         </div>
 
         {/* Weight-based pricing */}
-        {pkg.pricingMode === 'by_size' && pkg.sizePricing && Array.isArray(pkg.sizePricing) && pkg.sizePricing.length > 0 && (
+        {pkg.pricingMode === 'by_size' && pkg.sizePricing && Array.isArray(pkg.sizePricing) && pkg.sizePricing.filter((t: any) => Number(t.price) > 0).length > 0 && (
           <div>
             <h3 className="text-xl font-semibold text-gray-900 mb-4">Weight-Based Pricing</h3>
             <div className="space-y-3">
-              {pkg.sizePricing.map((tier: any, index: number) => {
+              {pkg.sizePricing.filter((t: any) => Number(t.price) > 0).map((tier: any, index: number) => {
                 const min = tier.weightRangeMin !== undefined ? tier.weightRangeMin : 0;
                 const max = tier.weightRangeMax !== undefined ? tier.weightRangeMax : null;
                 const weightRange = max !== null ? `${min}-${max}kg` : `${min}+kg`;

@@ -327,7 +327,7 @@ function PackageDetailPage({ userData: _userData }: PackageDetailPageProps) {
                     </div>
 
                     {/* Weight-based pricing details - Simplified version */}
-                    {packageData.sizePricing && Array.isArray(packageData.sizePricing) && packageData.sizePricing.length > 0 && (
+                    {packageData.sizePricing && Array.isArray(packageData.sizePricing) && packageData.sizePricing.filter((t: any) => Number(t.price) > 0).length > 0 && (
                       <div className="mb-4 p-3 bg-gray-50 rounded-lg border border-gray-200">
                         <div className="flex items-center mb-2">
                           <svg className="h-4 w-4 text-gray-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -336,7 +336,7 @@ function PackageDetailPage({ userData: _userData }: PackageDetailPageProps) {
                           <span className="text-sm font-semibold text-gray-800">Weight-Based Pricing</span>
                         </div>
                         <div className="space-y-2">
-                          {packageData.sizePricing.map((tier: any, index: number) => (
+                          {packageData.sizePricing.filter((t: any) => Number(t.price) > 0).map((tier: any, index: number) => (
                             <div key={index} className="flex items-center justify-between text-xs">
                               <span className="text-gray-700">
                                 {(() => {
