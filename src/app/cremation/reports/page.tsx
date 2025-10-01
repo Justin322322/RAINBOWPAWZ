@@ -13,7 +13,7 @@ import {
     ClockIcon,
     ArrowPathIcon
 } from '@heroicons/react/24/outline';
-import { RefundsLineChart, StatusPieChart, BookingsBarChart, type LinePoint } from '@/components/ui/Chart';
+import { RefundsLineChart, StatusPieChart, BookingsBarChart } from '@/components/ui/Chart';
 import { StatsCardSkeleton } from '@/app/cremation/components/LoadingComponents';
 
 function CremationReportsPage({ userData }: { userData: any }) {
@@ -71,101 +71,10 @@ function CremationReportsPage({ userData }: { userData: any }) {
             }
 
             const data = await response.json();
-            // Start with server-provided data
-            let merged = data;
-
-            // Also fetch refund stats from existing refunds endpoint to ensure accuracy
-            try {
-                // Map dateFilter to start/end dates supported by refunds API
-                const now = new Date();
-                const startEnd: { start?: string; end?: string } = {};
-                const toISO = (d: Date) => d.toISOString().slice(0, 10);
-                if (dateFilter === 'last7days') {
-                    const d = new Date(now);
-                    d.setDate(d.getDate() - 7);
-                    startEnd.start = toISO(d);
-                    startEnd.end = toISO(now);
-                } else if (dateFilter === 'last30days') {
-                    const d = new Date(now);
-                    d.setDate(d.getDate() - 30);
-                    startEnd.start = toISO(d);
-                    startEnd.end = toISO(now);
-                } else if (dateFilter === 'last90days') {
-                    const d = new Date(now);
-                    d.setDate(d.getDate() - 90);
-                    startEnd.start = toISO(d);
-                    startEnd.end = toISO(now);
-                } else if (dateFilter === 'last6months') {
-                    const d = new Date(now);
-                    d.setMonth(d.getMonth() - 6);
-                    startEnd.start = toISO(d);
-                    startEnd.end = toISO(now);
-                } else if (dateFilter === 'thisyear') {
-                    const d = new Date(now.getFullYear(), 0, 1);
-                    startEnd.start = toISO(d);
-                    startEnd.end = toISO(now);
-                }
-
-                const refundParams = new URLSearchParams();
-                if (startEnd.start) refundParams.append('start_date', startEnd.start);
-                if (startEnd.end) refundParams.append('end_date', startEnd.end);
-
-                const refundsRes = await fetch(`/api/cremation/refunds?${refundParams.toString()}`, {
-                    method: 'GET',
-                    headers: { 'Cache-Control': 'no-cache' },
-                    credentials: 'include'
-                });
-
-                if (refundsRes.ok) {
-                    const refundsJson = await refundsRes.json();
-                    const refunds = refundsJson.refunds || [];
-
-                    const totalRefunds = refunds.length;
-                    const completed = refunds.filter((r: any) => r.status === 'completed');
-                    const pending = refunds.filter((r: any) => r.status === 'pending' || r.status === 'pending_approval' || r.status === 'processing');
-                    const totalRefunded = completed.reduce((sum: number, r: any) => sum + (Number(r.amount) || 0), 0);
-
-                    // Compute refund rate relative to total bookings if available
-                    const totalBookings = merged?.stats?.totalBookings ?? merged?.stats?.total_bookings ?? merged?.detailedStats?.totalBookings ?? 0;
-                    const refundRate = totalBookings > 0 ? ((totalRefunds / totalBookings) * 100) : 0;
-
-                    // Build simple last 6 month refunded amounts series
-                    const seriesMap = new Map<string, number>();
-                    for (let i = 5; i >= 0; i--) {
-                      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-                      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2,'0')}`;
-                      seriesMap.set(key, 0);
-                    }
-                    completed.forEach((r: any) => {
-                      const d = new Date(r.completed_at || r.processed_at || r.initiated_at);
-                      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2,'0')}`;
-                      if (seriesMap.has(key)) {
-                        seriesMap.set(key, (seriesMap.get(key) || 0) + (Number(r.amount) || 0));
-                      }
-                    });
-                    const refundSeries: LinePoint[] = Array.from(seriesMap.entries()).map(([key, value]) => {
-                      const [, month] = key.split('-');
-                      const label = new Date(2000, Number(month) - 1, 1).toLocaleString('en-US', { month: 'short' });
-                      return { label, value };
-                    });
-
-                    merged = {
-                        ...merged,
-                        stats: {
-                            ...merged.stats,
-                            totalRefunds,
-                            totalRefunded,
-                            pendingRefunds: pending.length,
-                            refundRate: refundRate.toFixed(2)
-                        },
-                        monthlyData: refundSeries
-                    };
-                }
-            } catch {
-                // If refund fetch fails, keep server data as-is
-            }
-
-            setReportData(merged);
+            
+            // Use the data directly from the reports API
+            // The API now provides all necessary data including refunds and monthly data
+            setReportData(data);
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : 'Failed to fetch report data';
             

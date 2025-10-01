@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { verifySecureAuth } from '@/lib/secureAuth';
+import { initializeRefundTables } from '@/lib/db/refunds';
+import { checkTableExists } from '@/lib/db/schema';
 
 // Execute a query and return a safe fallback on error to avoid 500s
 async function safeQuery<T>(sql: string, params: unknown[], fallback: T): Promise<T> {
@@ -12,8 +14,93 @@ async function safeQuery<T>(sql: string, params: unknown[], fallback: T): Promis
   }
 }
 
+// Check if a column exists in a table
+async function checkColumnExists(tableName: string, columnName: string): Promise<boolean> {
+  try {
+    const result = await query(`
+      SELECT COLUMN_NAME 
+      FROM INFORMATION_SCHEMA.COLUMNS 
+      WHERE TABLE_SCHEMA = DATABASE() 
+      AND TABLE_NAME = ? 
+      AND COLUMN_NAME = ?
+    `, [tableName, columnName]) as any[];
+    
+    return result.length > 0;
+  } catch (error) {
+    console.error(`Error checking if column ${tableName}.${columnName} exists:`, error);
+    return false;
+  }
+}
+
+// Ensure required columns exist in tables
+async function ensureRequiredColumns(): Promise<void> {
+  try {
+    // Check and add missing columns to bookings table
+    const bookingColumns = [
+      { name: 'total_price', definition: 'DECIMAL(10,2) DEFAULT NULL' },
+      { name: 'base_price', definition: 'DECIMAL(10,2) DEFAULT NULL' },
+      { name: 'delivery_fee', definition: 'DECIMAL(10,2) DEFAULT NULL' },
+      { name: 'booking_date', definition: 'DATE DEFAULT NULL' }
+    ];
+
+    for (const col of bookingColumns) {
+      const exists = await checkColumnExists('bookings', col.name);
+      if (!exists) {
+        console.log(`Adding missing column bookings.${col.name}...`);
+        try {
+          await query(`ALTER TABLE bookings ADD COLUMN ${col.name} ${col.definition}`);
+          console.log(`Successfully added column bookings.${col.name}`);
+        } catch (error) {
+          console.error(`Failed to add column bookings.${col.name}:`, error);
+        }
+      }
+    }
+
+    // Check and add missing columns to service_packages table
+    const packageColumns = [
+      { name: 'supported_pet_types', definition: 'JSON DEFAULT NULL' }
+    ];
+
+    for (const col of packageColumns) {
+      const exists = await checkColumnExists('service_packages', col.name);
+      if (!exists) {
+        console.log(`Adding missing column service_packages.${col.name}...`);
+        try {
+          await query(`ALTER TABLE service_packages ADD COLUMN ${col.name} ${col.definition}`);
+          console.log(`Successfully added column service_packages.${col.name}`);
+        } catch (error) {
+          console.error(`Failed to add column service_packages.${col.name}:`, error);
+        }
+      }
+    }
+
+  } catch (error) {
+    console.error('Error ensuring required columns:', error);
+  }
+}
+
 export async function GET(request: NextRequest) {
   try {
+    // Initialize database tables first
+    console.log('Reports API: Initializing database tables...');
+    await initializeRefundTables();
+    
+    // Ensure required columns exist
+    await ensureRequiredColumns();
+    
+    // Check if required tables exist
+    const bookingsExists = await checkTableExists('bookings');
+    const refundsExists = await checkTableExists('refunds');
+    const serviceProvidersExists = await checkTableExists('service_providers');
+    const servicePackagesExists = await checkTableExists('service_packages');
+    
+    console.log('Reports API: Table existence check:', {
+      bookings: bookingsExists,
+      refunds: refundsExists,
+      serviceProviders: serviceProvidersExists,
+      servicePackages: servicePackagesExists
+    });
+
     // Enforce authentication and scope to the authenticated business provider
     const user = await verifySecureAuth(request);
     if (!user) {
@@ -33,10 +120,12 @@ export async function GET(request: NextRequest) {
     }
     
     const providerId = providerRow[0].id;
+    console.log('Reports API: Processing request for provider ID:', providerId);
 
     // Get query parameters
     const url = new URL(request.url);
     const period = url.searchParams.get('period') || 'last30days';
+    console.log('Reports API: Period filter:', period);
 
     // Build the SQL date range condition based on the period
     let dateCondition = '';
@@ -54,31 +143,37 @@ export async function GET(request: NextRequest) {
       dateCondition = 'AND YEAR(b.booking_date) = YEAR(CURDATE())';
     }
 
-    // Check if bookings table exists
-    let useBookings = true;
-    try {
-      await query('SELECT 1 FROM bookings LIMIT 1');
-      console.log('Using bookings table for reports');
-    } catch (error) {
-      console.log('Bookings table not accessible:', error);
-      useBookings = false;
+    // Check if bookings table exists and is accessible
+    let useBookings = bookingsExists;
+    if (useBookings) {
+      try {
+        await query('SELECT 1 FROM bookings LIMIT 1');
+        console.log('Using bookings table for reports');
+      } catch (error) {
+        console.log('Bookings table not accessible:', error);
+        useBookings = false;
+      }
+    } else {
+      console.log('Bookings table does not exist, skipping booking-related queries');
     }
 
     // Get refund data for the reports (safe fallback if table doesn't exist)
-    const refundQuery = `
+    const refundQuery = refundsExists ? `
       SELECT 
         COUNT(*) as total_refunds,
         COALESCE(SUM(amount), 0) as total_refunded,
         COUNT(CASE WHEN status = 'completed' THEN 1 END) as completed_refunds,
-        COUNT(CASE WHEN status = 'pending' THEN 1 END) as pending_refunds,
+        COUNT(CASE WHEN status IN ('pending', 'processing') THEN 1 END) as pending_refunds,
         COUNT(CASE WHEN refund_type = 'manual' THEN 1 END) as manual_refunds
       FROM refunds r
       ${useBookings ? `
         JOIN bookings b ON r.booking_id = b.id
-        WHERE b.provider_id = ? ${dateCondition.replace('b.booking_date', 'r.initiated_at')}
+        WHERE b.provider_id = ? ${dateCondition.replace('b.booking_date', 'COALESCE(r.initiated_at, r.created_at)')}
       ` : `
         WHERE 1=0
       `}
+    ` : `
+      SELECT 0 as total_refunds, 0 as total_refunded, 0 as completed_refunds, 0 as pending_refunds, 0 as manual_refunds
     `;
 
     const refundData = await safeQuery<any[]>(refundQuery, queryParams, [{
@@ -175,6 +270,9 @@ export async function GET(request: NextRequest) {
         revenue: parseFloat(service.revenue || '0')
       }));
 
+      console.log('Reports API: Bookings stats:', stats);
+      console.log('Reports API: Top services:', topServices.length);
+
     } else {
       // Fallback to bookings table or return empty data
       try {
@@ -214,6 +312,32 @@ export async function GET(request: NextRequest) {
       manual_refunds: 0
     };
 
+    // Generate monthly revenue data for the selected period
+    let monthlyData: any[] = [];
+    if (useBookings) {
+      const monthlyRevenueQuery = `
+        SELECT 
+          DATE_FORMAT(b.booking_date, '%Y-%m') as month,
+          COALESCE(SUM(CASE WHEN b.status = 'completed' THEN COALESCE(b.total_price, b.base_price, 0) + COALESCE(b.delivery_fee, 0) ELSE 0 END), 0) as revenue,
+          COUNT(CASE WHEN b.status = 'completed' THEN 1 END) as bookings
+        FROM bookings b
+        WHERE b.provider_id = ? ${dateCondition}
+        GROUP BY DATE_FORMAT(b.booking_date, '%Y-%m')
+        ORDER BY month ASC
+      `;
+
+      const monthlyRevenueResult = await safeQuery<any[]>(monthlyRevenueQuery, queryParams, []);
+      
+      // Convert to chart format
+      monthlyData = monthlyRevenueResult.map((row: any) => ({
+        label: new Date(row.month + '-01').toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
+        value: parseFloat(row.revenue || '0'),
+        bookings: parseInt(row.bookings || '0')
+      }));
+      
+      console.log('Reports API: Monthly data points:', monthlyData.length);
+    }
+
     return NextResponse.json({
       stats: {
         ...stats,
@@ -226,7 +350,7 @@ export async function GET(request: NextRequest) {
           ((parseInt(refundStats.total_refunds) / stats.totalBookings) * 100).toFixed(2) : '0'
       },
       topServices,
-      monthlyData: [], // Could be implemented later
+      monthlyData,
       recentActivity: [] // Could be implemented later
     });
 

@@ -523,10 +523,10 @@ function determineRefundType(
   
   console.log('Determining refund type:', { paymentMethod, normalizedMethod, paymentStatus: normalizedStatus, initiatedByType });
   
-  // QR code payments: if already paid (receipt approved), allow automatic refunds regardless of initiator
+  // QR code payments: if already paid (receipt approved), require manual refund with receipt upload & approval
   if (isQRCodePayment(paymentMethod)) {
     if (normalizedStatus === 'paid' || normalizedStatus === 'succeeded') {
-      return { refundType: 'automatic', canAutoProcess: true };
+      return { refundType: 'manual', canAutoProcess: false };
     }
     // Otherwise, automatic when initiated by business, manual when initiated by customer
     const isBusinessInitiated = initiatedByType === 'provider' || initiatedByType === 'admin' || initiatedByType === 'staff';

@@ -1414,7 +1414,7 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
 
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Weight (kg) {(bookingData?.package?.overageFeePerKg > 0 || bookingData?.package?.pricingMode === 'by_size') && <span className="text-red-500">*</span>}
+                            Weight (kg) {bookingData?.package?.pricingMode === 'by_size' && <span className="text-red-500">*</span>}
                           </label>
                           <input
                             type="number"

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifySecureAuth } from '@/lib/secureAuth';
 import { query } from '@/lib/db';
+import { processRefund } from '@/services/refundService';
 
 async function ensureReceiptTable(): Promise<void> {
   await query(`
@@ -93,6 +94,19 @@ export async function POST(request: NextRequest) {
       }
       return NextResponse.json({ success: true });
     } else {
+      // Capture current booking info before changing status
+      let bookingInfo: any | null = null;
+      try {
+        const rows = await query(
+          `SELECT id, user_id, COALESCE(total_price, base_price, 0) AS amount, 
+                  COALESCE(payment_method, 'cash') AS payment_method,
+                  COALESCE(payment_status, 'not_paid') AS payment_status
+           FROM bookings WHERE id = ? LIMIT 1`,
+          [bookingId]
+        ) as any[];
+        bookingInfo = rows && rows.length > 0 ? rows[0] : null;
+      } catch {}
+
       if (tableExists) {
         console.log('❌ [confirm] Rejecting receipt in payment_receipts table');
         await query(
@@ -107,6 +121,24 @@ export async function POST(request: NextRequest) {
       } catch (updateError) {
         console.error('❌ [confirm] Failed to UPDATE bookings:', updateError);
         throw updateError;
+      }
+      // If this booking had been marked paid via QR/manual, create a manual refund record for review
+      try {
+        const wasPaid = (bookingInfo?.payment_status || '').toLowerCase() === 'paid';
+        const method = (bookingInfo?.payment_method || '').toLowerCase();
+        const isQR = method.includes('qr') || method.includes('scan') || method.includes('manual');
+        if (bookingInfo && wasPaid && isQR) {
+          await processRefund({
+            bookingId: bookingId,
+            amount: Number(bookingInfo.amount || 0),
+            reason: 'Receipt rejected - reversing QR payment',
+            initiatedBy: parseInt(user.userId),
+            initiatedByType: 'staff',
+            notes: reason || undefined,
+          });
+        }
+      } catch (refundErr) {
+        console.warn('⚠️ [confirm] Failed to create refund after receipt rejection (non-fatal):', refundErr);
       }
       return NextResponse.json({ success: true });
     }
