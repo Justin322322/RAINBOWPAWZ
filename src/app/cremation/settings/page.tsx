@@ -275,6 +275,151 @@ function CremationSettingsPage({ userData }: CremationSettingsProps) {
           />
         )}
 
+        {/* Payment QR Section - Moved to top for better accessibility */}
+        <ProfileSection
+          title="Payment QR Code"
+          subtitle="Upload your payment QR code (GCash, Maya, etc.) for customers to scan during checkout"
+          showSkeleton={false}
+        >
+          <ProfileCard>
+            <div className="space-y-6">
+              {/* Hidden file input */}
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                onChange={handleFileInputChange}
+                className="hidden"
+              />
+
+              <div className="grid grid-cols-1 gap-6">
+                {/* Upload Section - First on both small and large screens */}
+                <div className="space-y-4">
+                  <div className="flex items-center space-x-2">
+                    <CloudArrowUpIcon className="h-5 w-5 text-gray-600" />
+                    <h3 className="text-lg font-medium text-gray-900">Upload New QR Code</h3>
+                  </div>
+
+                  {/* Upload Area */}
+                  <div
+                    onDragOver={handleDragOver}
+                    onDragLeave={handleDragLeave}
+                    onDrop={handleDrop}
+                    onClick={triggerFileInput}
+                    className={`relative border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all duration-200 ${
+                      qrDragOver
+                        ? 'border-[var(--primary-green)] bg-green-50'
+                        : 'border-gray-300 hover:border-gray-400 hover:bg-gray-50'
+                    } ${qrUploading ? 'pointer-events-none opacity-60' : ''}`}
+                  >
+                    {qrUploading ? (
+                      <div className="space-y-4">
+                        <CloudArrowUpIcon className="h-12 w-12 text-[var(--primary-green)] mx-auto" />
+                        <div className="space-y-2">
+                          <p className="text-sm font-medium text-gray-900">Uploading QR Code...</p>
+                          <div className="w-full bg-gray-200 rounded-full h-2">
+                            <div
+                              className="bg-[var(--primary-green)] h-2 rounded-full transition-all duration-300"
+                              style={{ width: `${qrProgress}%` }}
+                            />
+                          </div>
+                          <p className="text-xs text-gray-500">{qrProgress}% complete</p>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        <CloudArrowUpIcon className={`h-12 w-12 mx-auto ${qrDragOver ? 'text-[var(--primary-green)]' : 'text-gray-400'}`} />
+                        <div>
+                          <p className="text-sm font-medium text-gray-900">
+                            {qrDragOver ? 'Drop your QR code here' : 'Click to upload or drag & drop'}
+                          </p>
+                          <p className="text-xs text-gray-500 mt-1">
+                            JPEG, PNG, or WebP (max 10MB)
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          className="inline-flex items-center px-4 py-2 bg-[var(--primary-green)] text-white text-sm font-medium rounded-lg hover:bg-[var(--primary-green-hover)] transition-colors"
+                        >
+                          <CloudArrowUpIcon className="h-4 w-4 mr-2" />
+                          Choose File
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Error Display */}
+                  {qrError && (
+                    <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                      <div className="flex items-start">
+                        <ExclamationTriangleIcon className="h-5 w-5 text-red-500 mt-0.5 mr-3 flex-shrink-0" />
+                        <div>
+                          <h4 className="text-sm font-medium text-red-800">Upload Error</h4>
+                          <p className="text-sm text-red-700 mt-1">{qrError}</p>
+                        </div>
+                        <button
+                          onClick={() => setQrError(null)}
+                          className="ml-auto text-red-400 hover:text-red-600"
+                        >
+                          <XMarkIcon className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Instructions */}
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                    <h4 className="text-sm font-medium text-blue-800 mb-2">💡 Tips for best results:</h4>
+                    <ul className="text-xs text-blue-700 space-y-1">
+                      <li>• Use a clear, high-resolution QR code image</li>
+                      <li>• Ensure the QR code is well-lit and in focus</li>
+                      <li>• Test the QR code works before uploading</li>
+                      <li>• Customers will scan this during checkout</li>
+                    </ul>
+                  </div>
+                </div>
+
+                {/* Current QR Display - Second on both small and large screens */}
+                <div className="space-y-4">
+                  <div className="flex items-center space-x-2">
+                    <QrCodeIcon className="h-5 w-5 text-gray-600" />
+                    <h3 className="text-lg font-medium text-gray-900">Current QR Code</h3>
+                  </div>
+
+                  {qrPath ? (
+                    <div className="relative group">
+                      <div className="bg-white border-2 border-gray-200 rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow">
+                        <div className="aspect-square max-w-sm mx-auto bg-gray-50 rounded-lg overflow-hidden">
+                          <Image
+                            src={qrPath}
+                            alt="Payment QR Code"
+                            width={400}
+                            height={400}
+                            className="w-full h-full object-contain"
+                          />
+                        </div>
+                        <div className="mt-3 text-center">
+                          <p className="text-sm text-gray-600">Your payment QR code is active</p>
+                          <div className="flex items-center justify-center mt-2">
+                            <CheckCircleIcon className="h-4 w-4 text-green-500 mr-1" />
+                            <span className="text-sm text-green-700">Ready for checkout</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="bg-gray-50 border-2 border-dashed border-gray-300 rounded-xl p-8 text-center">
+                      <PhotoIcon className="h-12 w-12 text-gray-400 mx-auto mb-3" />
+                      <p className="text-sm text-gray-500">No QR code uploaded yet</p>
+                      <p className="text-xs text-gray-400 mt-1">Upload a QR code to enable manual payments</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </ProfileCard>
+        </ProfileSection>
+
         <ProfileSection
           title="Notification Preferences"
           subtitle="Choose how you want to receive notifications_unified about booking updates and business activities"
@@ -417,151 +562,6 @@ function CremationSettingsPage({ userData }: CremationSettingsProps) {
 
               </>
             )}
-          </ProfileCard>
-        </ProfileSection>
-
-        {/* Payment QR Section */}
-        <ProfileSection
-          title="Payment QR Code"
-          subtitle="Upload your payment QR code (GCash, Maya, etc.) for customers to scan during checkout"
-          showSkeleton={false}
-        >
-          <ProfileCard>
-            <div className="space-y-6">
-              {/* Hidden file input */}
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/jpeg,image/png,image/webp"
-                onChange={handleFileInputChange}
-                className="hidden"
-              />
-
-              <div className="grid grid-cols-1 gap-6">
-                {/* Upload Section - First on both small and large screens */}
-                <div className="space-y-4">
-                  <div className="flex items-center space-x-2">
-                    <CloudArrowUpIcon className="h-5 w-5 text-gray-600" />
-                    <h3 className="text-lg font-medium text-gray-900">Upload New QR Code</h3>
-                  </div>
-
-                  {/* Upload Area */}
-                  <div
-                    onDragOver={handleDragOver}
-                    onDragLeave={handleDragLeave}
-                    onDrop={handleDrop}
-                    onClick={triggerFileInput}
-                    className={`relative border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all duration-200 ${
-                      qrDragOver
-                        ? 'border-[var(--primary-green)] bg-green-50'
-                        : 'border-gray-300 hover:border-gray-400 hover:bg-gray-50'
-                    } ${qrUploading ? 'pointer-events-none opacity-60' : ''}`}
-                  >
-                    {qrUploading ? (
-                      <div className="space-y-4">
-                        <CloudArrowUpIcon className="h-12 w-12 text-[var(--primary-green)] mx-auto" />
-                        <div className="space-y-2">
-                          <p className="text-sm font-medium text-gray-900">Uploading QR Code...</p>
-                          <div className="w-full bg-gray-200 rounded-full h-2">
-                            <div
-                              className="bg-[var(--primary-green)] h-2 rounded-full transition-all duration-300"
-                              style={{ width: `${qrProgress}%` }}
-                            />
-                          </div>
-                          <p className="text-xs text-gray-500">{qrProgress}% complete</p>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="space-y-4">
-                        <CloudArrowUpIcon className={`h-12 w-12 mx-auto ${qrDragOver ? 'text-[var(--primary-green)]' : 'text-gray-400'}`} />
-                        <div>
-                          <p className="text-sm font-medium text-gray-900">
-                            {qrDragOver ? 'Drop your QR code here' : 'Click to upload or drag & drop'}
-                          </p>
-                          <p className="text-xs text-gray-500 mt-1">
-                            JPEG, PNG, or WebP (max 10MB)
-                          </p>
-                        </div>
-                        <button
-                          type="button"
-                          className="inline-flex items-center px-4 py-2 bg-[var(--primary-green)] text-white text-sm font-medium rounded-lg hover:bg-[var(--primary-green-hover)] transition-colors"
-                        >
-                          <CloudArrowUpIcon className="h-4 w-4 mr-2" />
-                          Choose File
-                        </button>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Error Display */}
-                  {qrError && (
-                    <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-                      <div className="flex items-start">
-                        <ExclamationTriangleIcon className="h-5 w-5 text-red-500 mt-0.5 mr-3 flex-shrink-0" />
-                        <div>
-                          <h4 className="text-sm font-medium text-red-800">Upload Error</h4>
-                          <p className="text-sm text-red-700 mt-1">{qrError}</p>
-                        </div>
-                        <button
-                          onClick={() => setQrError(null)}
-                          className="ml-auto text-red-400 hover:text-red-600"
-                        >
-                          <XMarkIcon className="h-4 w-4" />
-                        </button>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Instructions */}
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                    <h4 className="text-sm font-medium text-blue-800 mb-2">💡 Tips for best results:</h4>
-                    <ul className="text-xs text-blue-700 space-y-1">
-                      <li>• Use a clear, high-resolution QR code image</li>
-                      <li>• Ensure the QR code is well-lit and in focus</li>
-                      <li>• Test the QR code works before uploading</li>
-                      <li>• Customers will scan this during checkout</li>
-                    </ul>
-                  </div>
-                </div>
-
-                {/* Current QR Display - Second on both small and large screens */}
-                <div className="space-y-4">
-                  <div className="flex items-center space-x-2">
-                    <QrCodeIcon className="h-5 w-5 text-gray-600" />
-                    <h3 className="text-lg font-medium text-gray-900">Current QR Code</h3>
-                  </div>
-
-                  {qrPath ? (
-                    <div className="relative group">
-                      <div className="bg-white border-2 border-gray-200 rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow">
-                        <div className="aspect-square max-w-sm mx-auto bg-gray-50 rounded-lg overflow-hidden">
-                          <Image
-                            src={qrPath}
-                            alt="Payment QR Code"
-                            width={400}
-                            height={400}
-                            className="w-full h-full object-contain"
-                          />
-                        </div>
-                        <div className="mt-3 text-center">
-                          <p className="text-sm text-gray-600">Your payment QR code is active</p>
-                          <div className="flex items-center justify-center mt-2">
-                            <CheckCircleIcon className="h-4 w-4 text-green-500 mr-1" />
-                            <span className="text-sm text-green-700">Ready for checkout</span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="bg-gray-50 border-2 border-dashed border-gray-300 rounded-xl p-8 text-center">
-                      <PhotoIcon className="h-12 w-12 text-gray-400 mx-auto mb-3" />
-                      <p className="text-sm text-gray-500">No QR code uploaded yet</p>
-                      <p className="text-xs text-gray-400 mt-1">Upload a QR code to enable manual payments</p>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
           </ProfileCard>
         </ProfileSection>
       </ProfileLayout>
