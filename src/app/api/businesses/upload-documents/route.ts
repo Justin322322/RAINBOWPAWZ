@@ -275,43 +275,65 @@ export async function POST(request: NextRequest) {
             updateValues.push(filePaths.government_id_path);
           }
 
-          // Update application status after document upload.
-          // The key is to clear the documents_required_flag so status resolves correctly
+          // SAFEGUARD: Check current status before updating
+          // If status is already 'approved', do NOT change it
+          let shouldUpdateStatus = true;
           let statusToSet: string = 'pending'; // Use pending as safe default
           
           try {
-            const columnsResult = await query(
-              `SELECT COLUMN_TYPE FROM INFORMATION_SCHEMA.COLUMNS
-               WHERE TABLE_SCHEMA = DATABASE()
-                 AND TABLE_NAME = ?
-                 AND COLUMN_NAME = ?
-               LIMIT 1`,
-              ['service_providers', 'application_status']
+            // First, check the current status
+            const currentStatusResult = await query(
+              'SELECT application_status FROM service_providers WHERE provider_id = ?',
+              [providerId]
             ) as any[];
-            if (columnsResult && columnsResult.length > 0 && typeof columnsResult[0].COLUMN_TYPE === 'string') {
-              const columnType: string = columnsResult[0].COLUMN_TYPE;
-              const match = columnType.match(/enum\((.+)\)/i);
-              const values = match ? match[1].split(',').map((v: string) => v.trim().replace(/^'|'$/g, '')) : [];
-              console.log('Available enum values for application_status:', values);
+            
+            const currentStatus = currentStatusResult?.[0]?.application_status;
+            console.log(`Current status for provider ${providerId}: ${currentStatus}`);
+            
+            // CRITICAL SAFEGUARD: If status is approved, do NOT change it
+            if (currentStatus === 'approved') {
+              console.log(`SAFEGUARD: Provider ${providerId} status is approved - will NOT change status`);
+              shouldUpdateStatus = false;
+            } else {
+              // Only update status if not approved
+              const columnsResult = await query(
+                `SELECT COLUMN_TYPE FROM INFORMATION_SCHEMA.COLUMNS
+                 WHERE TABLE_SCHEMA = DATABASE()
+                   AND TABLE_NAME = ?
+                   AND COLUMN_NAME = ?
+                 LIMIT 1`,
+                ['service_providers', 'application_status']
+              ) as any[];
               
-              // Prefer 'reviewing' if available, otherwise use 'pending'
-              if (values.includes('reviewing')) {
-                statusToSet = 'reviewing';
-              } else if (values.includes('pending')) {
-                statusToSet = 'pending';
-              } else {
-                statusToSet = values[0] || 'pending';
+              if (columnsResult && columnsResult.length > 0 && typeof columnsResult[0].COLUMN_TYPE === 'string') {
+                const columnType: string = columnsResult[0].COLUMN_TYPE;
+                const match = columnType.match(/enum\((.+)\)/i);
+                const values = match ? match[1].split(',').map((v: string) => v.trim().replace(/^'|'$/g, '')) : [];
+                console.log('Available enum values for application_status:', values);
+                
+                // Prefer 'reviewing' if available, otherwise use 'pending'
+                if (values.includes('reviewing')) {
+                  statusToSet = 'reviewing';
+                } else if (values.includes('pending')) {
+                  statusToSet = 'pending';
+                } else {
+                  statusToSet = values[0] || 'pending';
+                }
               }
+              
+              console.log(`Setting status to: ${statusToSet} for provider ${providerId}`);
             }
           } catch (error) {
-            console.error('Error checking enum values:', error);
-            statusToSet = 'pending';
+            console.error('Error checking current status:', error);
+            // If we can't check current status, be safe and don't update it
+            shouldUpdateStatus = false;
           }
-          
-          console.log(`Setting status to: ${statusToSet} for provider ${providerId}`);
 
-          updateFields.push('application_status = ?');
-          updateValues.push(statusToSet);
+          // Only add status update if safeguard allows it
+          if (shouldUpdateStatus) {
+            updateFields.push('application_status = ?');
+            updateValues.push(statusToSet);
+          }
 
           // Clear verification notes since documents have been uploaded
           updateFields.push('verification_notes = ?');

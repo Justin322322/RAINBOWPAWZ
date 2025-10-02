@@ -108,6 +108,27 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
       return NextResponse.json({ message: 'Invalid business ID' }, { status: 400 });
     }
 
+    // SAFEGUARD: Check if application is already approved
+    try {
+      const currentStatusResult = await query(
+        'SELECT application_status FROM service_providers WHERE provider_id = ?',
+        [businessId]
+      ) as any[];
+      
+      const currentStatus = currentStatusResult?.[0]?.application_status;
+      
+      if (currentStatus === 'approved') {
+        return NextResponse.json({
+          message: 'Cannot decline an approved application. Approved applications can only be modified manually in the database.'
+        }, { status: 403 });
+      }
+    } catch (error) {
+      console.error('Error checking current application status:', error);
+      return NextResponse.json({
+        message: 'Failed to verify application status'
+      }, { status: 500 });
+    }
+
     // Get the decline note from request body
     const body = await request.json();
     const { note, requestDocuments, requiredDocuments } = body;
