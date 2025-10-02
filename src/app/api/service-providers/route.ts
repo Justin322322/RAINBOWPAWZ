@@ -67,7 +67,7 @@ export async function GET(request: Request) {
   }
 
   // Get coordinates for the user's location
-  let userCoordinates;
+  let userCoordinates: { lat: number; lng: number } | null = null;
 
   // Priority 1: Use provided coordinates if available
   if (userLat && userLng) {
@@ -123,16 +123,30 @@ export async function GET(request: Request) {
         throw new Error('Database schema error: service_providers table does not exist');
       }
 
-      // Create cache key for this request
-      const cacheKey = `${userLocation}_${userLat}_${userLng}_${limit}_${offset}_${search}_${maxDistance}_${sortBy}_${sortOrder}`;
-
+      // Create simplified cache key (ignore pagination for better cache hits)
+      const baseCacheKey = `${userLat}_${userLng}_${search}`;
+      
       // Check server cache first (10 minute cache for better performance)
-      const cachedData = serverCache.getServiceProvidersData(cacheKey);
+      const cachedData = serverCache.getServiceProvidersData(baseCacheKey);
       if (cachedData) {
+        // Apply pagination to cached data
+        const paginatedProviders = cachedData.providers.slice(offset, offset + limit);
+        const total = cachedData.providers.length;
+        
         return NextResponse.json({
-          providers: cachedData.providers,
-          pagination: cachedData.pagination,
-          statistics: cachedData.statistics
+          providers: paginatedProviders,
+          pagination: {
+            total,
+            currentPage: Math.floor(offset / limit) + 1,
+            totalPages: Math.ceil(total / limit),
+            limit,
+            offset,
+            hasMore: offset + limit < total
+          },
+          statistics: {
+            totalProviders: total,
+            filteredCount: paginatedProviders.length
+          }
         }, {
           headers: {
             'Cache-Control': 'private, max-age=600', // Cache for 10 minutes
@@ -141,7 +155,7 @@ export async function GET(request: Request) {
         });
       }
 
-      let providersResult;
+      let providersResult: any[];
 
       // Debug: Check if we have any providers at all
       const _totalProvidersCount = await query(`
@@ -223,7 +237,6 @@ export async function GET(request: Request) {
         LEFT JOIN users u ON sp.user_id = u.user_id
         WHERE ${fullWhereClause}
         ORDER BY sp.name ASC
-        LIMIT ${limit} OFFSET ${offset}
       `, search ? [`%${search}%`, `%${search}%`, `%${search}%`] : []) as any[];
 
       if (providersResult && providersResult.length > 0) {
@@ -275,11 +288,11 @@ export async function GET(request: Request) {
           }
 
           try {
-            // Try to get actual routing distance with timeout
+            // Try to get actual routing distance with reduced timeout
             const routeResult = await routingService.getRoute(
               [userCoords.lat, userCoords.lng],
               [providerCoordinates.lat, providerCoordinates.lng],
-              { timeout: 3000 } // 3 second timeout for better performance
+              { timeout: 800 } // Reduced to 800ms for faster response
             );
 
             // Validate that distance exists in the response before parsing
@@ -311,7 +324,7 @@ export async function GET(request: Request) {
             );
 
           } catch {
-            // Fallback to simple distance calculation
+            // Fallback to simple distance calculation (faster)
             const distance = calculateDistance(userCoords, providerCoordinates);
             provider.distance = `${distance.toFixed(1)} km`;
             provider.distanceValue = distance;
@@ -328,28 +341,44 @@ export async function GET(request: Request) {
         const useServiceProviderIdColumn = packageColumns.includes('service_provider_id');
         const useProviderIdColumn = packageColumns.includes('provider_id');
 
+        // Batch fetch package counts for all providers at once
+        const providerIds = providersResult.map(p => p.id);
+        let packageCounts: Map<number, number> = new Map();
+        
+        if (providerIds.length > 0) {
+          try {
+            let packageCountsResult;
+            if (useProviderIdColumn) {
+              packageCountsResult = await query(`
+                SELECT provider_id, COUNT(*) as package_count
+                FROM service_packages
+                WHERE provider_id IN (${providerIds.map(() => '?').join(',')}) AND is_active = 1
+                GROUP BY provider_id
+              `, providerIds) as any[];
+              packageCountsResult.forEach((row: any) => {
+                packageCounts.set(row.provider_id, row.package_count);
+              });
+            } else if (useServiceProviderIdColumn) {
+              packageCountsResult = await query(`
+                SELECT service_provider_id, COUNT(*) as package_count
+                FROM service_packages
+                WHERE service_provider_id IN (${providerIds.map(() => '?').join(',')}) AND is_active = 1
+                GROUP BY service_provider_id
+              `, providerIds) as any[];
+              packageCountsResult.forEach((row: any) => {
+                packageCounts.set(row.service_provider_id, row.package_count);
+              });
+            }
+          } catch (error) {
+            console.error('Error fetching package counts:', error);
+          }
+        }
+
         // Prepare concurrent operations for all providers
         const providerOperations = providersResult.map(async (provider) => {
           try {
-            // Get package count for this provider
-            let packagesResult;
-            if (useProviderIdColumn) {
-              packagesResult = await query(`
-                SELECT COUNT(*) as package_count
-                FROM service_packages
-                WHERE provider_id = ? AND is_active = 1
-              `, [provider.id]) as any[];
-            } else if (useServiceProviderIdColumn) {
-              packagesResult = await query(`
-                SELECT COUNT(*) as package_count
-                FROM service_packages
-                WHERE service_provider_id = ? AND is_active = 1
-              `, [provider.id]) as any[];
-            } else {
-              packagesResult = [{ package_count: 0 }];
-            }
-
-            provider.packages = packagesResult[0]?.package_count || 0;
+            // Use pre-fetched package count
+            provider.packages = packageCounts.get(provider.id) || 0;
 
             // Calculate distance using the dedicated async function
             await calculateProviderDistance(provider, userCoordinates);
@@ -396,35 +425,29 @@ export async function GET(request: Request) {
           })
           .filter(provider => provider !== null); // Filter out any null providers
 
-        // Get total count for pagination
-        const countQuery = `
-          SELECT COUNT(*) as total
-          FROM service_providers sp
-          LEFT JOIN users u ON sp.user_id = u.user_id
-          WHERE ${fullWhereClause}
-        `;
-        const countResult = await query(countQuery, search ? [`%${search}%`, `%${search}%`, `%${search}%`] : []) as any[];
-        const total = countResult[0]?.total || 0;
-
-        // Cache the result
-        serverCache.setServiceProvidersData(cacheKey, {
+        // Cache all processed providers (without pagination)
+        const total = processedProviders.length;
+        serverCache.setServiceProvidersData(baseCacheKey, {
           providers: processedProviders,
           pagination: {
             total,
-            currentPage: Math.floor(offset / limit) + 1,
+            currentPage: 1,
             totalPages: Math.ceil(total / limit),
             limit,
-            offset,
-            hasMore: offset + limit < total
+            offset: 0,
+            hasMore: total > limit
           },
           statistics: {
             totalProviders: total,
-            filteredCount: processedProviders.length
+            filteredCount: total
           }
         }, 10 * 60 * 1000); // 10 minute cache
 
+        // Apply pagination to response
+        const paginatedProviders = processedProviders.slice(offset, offset + limit);
+
         return NextResponse.json({
-          providers: processedProviders,
+          providers: paginatedProviders,
           pagination: {
             total,
             currentPage: Math.floor(offset / limit) + 1,
@@ -435,7 +458,7 @@ export async function GET(request: Request) {
           },
           statistics: {
             totalProviders: total,
-            filteredCount: processedProviders.length
+            filteredCount: paginatedProviders.length
           }
         }, {
           headers: {

@@ -49,14 +49,14 @@ function PaymentSuccessContent() {
 
   const fetchReceipt = useCallback(async () => {
     if (!bookingId || paymentDetails?.payment_method !== 'qr_manual') return;
-    
+
     setReceiptLoading(true);
     try {
       const response = await fetch(`/api/payments/offline/receipt?bookingId=${bookingId}`, {
         credentials: 'include'
       });
       const data = await response.json();
-      
+
       if (response.ok && data.exists && data.receipt) {
         setReceiptData(data.receipt);
       }
@@ -174,17 +174,17 @@ function PaymentSuccessContent() {
               )}
               <div className="flex justify-between">
                 <span className="text-gray-600">Status:</span>
-                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                  paymentDetails.status === 'succeeded'
+                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${paymentDetails.status === 'succeeded'
                     ? 'bg-green-100 text-green-800'
-                    : paymentDetails.status === 'pending' || paymentDetails.status === 'processing'
-                    ? 'bg-yellow-100 text-yellow-800'
-                    : 'bg-red-100 text-red-800'
-                }`}>
+                    : paymentDetails.status === 'pending' || paymentDetails.status === 'processing' || (paymentDetails.payment_method === 'qr_manual' && (!receiptData || receiptData.status === 'awaiting'))
+                      ? 'bg-yellow-100 text-yellow-800'
+                      : 'bg-red-100 text-red-800'
+                  }`}>
                   {paymentDetails.status === 'succeeded' ? 'Completed' :
-                   paymentDetails.status === 'pending' ? 'Pending' :
-                   paymentDetails.status === 'processing' ? 'Processing' :
-                   paymentDetails.status === 'failed' ? 'Failed' : 'Paid'}
+                    paymentDetails.status === 'pending' ? 'Pending' :
+                      paymentDetails.status === 'processing' ? 'Processing' :
+                        paymentDetails.status === 'failed' ? 'Failed' :
+                          paymentDetails.payment_method === 'qr_manual' && (!receiptData || receiptData.status === 'awaiting') ? 'Awaiting' : 'Paid'}
                 </span>
               </div>
               {paymentDetails.created_at && (
@@ -212,7 +212,7 @@ function PaymentSuccessContent() {
               <DocumentIcon className="h-5 w-5 mr-2 text-gray-600" />
               Payment Receipt
             </h3>
-            
+
             {receiptLoading ? (
               <div className="flex items-center justify-center py-8">
                 <div className="animate-spin h-8 w-8 border-4 border-green-600 border-t-transparent rounded-full"></div>
@@ -222,16 +222,15 @@ function PaymentSuccessContent() {
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-gray-600">Status: 
-                      <span className={`ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                        receiptData.status === 'confirmed'
+                    <p className="text-sm text-gray-600">Status:
+                      <span className={`ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${receiptData.status === 'confirmed'
                           ? 'bg-green-100 text-green-800'
                           : receiptData.status === 'rejected'
-                          ? 'bg-red-100 text-red-800'
-                          : 'bg-yellow-100 text-yellow-800'
-                      }`}>
+                            ? 'bg-red-100 text-red-800'
+                            : 'bg-yellow-100 text-yellow-800'
+                        }`}>
                         {receiptData.status === 'confirmed' ? 'Confirmed' :
-                         receiptData.status === 'rejected' ? 'Rejected' : 'Awaiting Confirmation'}
+                          receiptData.status === 'rejected' ? 'Rejected' : 'Awaiting Confirmation'}
                       </span>
                     </p>
                     {receiptData.notes && (
@@ -248,17 +247,17 @@ function PaymentSuccessContent() {
                     View Receipt
                   </a>
                 </div>
-                
+
                 <div className="border rounded-lg overflow-hidden bg-gray-50">
-                  <Image 
-                    src={receiptData.receipt_path} 
-                    alt="Payment Receipt" 
-                    width={1200} 
-                    height={800} 
-                    className="w-full h-auto object-contain" 
+                  <Image
+                    src={receiptData.receipt_path}
+                    alt="Payment Receipt"
+                    width={1200}
+                    height={800}
+                    className="w-full h-auto object-contain"
                   />
                 </div>
-                
+
                 {receiptData.rejection_reason && (
                   <div className="bg-red-50 border border-red-200 rounded-lg p-4">
                     <h4 className="text-sm font-medium text-red-800 mb-1">Rejection Reason:</h4>

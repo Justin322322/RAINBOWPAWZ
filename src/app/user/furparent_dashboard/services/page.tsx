@@ -126,7 +126,7 @@ function ServicesPage({ userData }: ServicesPageProps) {
   };
 
   // Optimized fetch service providers with caching and pagination
-  const fetchServiceProviders = useCallback(async (page: number = 1) => {
+  const fetchServiceProviders = useCallback(async (page: number = 1, forceRefresh: boolean = false) => {
     try {
       setIsLoading(true);
 
@@ -160,25 +160,15 @@ function ServicesPage({ userData }: ServicesPageProps) {
       const cacheKey = queryString;
 
       // Check cache first (10 minute cache)
-      const cachedData = cache.get(cacheKey);
-      const now = Date.now();
-      const CACHE_DURATION = 10 * 60 * 1000; // 10 minutes
+      if (!forceRefresh) {
+        const cachedData = cache.get(cacheKey);
+        const now = Date.now();
+        const CACHE_DURATION = 10 * 60 * 1000; // 10 minutes
 
-      if (cachedData && (now - cachedData.timestamp) < CACHE_DURATION) {
-        setServiceProviders(cachedData.data.providers || []);
-        setPagination(cachedData.data.pagination);
-        setStatistics(cachedData.data.statistics || { totalProviders: 0, filteredCount: 0 });
-        setIsLoading(false);
-        return;
-      }
-
-      // Skip if same parameters were used recently
-      if (lastFetchParams === queryString && cache.has(cacheKey)) {
-        const existingData = cache.get(cacheKey);
-        if (existingData && (now - existingData.timestamp) < CACHE_DURATION) {
-          setServiceProviders(existingData.data.providers || []);
-          setPagination(existingData.data.pagination);
-          setStatistics(existingData.data.statistics || { totalProviders: 0, filteredCount: 0 });
+        if (cachedData && (now - cachedData.timestamp) < CACHE_DURATION) {
+          setServiceProviders(cachedData.data.providers || []);
+          setPagination(cachedData.data.pagination);
+          setStatistics(cachedData.data.statistics || { totalProviders: 0, filteredCount: 0 });
           setIsLoading(false);
           return;
         }
@@ -186,7 +176,7 @@ function ServicesPage({ userData }: ServicesPageProps) {
 
       const response = await fetch(`/api/service-providers?${queryString}`, {
         headers: {
-          'Cache-Control': 'no-cache'
+          'Cache-Control': forceRefresh ? 'no-cache' : 'max-age=600'
         }
       });
 
@@ -208,6 +198,7 @@ function ServicesPage({ userData }: ServicesPageProps) {
       setStatistics(data.statistics);
 
       // Update cache
+      const now = Date.now();
       setCache(prev => {
         const newCache = new Map(prev);
         newCache.set(cacheKey, {
@@ -230,14 +221,14 @@ function ServicesPage({ userData }: ServicesPageProps) {
     } finally {
       setIsLoading(false);
     }
-  }, [userLocation, pagination, cache, lastFetchParams, isLoadingLocation]);
+  }, [userLocation, pagination.limit, cache, isLoadingLocation]);
 
   // Initial fetch and refetch when location changes
   useEffect(() => {
     if (!isLoadingLocation && userLocation) {
-      fetchServiceProviders();
+      fetchServiceProviders(1);
     }
-  }, [userLocation, isLoadingLocation, fetchServiceProviders]);
+  }, [userLocation?.address, isLoadingLocation]);
 
 
 
