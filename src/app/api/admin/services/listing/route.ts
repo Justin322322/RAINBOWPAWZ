@@ -178,17 +178,6 @@ async function fetchRelatedData(packageIds: number[]) {
 
   const { clause, params } = buildInClause(packageIds);
 
-  // Helper to fetch table data
-  const fetchTableData = async (tableName: string, columns: string) => {
-    if (await checkTableExists(tableName)) {
-      return await safeQuery(
-        `SELECT ${columns} FROM ${tableName} WHERE package_id ${clause}`,
-        params
-      );
-    }
-    return [];
-  };
-
   // Skip inclusions and addons for now - they're not critical for listing view
   // These can be loaded on-demand when viewing service details
 
