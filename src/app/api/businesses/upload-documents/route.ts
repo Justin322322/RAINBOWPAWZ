@@ -308,9 +308,21 @@ export async function POST(request: NextRequest) {
           updateFields.push('verification_notes = ?');
           updateValues.push('Documents uploaded for review');
           
-          // Clear documents_required_flag since documents have been uploaded
-          updateFields.push('documents_required_flag = ?');
-          updateValues.push(0);
+          // Clear documents_required_flag since documents have been uploaded (if column exists)
+          try {
+            const columnCheck = await query(
+              `SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS 
+               WHERE TABLE_SCHEMA = DATABASE() 
+               AND TABLE_NAME = 'service_providers' 
+               AND COLUMN_NAME = 'documents_required_flag'`
+            ) as any[];
+            if (columnCheck.length > 0) {
+              updateFields.push('documents_required_flag = ?');
+              updateValues.push(0);
+            }
+          } catch (error) {
+            console.log('Could not check for documents_required_flag column:', error);
+          }
 
           if (updateFields.length > 0) {
             updateValues.push(providerId);

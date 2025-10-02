@@ -31,37 +31,80 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
     // Fetch business profile data with all fields
     let businessResult;
     if (hasApplicationStatus) {
+      // Check if documents_required_flag column exists
+      let hasDocumentsRequiredFlag = false;
+      try {
+        const columnCheck = await query(
+          `SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS 
+           WHERE TABLE_SCHEMA = DATABASE() 
+           AND TABLE_NAME = 'service_providers' 
+           AND COLUMN_NAME = 'documents_required_flag'`
+        ) as any[];
+        hasDocumentsRequiredFlag = columnCheck.length > 0;
+      } catch (error) {
+        console.log('Could not check for documents_required_flag column:', error);
+        hasDocumentsRequiredFlag = false;
+      }
+
       // Query using only application_status field (verification_status no longer exists)
-      businessResult = await query(`
-        SELECT
-          sp.*,
-          u.email,
-          u.first_name,
-          u.last_name,
-          sp.name as business_name,
-          sp.phone as business_phone,
-          sp.address as business_address,
-          sp.provider_type as business_type,
-          sp.hours as business_hours,
-          sp.description as service_description,
-          sp.contact_first_name,
-          sp.contact_last_name,
-          CASE 
-            WHEN sp.documents_required_flag = 1 AND sp.application_status = 'pending' THEN 'documents_required'
-            ELSE sp.application_status
-          END as application_status,
-          CASE 
-            WHEN sp.documents_required_flag = 1 AND sp.application_status = 'pending' THEN 'documents_required'
-            ELSE sp.application_status
-          END as verification_status, /* For backward compatibility */
-          u.status as account_status
-        FROM
-          service_providers sp
-        JOIN
-          users u ON sp.user_id = u.user_id
-        WHERE
-          sp.provider_id = ?
-      `, [businessId]) as any[];
+      if (hasDocumentsRequiredFlag) {
+        businessResult = await query(`
+          SELECT
+            sp.*,
+            u.email,
+            u.first_name,
+            u.last_name,
+            sp.name as business_name,
+            sp.phone as business_phone,
+            sp.address as business_address,
+            sp.provider_type as business_type,
+            sp.hours as business_hours,
+            sp.description as service_description,
+            sp.contact_first_name,
+            sp.contact_last_name,
+            CASE 
+              WHEN sp.documents_required_flag = 1 AND sp.application_status = 'pending' THEN 'documents_required'
+              ELSE sp.application_status
+            END as application_status,
+            CASE 
+              WHEN sp.documents_required_flag = 1 AND sp.application_status = 'pending' THEN 'documents_required'
+              ELSE sp.application_status
+            END as verification_status, /* For backward compatibility */
+            u.status as account_status
+          FROM
+            service_providers sp
+          JOIN
+            users u ON sp.user_id = u.user_id
+          WHERE
+            sp.provider_id = ?
+        `, [businessId]) as any[];
+      } else {
+        // Fallback query without documents_required_flag column
+        businessResult = await query(`
+          SELECT
+            sp.*,
+            u.email,
+            u.first_name,
+            u.last_name,
+            sp.name as business_name,
+            sp.phone as business_phone,
+            sp.address as business_address,
+            sp.provider_type as business_type,
+            sp.hours as business_hours,
+            sp.description as service_description,
+            sp.contact_first_name,
+            sp.contact_last_name,
+            sp.application_status,
+            sp.application_status as verification_status, /* For backward compatibility */
+            u.status as account_status
+          FROM
+            service_providers sp
+          JOIN
+            users u ON sp.user_id = u.user_id
+          WHERE
+            sp.provider_id = ?
+        `, [businessId]) as any[];
+      }
     } else {
       // Fallback query for schemas without application_status
       businessResult = await query(`
