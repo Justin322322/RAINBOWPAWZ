@@ -5,7 +5,7 @@ import { verifySecureAuth } from '@/lib/secureAuth';
 import { getServerAppUrl } from '@/utils/appUrl';
 import { createNotification } from '@/utils/notificationService';
 import { sendEmail } from '@/lib/consolidatedEmailService';
-import { sendSMS } from '@/lib/httpSmsService';
+import { sendSMSAsync } from '@/lib/httpSmsService';
 
 // API endpoint to restrict or restore access to a cremation business
 export async function POST(request: NextRequest) {
@@ -392,16 +392,10 @@ async function notifyUserOfRestriction(userId: number, reason: string, duration?
     // Send SMS notification (independent of other notifications_unified)
     if (user.phone && (user.sms_notifications === 1 || user.sms_notifications === true)) {
       try {
-        const smsResult = await sendSMS({
+        sendSMSAsync({
           to: user.phone,
           message: `🚨 Your RainbowPaws cremation center account has been restricted. Reason: ${reason}. You can submit an appeal through your account or contact support.`
         });
-        
-        if (smsResult.success) {
-          console.log(`✅ Restriction SMS sent successfully to ${user.phone} for cremation business #${businessId}`);
-        } else {
-          console.error(`❌ Restriction SMS failed for cremation business #${businessId}:`, smsResult.error);
-        }
       } catch (smsError) {
         console.error('Failed to send SMS notification:', smsError);
       }
@@ -501,16 +495,10 @@ async function notifyUserOfRestoration(userId: number, businessId: number) {
     // Send SMS notification (independent of other notifications_unified)
     if (user.phone && (user.sms_notifications === 1 || user.sms_notifications === true)) {
       try {
-        const smsResult = await sendSMS({
+        sendSMSAsync({
           to: user.phone,
           message: `✅ Your RainbowPaws cremation center account has been restored. You can now access all features of your account.`
         });
-        
-        if (smsResult.success) {
-          console.log(`✅ Restoration SMS sent successfully to ${user.phone} for cremation business #${businessId}`);
-        } else {
-          console.error(`❌ Restoration SMS failed for cremation business #${businessId}:`, smsResult.error);
-        }
       } catch (smsError) {
         console.error('Failed to send SMS notification for restoration:', smsError);
       }

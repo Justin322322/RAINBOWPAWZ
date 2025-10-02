@@ -117,7 +117,7 @@ export async function sendSMS({ to, message }: SendSMSParams): Promise<SendSMSRe
     }
 
     // Enhanced SMS sending with better retry logic
-    const maxRetries = 3; // Increased from 2
+    const maxRetries = 1; // Reduced for faster response
     let lastError: any;
     
     for (let attempt = 0; attempt <= maxRetries; attempt++) {
@@ -205,7 +205,7 @@ export async function sendSMS({ to, message }: SendSMSParams): Promise<SendSMSRe
                            err?.message?.includes('fetch');
         
         if (isTransient && attempt < maxRetries) {
-          const backoff = Math.min(1000 * Math.pow(2, attempt), 5000); // Exponential backoff with max 5s
+          const backoff = Math.min(500 * Math.pow(2, attempt), 2000); // Faster backoff with max 2s
           console.log(`   ⏳ Retrying in ${backoff}ms... (transient error)`);
           await new Promise((r) => setTimeout(r, backoff));
           continue;
@@ -411,4 +411,26 @@ export async function checkHttpSMSStatus(): Promise<{
       error: error instanceof Error ? error.message : 'Network error'
     };
   }
+}
+
+/**
+ * Send SMS in the background without blocking the response
+ * Use this when you want instant API responses
+ * 
+ * @example
+ * // Don't await - returns immediately
+ * sendSMSAsync({ to: phone, message: 'Hello!' });
+ */
+export function sendSMSAsync(params: SendSMSParams): void {
+  sendSMS(params)
+    .then(result => {
+      if (result.success) {
+        console.log(`✅ Background SMS sent successfully to ${params.to}`);
+      } else {
+        console.error(`❌ Background SMS failed to ${params.to}:`, result.error);
+      }
+    })
+    .catch(error => {
+      console.error('❌ Background SMS error:', error);
+    });
 }

@@ -6,7 +6,7 @@
 import { query } from '@/lib/db/query';
 import { sendEmail } from '@/lib/consolidatedEmailService';
 import { createUserNotification } from '@/utils/userNotificationService';
-import { sendSMS } from '@/lib/httpSmsService';
+import { sendSMSAsync } from '@/lib/httpSmsService';
 
 export interface RefundNotificationData {
   refundId: number;
@@ -53,8 +53,8 @@ export async function sendRefundProcessedNotification(
     // Send email notification
     await sendRefundEmail(refundData, 'processed');
     
-    // Send SMS notification
-    await sendRefundSMS(refundData, 'processed');
+    // Send SMS notification in background (non-blocking)
+    sendRefundSMS(refundData, 'processed');
     
     // Create in-app notification
     await createUserNotification({
@@ -97,8 +97,8 @@ export async function sendRefundInitiatedNotification(
     // Send email notification
     await sendRefundEmail(refundData, 'initiated', instructions);
     
-    // Send SMS notification
-    await sendRefundSMS(refundData, 'initiated');
+    // Send SMS notification in background (non-blocking)
+    sendRefundSMS(refundData, 'initiated');
     
     // Create in-app notification
     await createUserNotification({
@@ -241,17 +241,11 @@ async function sendRefundSMS(
   }
 
   try {
-    // Use existing SMS service
-    const smsResult = await sendSMS({
+    // Use async SMS service (non-blocking)
+    sendSMSAsync({
       to: customerInfo.phone,
       message
     });
-
-    if (smsResult.success) {
-      console.log(`✅ Refund SMS sent successfully to ${customerInfo.phone} for refund #${refundData.refundId}`);
-    } else {
-      console.error(`❌ Refund SMS failed for refund #${refundData.refundId}:`, smsResult.error);
-    }
   } catch (error) {
     console.error('Error sending refund SMS:', error);
   }

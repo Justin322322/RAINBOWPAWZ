@@ -15,7 +15,7 @@ async function ensurePetsTableExists() {
 
       // Create the pets table
       await query(`
-        CREATE TABLE pets (
+        CREATE TABLE IF NOT EXISTS pets (
           pet_id INT AUTO_INCREMENT PRIMARY KEY,
           user_id VARCHAR(255) NOT NULL,
           name VARCHAR(255) NOT NULL,

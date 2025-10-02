@@ -18,7 +18,7 @@ export async function ensureAdminProfilesTableExists(): Promise<boolean> {
       }
       // Create the table if it doesn't exist
       await query(`
-        CREATE TABLE users (
+        CREATE TABLE IF NOT EXISTS users (
           id INT AUTO_INCREMENT PRIMARY KEY,
           user_id INT NOT NULL,
           username VARCHAR(50) DEFAULT NULL,

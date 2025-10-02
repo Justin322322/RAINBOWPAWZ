@@ -1100,8 +1100,8 @@ export async function sendRefundCompletionNotification(refundId: number): Promis
     // Send SMS notification if enabled
     if (customer.sms_notifications) {
       try {
-        const { sendSMS } = await import('@/lib/httpSmsService');
-        await sendSMS({
+        const { sendSMSAsync } = await import('@/lib/httpSmsService');
+        sendSMSAsync({
           to: customer.email, // Assuming email is used as phone number identifier
           message: `Your refund of ₱${Number(refund.amount).toFixed(2)} has been completed. Refund ID: #${refund.id}. Thank you for choosing RainbowPaws.`
         });

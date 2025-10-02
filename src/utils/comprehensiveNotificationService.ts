@@ -3,7 +3,7 @@ import { createNotification } from '@/utils/notificationService';
 import { createBusinessNotification } from '@/utils/businessNotificationService';
 import { sendEmail } from '@/lib/consolidatedEmailService';
 import { createBookingConfirmationEmail, createBookingStatusUpdateEmail } from '@/lib/emailTemplates';
-import { sendSMS, createBookingSMSMessage } from '@/lib/httpSmsService';
+import { sendSMS, sendSMSAsync, createBookingSMSMessage } from '@/lib/httpSmsService';
 
 /**
  * Comprehensive notification service for all booking lifecycle events
@@ -139,9 +139,9 @@ export async function createBookingNotification(
       await sendBookingEmailNotification(bookingDetails, notificationType, additionalData);
     }
 
-    // Send SMS notification if required
+    // Send SMS notification in background (non-blocking)
     if (sendEmailNotification && notificationResult.success) {
-      await sendBookingSMSNotification(bookingDetails, notificationType);
+      sendBookingSMSNotification(bookingDetails, notificationType); // No await - runs in background
     }
 
     // Create provider notification for certain events
@@ -227,9 +227,9 @@ export async function createPaymentNotification(
       shouldSendEmail: ['payment_confirmed', 'payment_failed'].includes(paymentStatus)
     });
 
-    // Send SMS notification for important payment events
+    // Send SMS notification in background for important payment events (non-blocking)
     if (['payment_confirmed', 'payment_failed'].includes(paymentStatus)) {
-      await sendPaymentSMSNotification(bookingDetails, paymentStatus, paymentDetails);
+      sendPaymentSMSNotification(bookingDetails, paymentStatus, paymentDetails); // No await - runs in background
     }
 
     // Broadcast instant notification via SSE if available
@@ -480,17 +480,11 @@ async function sendPaymentSMSNotification(
     }
 
     if (smsMessage) {
-      const smsResult = await sendSMS({
+      // Send SMS in background (non-blocking)
+      sendSMSAsync({
         to: phone,
         message: smsMessage
       });
-
-      // Log SMS result for debugging
-      if (smsResult.success) {
-        console.log(`✅ Payment SMS sent successfully to ${phone} for booking #${bookingDetails.id}`);
-      } else {
-        console.error(`❌ Payment SMS failed for booking #${bookingDetails.id}:`, smsResult.error);
-      }
     }
   } catch (error) {
     console.error('Error sending payment SMS notification:', error);
@@ -544,18 +538,11 @@ async function sendBookingSMSNotification(
       bookingDetails.id.toString()
     );
 
-    // Send SMS
-    const smsResult = await sendSMS({
+    // Send SMS in background (non-blocking)
+    sendSMSAsync({
       to: phone,
       message: smsMessage
     });
-
-    // Log SMS result for debugging
-    if (smsResult.success) {
-      console.log(`✅ Booking SMS sent successfully to ${phone} for booking #${bookingDetails.id}`);
-    } else {
-      console.error(`❌ Booking SMS failed for booking #${bookingDetails.id}:`, smsResult.error);
-    }
 
   } catch (error) {
     console.error('Error sending booking SMS notification:', error);

@@ -41,7 +41,7 @@ export async function GET(_: NextRequest) {
           return NextResponse.json({ success: false, error: 'DDL disabled in production', table: 'service_providers' }, { status: 503 });
         }
         const createAvailabilityTableQuery = `
-          CREATE TABLE service_providers (
+          CREATE TABLE IF NOT EXISTS service_providers (
             id INT AUTO_INCREMENT PRIMARY KEY,
             provider_id INT NOT NULL,
             date DATE NOT NULL,
@@ -61,7 +61,7 @@ export async function GET(_: NextRequest) {
           return NextResponse.json({ success: false, error: 'DDL disabled in production', table: 'service_providers' }, { status: 503 });
         }
         const createTimeSlotsTableQuery = `
-          CREATE TABLE service_providers (
+          CREATE TABLE IF NOT EXISTS service_providers (
             id INT AUTO_INCREMENT PRIMARY KEY,
             provider_id INT NOT NULL,
             date DATE NOT NULL,

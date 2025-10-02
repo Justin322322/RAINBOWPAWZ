@@ -79,7 +79,7 @@ const ensureAdminLogsTable = async (): Promise<boolean> => {
     if (tables.length === 0) {
       // Create the table if it doesn't exist
       await query(`
-        CREATE TABLE admin_logs (
+        CREATE TABLE IF NOT EXISTS admin_logs (
           id INT AUTO_INCREMENT PRIMARY KEY,
           admin_id INT NOT NULL,
           action VARCHAR(100) NOT NULL,

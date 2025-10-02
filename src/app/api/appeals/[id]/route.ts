@@ -3,7 +3,7 @@ import { verifySecureAuth } from '@/lib/secureAuth';
 import { query, withTransaction } from '@/lib/db';
 import { createNotification } from '@/utils/notificationService';
 import { sendEmail } from '@/lib/consolidatedEmailService';
-import { sendSMS } from '@/lib/httpSmsService';
+import { sendSMSAsync } from '@/lib/httpSmsService';
 
 // Common error handler
 function handleError(error: any, operation: string) {
@@ -252,13 +252,7 @@ export async function PUT(
           ? `❌ Your appeal has been reviewed and unfortunately was not approved. ${admin_response ? 'Reason: ' + admin_response.substring(0, 80) + '...' : 'Please review the response and consider submitting a new appeal.'}`
           : `👀 Your appeal is now under review. We will notify you once a decision has been made.`;
 
-        const smsResult = await sendSMS({ to: appeal.phone, message: smsMessage });
-        
-        if (smsResult.success) {
-          console.log(`✅ Appeal SMS sent successfully to ${appeal.phone} for appeal #${appeal.id}`);
-        } else {
-          console.error(`❌ Appeal SMS failed for appeal #${appeal.id}:`, smsResult.error);
-        }
+        sendSMSAsync({ to: appeal.phone, message: smsMessage });
       } catch (error) {
         console.error('Failed to send SMS notification:', error);
       }
