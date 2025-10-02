@@ -82,6 +82,31 @@ export async function ensureRefundsTable(): Promise<void> {
         INDEX idx_refunds_paymongo_refund_id (paymongo_refund_id)
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     `);
+
+    // Update existing table to add missing ENUM values
+    try {
+      await query(`
+        ALTER TABLE refunds 
+        MODIFY COLUMN status ENUM('pending', 'pending_approval', 'processing', 'completed', 'failed', 'cancelled') NOT NULL DEFAULT 'pending'
+      `);
+    } catch (alterError: any) {
+      // Ignore if column already has the correct values
+      if (!alterError?.message?.includes('Duplicate')) {
+        console.warn('Could not update status ENUM:', alterError?.message);
+      }
+    }
+
+    try {
+      await query(`
+        ALTER TABLE refunds 
+        MODIFY COLUMN payment_method ENUM('gcash', 'card', 'paymaya', 'cash', 'qr_code', 'qr_manual') NOT NULL DEFAULT 'cash'
+      `);
+    } catch (alterError: any) {
+      // Ignore if column already has the correct values
+      if (!alterError?.message?.includes('Duplicate')) {
+        console.warn('Could not update payment_method ENUM:', alterError?.message);
+      }
+    }
   } catch (error: any) {
     console.error('Error creating refunds table:', error?.message || error);
   }
