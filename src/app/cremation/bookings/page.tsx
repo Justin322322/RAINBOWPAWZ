@@ -23,8 +23,6 @@ import { LoadingSpinner } from '@/app/cremation/components/LoadingComponents';
 
 function CremationBookingsPage({ userData }: { userData: any }) {
   const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
-  const [paymentFilter, setPaymentFilter] = useState('all');
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [selectedBooking, setSelectedBooking] = useState<any>(null);
   const [showConfirmPaymentModal, setShowConfirmPaymentModal] = useState(false);
@@ -72,14 +70,6 @@ function CremationBookingsPage({ userData }: { userData: any }) {
 
       if (searchTerm.trim()) {
         queryParams.append('search', searchTerm.trim());
-      }
-
-      if (statusFilter && statusFilter !== 'all') {
-        queryParams.append('status', statusFilter);
-      }
-
-      if (paymentFilter && paymentFilter !== 'all') {
-        queryParams.append('paymentStatus', paymentFilter);
       }
 
       const bookingsResponse = await fetch(`/api/cremation/bookings?${queryParams.toString()}`, {
@@ -141,14 +131,6 @@ function CremationBookingsPage({ userData }: { userData: any }) {
           queryParams.append('search', searchTerm.trim());
         }
         
-        if (statusFilter && statusFilter !== 'all') {
-          queryParams.append('status', statusFilter);
-        }
-        
-        if (paymentFilter && paymentFilter !== 'all') {
-          queryParams.append('paymentStatus', paymentFilter);
-        }
-        
         const response = await fetch(`/api/cremation/bookings?${queryParams.toString()}`, {
           method: 'GET',
           headers: {
@@ -182,7 +164,7 @@ function CremationBookingsPage({ userData }: { userData: any }) {
     };
 
     fetchData();
-  }, [userData, searchTerm, statusFilter, paymentFilter]);
+  }, [userData, searchTerm]);
 
   // Show toast when fetchError changes
   useEffect(() => {
@@ -201,13 +183,7 @@ function CremationBookingsPage({ userData }: { userData: any }) {
     setSearchTerm(e.target.value);
   };
 
-  const handleStatusFilterChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    setStatusFilter(e.target.value);
-  };
 
-  const handlePaymentFilterChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    setPaymentFilter(e.target.value);
-  };
 
   const handleConfirmPayment = (booking: any) => {
     setSelectedBookingForPayment(booking);
@@ -257,14 +233,6 @@ function CremationBookingsPage({ userData }: { userData: any }) {
 
       if (searchTerm.trim()) {
         queryParams.append('search', searchTerm.trim());
-      }
-
-      if (statusFilter && statusFilter !== 'all') {
-        queryParams.append('status', statusFilter);
-      }
-
-      if (paymentFilter && paymentFilter !== 'all') {
-        queryParams.append('paymentStatus', paymentFilter);
       }
 
       const refreshResponse = await fetch(`/api/cremation/bookings?${queryParams.toString()}`, {
@@ -423,38 +391,6 @@ function CremationBookingsPage({ userData }: { userData: any }) {
                 placeholder="Search bookings..."
               />
             </div>
-            <div className="relative w-full sm:w-auto">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <FunnelIcon className="h-5 w-5 text-gray-400" />
-              </div>
-              <select
-                value={statusFilter}
-                onChange={handleStatusFilterChange}
-                className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg leading-5 bg-white focus:outline-none focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)] sm:text-sm appearance-none"
-              >
-                <option value="all">All Active Statuses</option>
-                <option value="pending">Pending</option>
-                <option value="confirmed">Confirmed</option>
-                <option value="scheduled">Scheduled</option>
-                <option value="in_progress">In Progress</option>
-              </select>
-            </div>
-            <div className="relative w-full sm:w-auto">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-400" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M4 4a2 2 0 00-2 2v4a2 2 0 002 2V6h10a2 2 0 00-2-2H4zm2 6a2 2 0 012-2h8a2 2 0 012 2v4a2 2 0 01-2 2H8a2 2 0 01-2-2v-4zm6 4a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
-                </svg>
-              </div>
-              <select
-                value={paymentFilter}
-                onChange={handlePaymentFilterChange}
-                className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg leading-5 bg-white focus:outline-none focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)] sm:text-sm appearance-none"
-              >
-                <option value="all">All Payment Statuses</option>
-                <option value="paid">Paid</option>
-                <option value="not_paid">Not Paid</option>
-              </select>
-            </div>
           </div>
         </div>
       </div>
@@ -485,8 +421,8 @@ function CremationBookingsPage({ userData }: { userData: any }) {
             </div>
             <h3 className="text-lg font-medium text-gray-900 mb-1">No bookings found</h3>
             <p className="text-gray-500 max-w-md">
-              {searchTerm || statusFilter !== 'all'
-                ? 'Try changing your search or filter settings to see more results.'
+              {searchTerm
+                ? 'Try changing your search to see more results.'
                 : 'There are no active cremation service bookings to display at this time.'}
             </p>
           </div>

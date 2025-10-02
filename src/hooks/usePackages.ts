@@ -26,8 +26,9 @@ export function usePackages({ userData }: UsePackagesProps) {
     showToastRef.current = showToast;
   }, [showToast]);
   
-  // Fetch packages function - stabilize the dependency on userData.business_id
+  // Fetch packages function - stabilize the dependency on userData properties
   const providerId = userData?.business_id || userData?.provider_id || userData?.service_provider_id || null;
+  const userDataId = userData?.id;
 
   const fetchPackages = useCallback(async () => {
     setIsLoading(true);
@@ -38,7 +39,7 @@ export function usePackages({ userData }: UsePackagesProps) {
         business_id: userData?.business_id,
         provider_id: userData?.provider_id,
         service_provider_id: userData?.service_provider_id,
-        id: userData?.id
+        id: userDataId
       });
 
       if (!providerId) {
@@ -144,7 +145,7 @@ export function usePackages({ userData }: UsePackagesProps) {
     } finally {
       setIsLoading(false);
     }
-  }, [providerId]); // **🔥 FIX: Removed showToast from dependencies**
+  }, [providerId, userDataId, userData?.business_id, userData?.provider_id, userData?.service_provider_id]); // Include all userData dependencies
 
   // Handle package deletion
   const handleDeleteClick = useCallback((packageId: number) => {

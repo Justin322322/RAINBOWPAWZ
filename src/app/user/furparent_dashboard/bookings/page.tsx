@@ -191,6 +191,11 @@ const BookingsPage: React.FC<BookingsPageProps> = ({ userData }) => {
 
   useEffect(() => {
     async function fetchBookings() {
+      // Check if user is logging out to prevent unnecessary API calls
+      if (typeof window !== 'undefined' && sessionStorage.getItem('is_logging_out') === 'true') {
+        return;
+      }
+
       try {
         setIsLoading(true);
 
@@ -256,6 +261,13 @@ const BookingsPage: React.FC<BookingsPageProps> = ({ userData }) => {
         setError(null);
         setIsLoading(false);
       } catch (err) {
+        // Don't show errors if user is logging out
+        const isLoggingOut = typeof window !== 'undefined' && sessionStorage.getItem('is_logging_out') === 'true';
+        if (isLoggingOut) {
+          setIsLoading(false);
+          return;
+        }
+
         if (err instanceof Error) {
           setError(err.message || 'Failed to load your bookings. Please try again later.');
         } else {
