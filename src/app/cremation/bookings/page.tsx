@@ -63,9 +63,6 @@ function CremationBookingsPage({ userData }: { userData: any }) {
     setFetchError(null);
 
     try {
-      // Add minimum loading delay for better UX (same as admin)
-      const minLoadingTime = new Promise(resolve => setTimeout(resolve, 600));
-      
       const providerId = userData?.business_id || userData?.provider_id || 999;
       
       // Build query parameters including search and filter terms
@@ -85,15 +82,12 @@ function CremationBookingsPage({ userData }: { userData: any }) {
         queryParams.append('paymentStatus', paymentFilter);
       }
 
-      const [_, bookingsResponse] = await Promise.all([
-        minLoadingTime,
-        fetch(`/api/cremation/bookings?${queryParams.toString()}`, {
-          method: 'GET',
-          headers: {
-            'Cache-Control': 'no-cache'
-          }
-        })
-      ]);
+      const bookingsResponse = await fetch(`/api/cremation/bookings?${queryParams.toString()}`, {
+        method: 'GET',
+        headers: {
+          'Cache-Control': 'no-cache'
+        }
+      });
 
       if (!bookingsResponse.ok) {
         throw new Error(`HTTP error! status: ${bookingsResponse.status}`);
@@ -136,9 +130,6 @@ function CremationBookingsPage({ userData }: { userData: any }) {
       setFetchError(null);
 
       try {
-        // Add minimum loading delay for better UX (same as admin)
-        const minLoadingTime = new Promise(resolve => setTimeout(resolve, 600));
-        
         const providerId = userData?.business_id || userData?.provider_id || 999;
         
         // Build query parameters including search and filter terms
@@ -158,15 +149,12 @@ function CremationBookingsPage({ userData }: { userData: any }) {
           queryParams.append('paymentStatus', paymentFilter);
         }
         
-        const dataPromise = fetch(`/api/cremation/bookings?${queryParams.toString()}`, {
+        const response = await fetch(`/api/cremation/bookings?${queryParams.toString()}`, {
           method: 'GET',
           headers: {
             'Cache-Control': 'no-cache'
           }
         });
-
-        // Wait for both the minimum time and the data
-        const [, response] = await Promise.all([minLoadingTime, dataPromise]);
 
         if (!response.ok) {
           const errorData = await response.json().catch(() => ({}));

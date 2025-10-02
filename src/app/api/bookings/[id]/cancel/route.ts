@@ -120,9 +120,6 @@ export async function POST(request: NextRequest) {
       // Continue with the process even if notifications_unified fail
     }
 
-    // Simulate a small delay to show loading state
-    await new Promise(resolve => setTimeout(resolve, 500));
-
     // Send booking cancellation email
     try {
       // Get user details for email

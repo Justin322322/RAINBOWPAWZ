@@ -58,9 +58,6 @@ function ReviewsPage({ userData }: ReviewsPageProps) {
     const fetchReviews = async () => {
       if (!userData || !isMounted) return;
 
-      // Add a small delay to prevent rapid re-execution
-      await new Promise(resolve => setTimeout(resolve, 100));
-
       try {
         setLoading(true);
         setError(null);

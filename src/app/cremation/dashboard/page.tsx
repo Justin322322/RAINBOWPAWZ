@@ -136,22 +136,16 @@ function CremationDashboardPage({ userData }: { userData: any }) {
       setError(null);
 
       try {
-        // Add minimum loading delay for better UX (same as admin)
-        const minLoadingTime = new Promise(resolve => setTimeout(resolve, 800));
-        
         // Add the required providerId parameter like the original code
         const providerId = userData?.business_id || userData?.provider_id || 999;
         
         // Simplified API call with providerId
-        const dataPromise = fetch(`/api/cremation/dashboard?providerId=${providerId}`, {
+        const response = await fetch(`/api/cremation/dashboard?providerId=${providerId}`, {
           method: 'GET',
           headers: {
             'Cache-Control': 'no-cache'
           }
         });
-
-        // Wait for both the minimum time and the data
-        const [, response] = await Promise.all([minLoadingTime, dataPromise]);
 
         if (!response.ok) {
           throw new Error(`Failed to fetch dashboard data: ${response.status}`);
