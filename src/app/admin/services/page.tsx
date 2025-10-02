@@ -135,8 +135,17 @@ const CategoryBadge = React.memo(function CategoryBadge({ category }: { category
 // Module-level cache that persists across component remounts
 const servicesCache = new Map<string, { data: any; timestamp: number }>();
 
+// Cache version - increment this when data structure changes
+let cacheVersion = 1;
+
 // Function to clear cache (can be called manually)
 export function clearServicesCache() {
+  servicesCache.clear();
+}
+
+// Function to invalidate cache (call this after data mutations)
+export function invalidateServicesCache() {
+  cacheVersion++;
   servicesCache.clear();
 }
 
@@ -168,7 +177,8 @@ function useServices(params: {
   });
 
   // Persistent cache implementation using module-level variable
-  const CACHE_DURATION = 24 * 60 * 60 * 1000; // 1 day
+  // Reduced to 5 minutes to match CDN cache for consistency
+  const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 
   useEffect(() => {
     const controller = new AbortController();
@@ -176,8 +186,8 @@ function useServices(params: {
     let isMounted = true;
     let retryTimer: NodeJS.Timeout | null = null;
 
-    // Create stable cache key
-    const cacheKey = `${search}_${status}_${category}_${page}_${limit}`;
+    // Create stable cache key with version
+    const cacheKey = `v${cacheVersion}_${search}_${status}_${category}_${page}_${limit}`;
     const now = Date.now();
 
     // Check cache first
