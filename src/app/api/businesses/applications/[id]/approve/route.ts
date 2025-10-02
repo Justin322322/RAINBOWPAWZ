@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { sendBusinessVerificationEmail } from '@/lib/consolidatedEmailService';
 import { logAdminAction, getAdminIdFromRequest } from '@/utils/adminUtils';
-import { createBusinessNotification } from '@/utils/businessNotificationService';
 import mysql from 'mysql2/promise';
 
 export async function POST(request: NextRequest, { params }: { params: { id: string } }) {
