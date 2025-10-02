@@ -220,6 +220,27 @@ function PaymentSuccessContent() {
               </div>
             ) : receiptData ? (
               <div className="space-y-4">
+                {/* Reference Number Display */}
+                {receiptData.reference_number && (
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-xs font-medium text-blue-900 mb-1">GCash Reference Number</p>
+                        <p className="text-lg font-mono font-semibold text-blue-700">{receiptData.reference_number}</p>
+                      </div>
+                      <button
+                        onClick={() => {
+                          navigator.clipboard.writeText(receiptData.reference_number);
+                          toast.success('Reference number copied!');
+                        }}
+                        className="px-3 py-1.5 text-xs font-medium text-blue-700 bg-blue-100 hover:bg-blue-200 rounded transition-colors"
+                      >
+                        Copy
+                      </button>
+                    </div>
+                  </div>
+                )}
+
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm text-gray-600">Status:

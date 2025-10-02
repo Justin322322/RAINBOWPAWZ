@@ -49,7 +49,7 @@ export async function GET(request: NextRequest) {
 
     const providerId = providerResult[0].provider_id;
 
-    // Build the refunds query with filters
+    // Build the refunds query with filters including payment receipt data
     let refundsQuery = `
       SELECT 
         r.*,
@@ -58,10 +58,13 @@ export async function GET(request: NextRequest) {
         u.email,
         b.pet_name as pet_name,
         b.booking_date as booking_date,
-        b.provider_id as provider_id
+        b.provider_id as provider_id,
+        pr.reference_number as payment_reference_number,
+        pr.receipt_path as payment_receipt_path
       FROM refunds r
       JOIN users u ON r.user_id = u.user_id
       LEFT JOIN bookings b ON r.booking_id = b.id
+      LEFT JOIN payment_receipts pr ON b.id = pr.booking_id
       WHERE b.provider_id = ?
     `;
     
@@ -88,7 +91,7 @@ export async function GET(request: NextRequest) {
 
     const refunds = await query(refundsQuery, queryParams) as any[];
 
-    // Format the refunds data
+    // Format the refunds data including payment receipt information
     const formattedRefunds = refunds.map(refund => ({
       id: refund.id,
       booking_id: refund.booking_id,
@@ -108,7 +111,9 @@ export async function GET(request: NextRequest) {
       customer_name: `${refund.first_name} ${refund.last_name}`.trim(),
       customer_email: refund.email,
       pet_name: refund.pet_name,
-      booking_date: refund.booking_date
+      booking_date: refund.booking_date,
+      payment_reference_number: refund.payment_reference_number,
+      payment_receipt_path: refund.payment_receipt_path
     }));
 
     return NextResponse.json({

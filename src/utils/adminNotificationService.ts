@@ -63,6 +63,14 @@ export async function createAdminNotification({
       if (entityId) {
         link += `?appealId=${entityId}&userId=${entityId}`;
       }
+    } else if (type === 'review_report') {
+      // Link to the reviews page for reported reviews
+      link = '/admin/reviews';
+
+      // The admin can see the reported badge and click it to view details
+      if (entityId) {
+        link += `?reviewId=${entityId}`;
+      }
     }
 
     // Get all admin users to create individual notifications

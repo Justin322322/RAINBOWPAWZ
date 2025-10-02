@@ -453,7 +453,6 @@ function CremationBookingsPage({ userData }: { userData: any }) {
                 <option value="all">All Payment Statuses</option>
                 <option value="paid">Paid</option>
                 <option value="not_paid">Not Paid</option>
-                <option value="gcash">GCash Payments</option>
               </select>
             </div>
           </div>

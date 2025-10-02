@@ -28,6 +28,8 @@ import ReviewModal from '@/components/reviews/ReviewModal';
 import ReviewDisplay from '@/components/reviews/ReviewDisplay';
 import CremationCertificate from '@/components/certificates/CremationCertificate';
 import BookingTimeline from '@/components/booking/BookingTimeline';
+import RefundRequest from '@/components/payment/RefundRequest';
+import RefundStatus from '@/components/payment/RefundStatus';
 
 interface RefundData {
   id: number;
@@ -88,6 +90,7 @@ const BookingsPage: React.FC<BookingsPageProps> = ({ userData }) => {
   const [allBookings, setAllBookings] = useState<BookingData[]>([]);
   const [isCheckingDb, setIsCheckingDb] = useState(false);
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   // Debug userData and track loading state
   const [userDataLoaded, setUserDataLoaded] = useState(false);
@@ -265,7 +268,7 @@ const BookingsPage: React.FC<BookingsPageProps> = ({ userData }) => {
     }
 
     fetchBookings();
-  }, [activeFilter, refreshCounter]);
+  }, [activeFilter, refreshCounter, refreshTrigger]);
 
   const handleFilterChange = (filter: string | null) => {
     setActiveFilter(filter);
@@ -1167,6 +1170,30 @@ const BookingsPage: React.FC<BookingsPageProps> = ({ userData }) => {
                               )}
                             </div>
                           </div>
+
+                          {/* Refund Section - Show if payment is paid and booking is not completed */}
+                          {selectedBooking.payment_status === 'paid' && 
+                           selectedBooking.status !== 'completed' && 
+                           !selectedBooking.refund && (
+                            <div className="bg-white rounded-xl shadow-md border border-gray-200 p-4 sm:p-5">
+                              <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-3 sm:mb-4">Refund</h2>
+                              <RefundRequest
+                                bookingId={selectedBooking.id}
+                                amount={Number(selectedBooking.total_amount || selectedBooking.service_price || selectedBooking.price || 0)}
+                                onRefundRequested={() => {
+                                  setRefreshTrigger(prev => prev + 1);
+                                }}
+                              />
+                            </div>
+                          )}
+
+                          {/* Refund Status - Show if refund exists */}
+                          {selectedBooking.refund && (
+                            <div className="bg-white rounded-xl shadow-md border border-gray-200 p-4 sm:p-5">
+                              <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-3 sm:mb-4">Refund Status</h2>
+                              <RefundStatus refund={selectedBooking.refund} />
+                            </div>
+                          )}
 
                           {/* Review Section - Only show for completed bookings */}
                           {selectedBooking.status === 'completed' && (

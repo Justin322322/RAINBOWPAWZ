@@ -15,7 +15,7 @@ import {
   ExclamationCircleIcon,
   TruckIcon,
   PlusCircleIcon,
-  TrashIcon
+
 } from '@heroicons/react/24/outline';
 
 import FurParentPageSkeleton from '@/components/ui/FurParentPageSkeleton';
@@ -24,6 +24,7 @@ import { useCart } from '@/contexts/CartContext';
 import TimeSlotSelector from '@/components/booking/TimeSlotSelector';
 import AddOnSelector, { AddOn } from '@/components/booking/AddOnSelector';
 import { calculateDistance, geocodeAddress } from '@/utils/distance';
+import QRCodePayment from '@/components/payment/QRCodePayment';
 
 interface CheckoutPageProps {
   userData?: any;
@@ -83,13 +84,14 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
   }, [userData]);
   const [paymentMethod, setPaymentMethod] = useState<string>('qr_manual');
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
-  const [receiptProgress, setReceiptProgress] = useState(0);
+  const [_receiptProgress, _setReceiptProgress] = useState(0);
   const [receiptPreview, setReceiptPreview] = useState<string | null>(null);
   const [_providerQr, _setProviderQr] = useState<string | null>(null);
+  const [paymentReferenceNumber, setPaymentReferenceNumber] = useState<string>('');
   // Removed dynamic scroll offset; using sticky with top offset
 
   // Handle receipt file selection with preview
-  const handleReceiptFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const _handleReceiptFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0] || null;
 
     if (file) {
@@ -131,7 +133,7 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
   const removeReceiptFile = () => {
     setReceiptFile(null);
     setReceiptPreview(null);
-    setReceiptProgress(0);
+    _setReceiptProgress(0);
     // Reset file input
     const fileInput = document.getElementById('receipt-file-input') as HTMLInputElement;
     if (fileInput) {
@@ -170,6 +172,7 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
     packageId?: string;
     receipt?: string;
     qrCode?: string;
+    referenceNumber?: string;
     formSubmitted: boolean;
   }>({
     formSubmitted: false
@@ -392,6 +395,11 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
     // Payment receipt required for manual QR
     if (paymentMethod === 'qr_manual' && !receiptFile && _providerQr) {
       errs.receipt = 'Payment receipt is required for QR transfer payments';
+    }
+
+    // Payment reference number required for manual QR
+    if (paymentMethod === 'qr_manual' && !paymentReferenceNumber.trim() && _providerQr) {
+      errs.referenceNumber = 'GCash reference number is required for verification';
     }
 
     // DOB/DOD rules
@@ -949,12 +957,13 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
             const fd = new FormData();
             fd.append('bookingId', String(bookingId));
             fd.append('file', receiptFile);
+            fd.append('referenceNumber', paymentReferenceNumber.trim());
             const resp = await new Promise<Response>((resolve, reject) => {
               const xhr = new XMLHttpRequest();
               xhr.open('POST', '/api/payments/offline/receipt');
               xhr.withCredentials = true;
               xhr.upload.onprogress = (evt) => {
-                if (evt.lengthComputable) setReceiptProgress(Math.round((evt.loaded / evt.total) * 100));
+                if (evt.lengthComputable) _setReceiptProgress(Math.round((evt.loaded / evt.total) * 100));
               };
               xhr.onload = () => resolve(new Response(xhr.responseText, { status: xhr.status }));
               xhr.onerror = () => reject(new Response(null, { status: xhr.status || 500 }));
@@ -1512,122 +1521,68 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
                         Payment Method
                       </h3>
 
-                      <div className="space-y-3">
-                        <label className={`block p-4 border rounded-md transition-colors ${!_providerQr
-                            ? 'cursor-not-allowed bg-gray-50 opacity-60'
-                            : 'cursor-pointer hover:bg-gray-50'
-                          }`}>
-                          <div className="flex items-start">
-                            <input
-                              type="radio"
-                              name="payment-method"
-                              value="qr_manual"
-                              checked={paymentMethod === 'qr_manual'}
-                              onChange={() => setPaymentMethod('qr_manual')}
-                              disabled={!_providerQr}
-                              className={`h-4 w-4 mt-1 text-[var(--primary-green)] focus:ring-[var(--primary-green)] ${!_providerQr ? 'opacity-50 cursor-not-allowed' : ''
-                                }`}
-                            />
-                            <div className="ml-3 flex-1">
-                              <div className="flex items-center gap-2">
-                                <span className={`font-medium ${!_providerQr ? 'text-gray-500' : 'text-gray-800'}`}>
-                                  QR Transfer (manual confirmation)
-                                </span>
-                                {!_providerQr && (
-                                  <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-200 text-gray-600">
-                                    Unavailable
-                                  </span>
-                                )}
-                              </div>
-                              <p className={`text-sm mt-1 ${!_providerQr ? 'text-gray-400' : 'text-gray-600'}`}>
-                                Transfer using the provider&apos;s QR. Upload your receipt; your booking will be confirmed after the provider verifies payment.
-                              </p>
-                              {paymentMethod === 'qr_manual' && (
-                                <div className="mt-3 space-y-3">
-                                  {_providerQr ? (
-                                    <div className="bg-gray-50 rounded p-3">
-                                      <div className="text-xs text-gray-500 mb-2">Scan this QR to pay:</div>
-                                      <Image src={_providerQr} alt="Payment QR" width={300} height={300} className="w-full max-h-64 object-contain" />
-                                    </div>
-                                  ) : (
-                                    <div className="text-xs text-gray-500">Provider has not uploaded a QR yet.</div>
-                                  )}
-                                  <div>
-                                    <label className="text-sm font-medium text-gray-700">Upload payment receipt (image)</label>
-                                    <input
-                                      id="receipt-file-input"
-                                      type="file"
-                                      accept="image/*"
-                                      className="block mt-1 text-sm"
-                                      onChange={handleReceiptFileChange}
-                                    />
-
-                                    {/* File Preview */}
-                                    {receiptPreview && (
-                                      <div className="mt-3 relative">
-                                        <div className="bg-white border-2 border-gray-200 rounded-lg p-3 shadow-sm">
-                                          <div className="flex items-start space-x-3">
-                                            {/* Thumbnail */}
-                                            <div className="flex-shrink-0">
-                                              <Image
-                                                src={receiptPreview}
-                                                alt="Receipt preview"
-                                                width={60}
-                                                height={60}
-                                                className="w-16 h-16 object-cover rounded border"
-                                              />
-                                            </div>
-
-                                            {/* File Info */}
-                                            <div className="flex-1 min-w-0">
-                                              <p className="text-sm font-medium text-gray-900 truncate">
-                                                {receiptFile?.name}
-                                              </p>
-                                              <p className="text-xs text-gray-500">
-                                                {(receiptFile?.size || 0) < 1024 * 1024
-                                                  ? `${Math.round((receiptFile?.size || 0) / 1024)} KB`
-                                                  : `${Math.round((receiptFile?.size || 0) / (1024 * 1024))} MB`
-                                                }
-                                              </p>
-
-                                              {/* Progress Bar */}
-                                              {receiptProgress > 0 && (
-                                                <div className="w-full bg-gray-200 rounded-full h-1.5 mt-2">
-                                                  <div
-                                                    className="bg-[var(--primary-green)] h-1.5 rounded-full transition-all duration-300"
-                                                    style={{ width: `${receiptProgress}%` }}
-                                                  />
-                                                </div>
-                                              )}
-                                            </div>
-
-                                            {/* Remove Button */}
-                                            <button
-                                              type="button"
-                                              onClick={removeReceiptFile}
-                                              className="flex-shrink-0 p-1 text-gray-400 hover:text-red-500 transition-colors"
-                                              title="Remove file"
-                                            >
-                                              <TrashIcon className="h-4 w-4" />
-                                            </button>
-                                          </div>
-                                        </div>
-                                      </div>
-                                    )}
-                                  </div>
-                                </div>
-                              )}
-                            </div>
+                      {!_providerQr ? (
+                        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                          <div className="flex items-center">
+                            <ExclamationCircleIcon className="h-5 w-5 text-red-500 mr-2" />
+                            <p className="text-sm text-red-700">
+                              Provider has not uploaded a QR code. Payment is not available.
+                            </p>
                           </div>
-                        </label>
-                      </div>
+                        </div>
+                      ) : (
+                        <QRCodePayment
+                          qrCodeUrl={_providerQr}
+                          providerName={bookingData?.provider?.name || 'Provider'}
+                          amount={
+                            (bookingData?.package?.price || 0) +
+                            addOnsTotalPrice +
+                            (deliveryOption === 'delivery' ? deliveryFee : 0)
+                          }
+                          onReceiptUpload={(file) => {
+                            setReceiptFile(file);
+                            const reader = new FileReader();
+                            reader.onload = (e) => {
+                              setReceiptPreview(e.target?.result as string);
+                            };
+                            reader.readAsDataURL(file);
+                            clearValidationError('receipt');
+                          }}
+                          onReferenceNumberChange={(refNum) => {
+                            setPaymentReferenceNumber(refNum);
+                            if (refNum.trim()) {
+                              clearValidationError('referenceNumber');
+                            }
+                          }}
+                          receiptFile={receiptFile}
+                          receiptPreview={receiptPreview}
+                          referenceNumber={paymentReferenceNumber}
+                          onRemoveReceipt={removeReceiptFile}
+                        />
+                      )}
 
-                      {/* QR Code Error Display */}
+                      {/* Validation Errors */}
                       {validationErrors.qrCode && validationErrors.formSubmitted && (
                         <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-md">
                           <div className="flex items-center">
                             <ExclamationCircleIcon className="h-5 w-5 text-red-500 mr-2" />
                             <p className="text-sm text-red-700">{validationErrors.qrCode}</p>
+                          </div>
+                        </div>
+                      )}
+                      {validationErrors.receipt && validationErrors.formSubmitted && (
+                        <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-md">
+                          <div className="flex items-center">
+                            <ExclamationCircleIcon className="h-5 w-5 text-red-500 mr-2" />
+                            <p className="text-sm text-red-700">{validationErrors.receipt}</p>
+                          </div>
+                        </div>
+                      )}
+                      {validationErrors.referenceNumber && validationErrors.formSubmitted && (
+                        <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-md">
+                          <div className="flex items-center">
+                            <ExclamationCircleIcon className="h-5 w-5 text-red-500 mr-2" />
+                            <p className="text-sm text-red-700">{validationErrors.referenceNumber}</p>
                           </div>
                         </div>
                       )}
@@ -1750,10 +1705,10 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
                   <div className="mt-8">
                     <button
                       type="submit"
-                      disabled={isProcessing || (paymentMethod === 'qr_manual' && (!_providerQr || !receiptFile))}
+                      disabled={isProcessing || (paymentMethod === 'qr_manual' && (!_providerQr || !receiptFile || !paymentReferenceNumber.trim()))}
                       className={`w-full py-3 px-4 ${Object.keys(validationErrors).filter(key => key !== 'formSubmitted').length > 0 && validationErrors.formSubmitted
                           ? 'bg-gray-400 hover:bg-gray-500'
-                          : (paymentMethod === 'qr_manual' && (!_providerQr || !receiptFile))
+                          : (paymentMethod === 'qr_manual' && (!_providerQr || !receiptFile || !paymentReferenceNumber.trim()))
                             ? 'bg-gray-400'
                             : 'bg-[var(--primary-green)] hover:bg-[var(--primary-green-hover)]'
                         } text-white font-medium rounded-md transition-colors disabled:opacity-70 flex items-center justify-center`}
@@ -1776,6 +1731,9 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
                         } else if (paymentMethod === 'qr_manual' && !receiptFile) {
                           e.preventDefault();
                           showToast('Please upload your payment receipt to continue.', 'warning');
+                        } else if (paymentMethod === 'qr_manual' && !paymentReferenceNumber.trim()) {
+                          e.preventDefault();
+                          showToast('Please enter your GCash reference number to continue.', 'warning');
                         }
                       }}
                     >
@@ -1798,6 +1756,11 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
                         <>
                           <ExclamationCircleIcon className="h-5 w-5 mr-2" />
                           Upload Receipt to Continue
+                        </>
+                      ) : (paymentMethod === 'qr_manual' && !paymentReferenceNumber.trim()) ? (
+                        <>
+                          <ExclamationCircleIcon className="h-5 w-5 mr-2" />
+                          Enter Reference Number
                         </>
                       ) : (
                         <>
