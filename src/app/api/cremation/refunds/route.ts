@@ -3,10 +3,10 @@
  * Handles refund data for cremation business dashboards
  */
 
-import { NextRequest, NextResponse } from 'next/server';
-import { verifySecureAuth } from '@/lib/secureAuth';
-import { query } from '@/lib/db/query';
-import { initializeRefundTables } from '@/lib/db/refunds';
+import { NextRequest, NextResponse } from "next/server";
+import { verifySecureAuth } from "@/lib/secureAuth";
+import { query } from "@/lib/db/query";
+import { initializeRefundTables } from "@/lib/db/refunds";
 
 /**
  * Ensure payment_receipts table exists with all required columns
@@ -34,7 +34,7 @@ async function ensurePaymentReceiptsTable(): Promise<void> {
     `);
   } catch (error) {
     // Table creation may fail in production; log but continue
-    console.warn('Could not ensure payment_receipts table:', error);
+    console.warn("Could not ensure payment_receipts table:", error);
   }
 }
 
@@ -49,20 +49,23 @@ export async function GET(request: NextRequest) {
 
     const authResult = await verifySecureAuth(request);
     if (!authResult) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     // Only business users can access this endpoint
-    if (authResult.accountType !== 'business') {
-      return NextResponse.json({ 
-        error: 'Access denied. Business account required.' 
-      }, { status: 403 });
+    if (authResult.accountType !== "business") {
+      return NextResponse.json(
+        {
+          error: "Access denied. Business account required.",
+        },
+        { status: 403 }
+      );
     }
 
     const searchParams = request.nextUrl.searchParams;
-    const status = searchParams.get('status');
-    const startDate = searchParams.get('start_date');
-    const endDate = searchParams.get('end_date');
+    const status = searchParams.get("status");
+    const startDate = searchParams.get("start_date");
+    const endDate = searchParams.get("end_date");
 
     // Get the business provider ID
     const providerQuery = `
@@ -70,18 +73,36 @@ export async function GET(request: NextRequest) {
       FROM service_providers sp 
       WHERE sp.user_id = ?
     `;
-    const providerResult = await query(providerQuery, [parseInt(authResult.userId)]) as any[];
-    
+    const providerResult = (await query(providerQuery, [
+      parseInt(authResult.userId),
+    ])) as any[];
+
     if (providerResult.length === 0) {
-      return NextResponse.json({ 
-        error: 'No cremation business found for this user' 
-      }, { status: 404 });
+      return NextResponse.json(
+        {
+          error: "No cremation business found for this user",
+        },
+        { status: 404 }
+      );
     }
 
     const providerId = providerResult[0].provider_id;
 
-    // Build the refunds query with filters including payment receipt data
-    let refundsQuery = `
+    // Check if payment_receipts table exists and has the required columns
+    let hasPaymentReceipts = false;
+    try {
+      const tableCheck = (await query(
+        `SELECT COUNT(*) as count FROM information_schema.tables 
+         WHERE table_schema = DATABASE() AND table_name = 'payment_receipts'`
+      )) as any[];
+      hasPaymentReceipts = tableCheck[0]?.count > 0;
+    } catch (error) {
+      console.warn("Could not check payment_receipts table:", error);
+    }
+
+    // Build the refunds query with conditional payment receipt data
+    let refundsQuery = hasPaymentReceipts
+      ? `
       SELECT 
         r.*,
         u.first_name,
@@ -97,33 +118,49 @@ export async function GET(request: NextRequest) {
       LEFT JOIN bookings b ON r.booking_id = b.id
       LEFT JOIN payment_receipts pr ON b.id = pr.booking_id
       WHERE b.provider_id = ?
+    `
+      : `
+      SELECT 
+        r.*,
+        u.first_name,
+        u.last_name,
+        u.email,
+        b.pet_name as pet_name,
+        b.booking_date as booking_date,
+        b.provider_id as provider_id,
+        NULL as payment_reference_number,
+        NULL as payment_receipt_path
+      FROM refunds r
+      JOIN users u ON r.user_id = u.user_id
+      LEFT JOIN bookings b ON r.booking_id = b.id
+      WHERE b.provider_id = ?
     `;
-    
+
     const queryParams = [providerId];
 
     // Add status filter if provided
-    if (status && status !== 'all') {
-      refundsQuery += ' AND r.status = ?';
+    if (status && status !== "all") {
+      refundsQuery += " AND r.status = ?";
       queryParams.push(status);
     }
 
     // Add date range filter if provided
     if (startDate) {
-      refundsQuery += ' AND DATE(r.initiated_at) >= ?';
+      refundsQuery += " AND DATE(r.initiated_at) >= ?";
       queryParams.push(startDate);
     }
-    
+
     if (endDate) {
-      refundsQuery += ' AND DATE(r.initiated_at) <= ?';
+      refundsQuery += " AND DATE(r.initiated_at) <= ?";
       queryParams.push(endDate);
     }
 
-    refundsQuery += ' ORDER BY r.initiated_at DESC';
+    refundsQuery += " ORDER BY r.initiated_at DESC";
 
-    const refunds = await query(refundsQuery, queryParams) as any[];
+    const refunds = (await query(refundsQuery, queryParams)) as any[];
 
     // Format the refunds data including payment receipt information
-    const formattedRefunds = refunds.map(refund => ({
+    const formattedRefunds = refunds.map((refund) => ({
       id: refund.id,
       booking_id: refund.booking_id,
       user_id: refund.user_id,
@@ -144,19 +181,21 @@ export async function GET(request: NextRequest) {
       pet_name: refund.pet_name,
       booking_date: refund.booking_date,
       payment_reference_number: refund.payment_reference_number,
-      payment_receipt_path: refund.payment_receipt_path
+      payment_receipt_path: refund.payment_receipt_path,
     }));
 
     return NextResponse.json({
       success: true,
-      refunds: formattedRefunds
+      refunds: formattedRefunds,
     });
-
   } catch (error) {
-    console.error('Error fetching cremation refunds:', error);
-    return NextResponse.json({ 
-      error: 'Failed to fetch refunds',
-      message: error instanceof Error ? error.message : 'Unknown error'
-    }, { status: 500 });
+    console.error("Error fetching cremation refunds:", error);
+    return NextResponse.json(
+      {
+        error: "Failed to fetch refunds",
+        message: error instanceof Error ? error.message : "Unknown error",
+      },
+      { status: 500 }
+    );
   }
 }
