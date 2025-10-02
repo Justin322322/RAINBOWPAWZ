@@ -288,7 +288,7 @@ function ServicesPage({ userData }: ServicesPageProps) {
                   </svg>
                   <div className="flex-1">
                     <p className="text-sm text-blue-800 font-medium">Loading service providers...</p>
-                    <p className="text-xs text-blue-600 mt-1">This may take a moment on first load. We're finding the best cremation services near you.</p>
+                    <p className="text-xs text-blue-600 mt-1">This may take a moment on first load. We&apos;re finding the best cremation services near you.</p>
                   </div>
                 </div>
               )}
