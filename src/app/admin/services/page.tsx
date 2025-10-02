@@ -201,9 +201,7 @@ function useServices(params: {
         const res = await fetch(`/api/admin/services/listing?${query}`, {
           signal,
           headers: {
-            'Cache-Control': 'no-cache, no-store, must-revalidate',
-            'Pragma': 'no-cache',
-            'Expires': '0'
+            'Cache-Control': 'max-age=300' // Cache for 5 minutes
           },
         });
 
@@ -330,14 +328,8 @@ const AdminServicesPage = React.memo(function AdminServicesPage() {
     }
   }, [loading, isInitialLoad]);
 
-  const filteredServices = useMemo(() => {
-    const term = debouncedSearch.toLowerCase();
-    return services.filter(s =>
-      s.name.toLowerCase().includes(term) ||
-      s.cremationCenter.toLowerCase().includes(term) ||
-      `${s.id}`.includes(term)
-    );
-  }, [services, debouncedSearch]);
+  // Remove client-side filtering since API already handles search
+  const filteredServices = services;
 
   const [showModal, setShowModal] = useState(false);
   const [selected, setSelected] = useState<Service | null>(null);

@@ -189,23 +189,8 @@ async function fetchRelatedData(packageIds: number[]) {
     return [];
   };
 
-  // Fetch inclusions and addons in parallel with optimized queries
-  const [inclusions, addons] = await Promise.all([
-    fetchTableData('service_packages', 'package_id, description'),
-    fetchTableData('service_packages', 'package_id, description')
-  ]);
-
-  // Process inclusions
-  inclusions.forEach((inc: any) => {
-    if (!results.inclusions[inc.package_id]) results.inclusions[inc.package_id] = [];
-    results.inclusions[inc.package_id].push(inc.description);
-  });
-
-  // Process addons
-  addons.forEach((addon: any) => {
-    if (!results.addons[addon.package_id]) results.addons[addon.package_id] = [];
-    results.addons[addon.package_id].push(addon.description);
-  });
+  // Skip inclusions and addons for now - they're not critical for listing view
+  // These can be loaded on-demand when viewing service details
 
   // Fetch bookings
   const bookingsTable = await checkTableExists('bookings')
@@ -224,28 +209,27 @@ async function fetchRelatedData(packageIds: number[]) {
     });
   }
 
-  // Fetch reviews
+  // Fetch reviews with optimized query
   if (await checkTableExists('reviews')) {
     const reviewsTable = await checkTableExists('bookings') ? 'bookings' : null;
-    let reviewsQuery = `SELECT package_id, COUNT(id) as reviewsCount, AVG(rating) as rating FROM reviews WHERE package_id ${clause} GROUP BY package_id`;
-
+    
     if (reviewsTable) {
-        reviewsQuery = `
+      // Optimized query with proper join
+      const reviewsQuery = `
         SELECT sb.package_id, COUNT(r.id) as reviewsCount, AVG(r.rating) as rating
-          FROM reviews r
+        FROM reviews r
         JOIN ${reviewsTable} sb ON r.booking_id = sb.id
         WHERE sb.package_id ${clause}
-          GROUP BY sb.package_id
-        `;
-    }
-
-    const reviews = await safeQuery(reviewsQuery, params);
-    reviews.forEach((review: any) => {
-      results.reviews[review.package_id] = {
+        GROUP BY sb.package_id
+      `;
+      const reviews = await safeQuery(reviewsQuery, params);
+      reviews.forEach((review: any) => {
+        results.reviews[review.package_id] = {
           reviewsCount: parseInt(review.reviewsCount, 10) || 0,
           rating: parseFloat(review.rating) || 0
         };
       });
+    }
   }
 
   // Fetch images (optimized - minimal logging)
@@ -331,41 +315,26 @@ async function fetchRelatedData(packageIds: number[]) {
     });
   }
 
-  // Filesystem fallback: if a package has no images in DB, try to discover files in public/uploads/packages
+  // Filesystem fallback: only for packages without images (optimized)
   try {
-    const uploads = await getUploadsIndex();
-    console.log('Filesystem fallback - available files:', uploads);
+    const packagesWithoutImages = packageIds.filter(id => !results.images[id] || results.images[id].length === 0);
     
-    packageIds.forEach((id) => {
-      const current = results.images[id] || [];
-      if (!current || current.length === 0) {
-        console.log(`Package ${id} has no images in DB, checking filesystem...`);
-        
+    if (packagesWithoutImages.length > 0) {
+      const uploads = await getUploadsIndex();
+      
+      packagesWithoutImages.forEach((id) => {
         // Look for files that start with package_${id}_
         const prefix = `package_${id}_`;
         const matches = uploads.filter((f) => f.startsWith(prefix));
-        console.log(`Package ${id} filesystem matches:`, matches);
         
         if (matches.length > 0) {
-          // Choose first match deterministically (sorted lexicographically)
-          const chosen = matches.sort()[0];
-          results.images[id] = [`/api/image/packages/${chosen}`];
-          console.log(`Package ${id} using filesystem image:`, chosen);
+          results.images[id] = [`/api/image/packages/${matches.sort()[0]}`];
         } else {
-          // If no specific package files found, try to find any package images as fallback
-          const anyPackageFiles = uploads.filter((f) => f.includes('package_') && f.match(/\.(jpg|jpeg|png|gif|webp)$/i));
-          if (anyPackageFiles.length > 0) {
-            const fallbackImage = anyPackageFiles.sort()[0];
-            results.images[id] = [`/api/image/packages/${fallbackImage}`];
-            console.log(`Package ${id} using fallback image:`, fallbackImage);
-          } else {
-            // Ultimate fallback: use placeholder image
-            results.images[id] = ['/placeholder-pet.png'];
-            console.log(`Package ${id} using ultimate fallback: placeholder-pet.png`);
-          }
+          // Use placeholder for packages without images
+          results.images[id] = ['/placeholder-pet.png'];
         }
-      }
-    });
+      });
+    }
   } catch (error) {
     console.warn('Filesystem fallback error:', error);
   }
