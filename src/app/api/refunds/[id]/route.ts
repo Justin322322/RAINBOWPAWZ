@@ -21,7 +21,7 @@ export async function PUT(
     const resolvedParams = await params;
     const refundId = parseInt(resolvedParams.id);
     const body = await request.json();
-    const { action, approved, rejection_reason, status } = body;
+    const { action, rejection_reason, status } = body;
 
     // Get refund details
     const refundResult = await query(
