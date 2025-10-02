@@ -201,8 +201,9 @@ export async function generateOtp({
     // Best-effort attempt logging with optional columns; ignore failures
     try {
       const attemptMeta = JSON.stringify({ otpLength: String(otpCode).length, maskedOtpTail: String(otpCode).slice(-2) });
+      // Use a different token_type to avoid unique constraint conflict
       await query(
-        "INSERT INTO auth_tokens (user_id, attempt_type, token_type, token_value, expires_at, attempts_data, ip_address) VALUES (?, 'generate', 'otp_code', NULL, ?, ?, ?)",
+        "INSERT INTO auth_tokens (user_id, attempt_type, token_type, token_value, expires_at, attempts_data, ip_address) VALUES (?, 'generate', 'verification', NULL, ?, ?, ?)",
         [userId, expiresAt, attemptMeta, ipAddress]
       );
     } catch {}
