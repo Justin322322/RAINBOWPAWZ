@@ -1,84 +1,7 @@
-/**
- * Individual Refund API Routes
- * Handles specific refund operations like status updates and receipt uploads
- */
-
 import { NextRequest, NextResponse } from 'next/server';
 import { verifySecureAuth } from '@/lib/secureAuth';
-import { 
-  getRefundById, 
-  updateRefundRecord, 
-  logRefundAudit,
-  getRefundAuditTrail 
-} from '@/lib/db/refunds';
-import { 
-  verifyAndCompleteRefund 
-} from '@/services/refundService';
-import { logAdminAction } from '@/utils/adminUtils';
+import { query } from '@/lib/db/query';
 
-/**
- * GET /api/refunds/[id] - Get specific refund details
- */
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    console.log('GET /api/refunds/[id] called');
-    
-    const authResult = await verifySecureAuth(request);
-    if (!authResult) {
-      console.log('Authentication failed');
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const resolvedParams = await params;
-    console.log('Resolved params:', resolvedParams);
-    
-    const refundId = parseInt(resolvedParams.id);
-    console.log('Parsed refund ID:', refundId);
-    
-    if (isNaN(refundId)) {
-      console.log('Invalid refund ID:', resolvedParams.id);
-      return NextResponse.json({ error: 'Invalid refund ID' }, { status: 400 });
-    }
-
-    const refund = await getRefundById(refundId);
-    if (!refund) {
-      return NextResponse.json({ error: 'Refund not found' }, { status: 404 });
-    }
-
-    // Check access permissions
-    if (authResult.accountType !== 'admin' && 
-        authResult.accountType !== 'business' && 
-        refund.user_id !== parseInt(authResult.userId)) {
-      return NextResponse.json({ error: 'Access denied' }, { status: 403 });
-    }
-
-    // Get audit trail for admins and business users
-    let auditTrail: any[] = [];
-    if (['admin', 'business'].includes(authResult.accountType)) {
-      auditTrail = await getRefundAuditTrail(refundId);
-    }
-
-    return NextResponse.json({
-      success: true,
-      refund,
-      audit_trail: auditTrail
-    });
-
-  } catch (error) {
-    console.error('Error fetching refund:', error);
-    return NextResponse.json({ 
-      error: 'Failed to fetch refund',
-      message: error instanceof Error ? error.message : 'Unknown error'
-    }, { status: 500 });
-  }
-}
-
-/**
- * PUT /api/refunds/[id] - Update refund status or complete verification
- */
 export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -89,242 +12,119 @@ export async function PUT(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Only admins and business users can update refunds
-    if (!['admin', 'business'].includes(authResult.accountType)) {
+    if (authResult.accountType !== 'business') {
       return NextResponse.json({ 
-        error: 'Insufficient permissions to update refunds' 
+        error: 'Access denied. Business account required.' 
       }, { status: 403 });
     }
 
     const resolvedParams = await params;
     const refundId = parseInt(resolvedParams.id);
-    if (isNaN(refundId)) {
-      return NextResponse.json({ error: 'Invalid refund ID' }, { status: 400 });
-    }
-
     const body = await request.json();
-    const { action, approved, rejection_reason, notes } = body;
+    const { action, approved, rejection_reason, status } = body;
 
-    const refund = await getRefundById(refundId);
-    if (!refund) {
+    // Get refund details
+    const refundResult = await query(
+      'SELECT * FROM refunds WHERE id = ?',
+      [refundId]
+    ) as any[];
+
+    if (refundResult.length === 0) {
       return NextResponse.json({ error: 'Refund not found' }, { status: 404 });
     }
 
-    const clientIp = request.headers.get('x-forwarded-for') || 
-                     request.headers.get('x-real-ip') || 
-                     'unknown';
+    const refund = refundResult[0];
 
-    let result;
+    // Verify the refund belongs to this business
+    const bookingResult = await query(
+      'SELECT provider_id FROM bookings WHERE id = ?',
+      [refund.booking_id]
+    ) as any[];
 
+    if (bookingResult.length === 0) {
+      return NextResponse.json({ error: 'Booking not found' }, { status: 404 });
+    }
+
+    const providerResult = await query(
+      'SELECT provider_id FROM service_providers WHERE user_id = ?',
+      [parseInt(authResult.userId)]
+    ) as any[];
+
+    if (providerResult.length === 0 || providerResult[0].provider_id !== bookingResult[0].provider_id) {
+      return NextResponse.json({ 
+        error: 'This refund does not belong to your business' 
+      }, { status: 403 });
+    }
+
+    // Handle different actions
     switch (action) {
       case 'approve_refund':
-        // Approve pending refund (moves to processing status)
-        // Allow approval of both pending_approval and pending automatic refunds
-        if (!['pending_approval', 'pending'].includes(refund.status)) {
-          return NextResponse.json({ 
-            error: 'Only pending_approval or pending refunds can be approved' 
-          }, { status: 400 });
-        }
-
-        await updateRefundRecord(refundId, { 
-          status: 'processing',
-          notes: notes || refund.notes
-        });
-
-        await logRefundAudit({
-          refund_id: refundId,
-          action: 'refund_approved',
-          previous_status: refund.status,
-          new_status: 'processing',
-          performed_by: parseInt(authResult.userId),
-          performed_by_type: authResult.accountType === 'admin' ? 'admin' : 'staff',
-          details: 'Refund approved for processing',
-          ip_address: clientIp
-        });
-
-        // Log admin action
-        await logAdminAction(
-          parseInt(authResult.userId),
-          'approve_refund',
-          'refund',
-          refundId,
-          {
-            refund_id: refundId,
-            booking_id: refund.booking_id,
-            approved: true
-          },
-          clientIp
+        await query(
+          `UPDATE refunds 
+           SET status = 'completed', 
+               processed_at = NOW(), 
+               completed_at = NOW(),
+               processed_by = ?
+           WHERE id = ?`,
+          [parseInt(authResult.userId), refundId]
         );
 
-        result = { success: true, message: 'Refund approved successfully' };
-        break;
+        // Update booking payment status
+        await query(
+          `UPDATE bookings 
+           SET payment_status = 'refunded' 
+           WHERE id = ?`,
+          [refund.booking_id]
+        );
+
+        return NextResponse.json({ 
+          success: true, 
+          message: 'Refund approved successfully' 
+        });
 
       case 'reject_refund':
-        // Reject pending refund
-        // Allow rejection of both pending_approval and pending automatic refunds
-        if (!['pending_approval', 'pending'].includes(refund.status)) {
-          return NextResponse.json({ 
-            error: 'Only pending_approval or pending refunds can be rejected' 
-          }, { status: 400 });
-        }
-
-        await updateRefundRecord(refundId, { 
-          status: 'cancelled',
-          notes: rejection_reason ? `${refund.notes || ''}\n\nRejection reason: ${rejection_reason}` : refund.notes
-        });
-
-        await logRefundAudit({
-          refund_id: refundId,
-          action: 'refund_rejected',
-          previous_status: refund.status,
-          new_status: 'cancelled',
-          performed_by: parseInt(authResult.userId),
-          performed_by_type: authResult.accountType === 'admin' ? 'admin' : 'staff',
-          details: `Refund rejected${rejection_reason ? `: ${rejection_reason}` : ''}`,
-          ip_address: clientIp
-        });
-
-        // Log admin action
-        await logAdminAction(
-          parseInt(authResult.userId),
-          'reject_refund',
-          'refund',
-          refundId,
-          {
-            refund_id: refundId,
-            booking_id: refund.booking_id,
-            approved: false,
-            rejection_reason
-          },
-          clientIp
+        await query(
+          `UPDATE refunds 
+           SET status = 'failed', 
+               notes = ?,
+               processed_at = NOW(),
+               processed_by = ?
+           WHERE id = ?`,
+          [rejection_reason || 'Rejected by business', parseInt(authResult.userId), refundId]
         );
 
-        result = { success: true, message: 'Refund rejected successfully' };
-        break;
-
-      case 'verify_receipt':
-        // Verify and complete manual refund
-        if (typeof approved !== 'boolean') {
-          return NextResponse.json({ 
-            error: 'approved field must be a boolean' 
-          }, { status: 400 });
-        }
-
-        result = await verifyAndCompleteRefund(
-          refundId,
-          parseInt(authResult.userId),
-          authResult.accountType === 'admin' ? 'admin' : 'staff',
-          approved,
-          rejection_reason,
-          clientIp
-        );
-
-        // Log admin action
-        await logAdminAction(
-          parseInt(authResult.userId),
-          approved ? 'approve_refund' : 'reject_refund',
-          'refund',
-          refundId,
-          {
-            refund_id: refundId,
-            booking_id: refund.booking_id,
-            approved,
-            rejection_reason
-          },
-          clientIp
-        );
-
-        break;
-
-      case 'update_status':
-        // Manual status update
-        const { status } = body;
-        if (!status || !['pending', 'pending_approval', 'processing', 'completed', 'failed', 'cancelled'].includes(status)) {
-          return NextResponse.json({ 
-            error: 'Invalid status. Must be one of: pending, pending_approval, processing, completed, failed, cancelled' 
-          }, { status: 400 });
-        }
-
-        await updateRefundRecord(refundId, { 
-          status,
-          notes: notes || refund.notes
+        return NextResponse.json({ 
+          success: true, 
+          message: 'Refund rejected' 
         });
 
-        await logRefundAudit({
-          refund_id: refundId,
-          action: 'status_update',
-          previous_status: refund.status,
-          new_status: status,
-          performed_by: parseInt(authResult.userId),
-          performed_by_type: authResult.accountType === 'admin' ? 'admin' : 'staff',
-          details: notes || `Status manually updated to ${status}`,
-          ip_address: clientIp
-        });
-
-        // Log admin action
-        await logAdminAction(
-          parseInt(authResult.userId),
-          'update_refund_status',
-          'refund',
-          refundId,
-          {
-            refund_id: refundId,
-            booking_id: refund.booking_id,
-            old_status: refund.status,
-            new_status: status,
-            notes
-          },
-          clientIp
+      case 'reset_refund':
+        await query(
+          `UPDATE refunds 
+           SET status = ?, 
+               processed_at = NULL,
+               completed_at = NULL,
+               notes = CONCAT(COALESCE(notes, ''), '\n[Reset by business]')
+           WHERE id = ?`,
+          [status || 'pending', refundId]
         );
 
-        result = { success: true, message: 'Refund status updated successfully' };
-        break;
-
-      case 'add_notes':
-        // Add notes to refund
-        if (!notes) {
-          return NextResponse.json({ 
-            error: 'notes field is required for this action' 
-          }, { status: 400 });
-        }
-
-        const updatedNotes = refund.notes ? `${refund.notes}\n\n[${new Date().toISOString()}] ${notes}` : notes;
-        
-        await updateRefundRecord(refundId, { notes: updatedNotes });
-
-        await logRefundAudit({
-          refund_id: refundId,
-          action: 'notes_added',
-          new_status: refund.status,
-          performed_by: parseInt(authResult.userId),
-          performed_by_type: authResult.accountType === 'admin' ? 'admin' : 'staff',
-          details: `Notes added: ${notes}`,
-          ip_address: clientIp
+        return NextResponse.json({ 
+          success: true, 
+          message: 'Refund reset to pending' 
         });
-
-        result = { success: true, message: 'Notes added successfully' };
-        break;
 
       default:
         return NextResponse.json({ 
-          error: 'Invalid action. Supported actions: approve_refund, reject_refund, verify_receipt, update_status, add_notes' 
+          error: 'Invalid action' 
         }, { status: 400 });
     }
 
-    return NextResponse.json(result);
-
   } catch (error) {
-    console.error('Error updating refund:', error);
+    console.error('Error processing refund action:', error);
     return NextResponse.json({ 
-      error: 'Failed to update refund',
+      error: 'Failed to process refund action',
       message: error instanceof Error ? error.message : 'Unknown error'
     }, { status: 500 });
   }
-}
-
-/**
- * DELETE /api/refunds/[id] - Cancel a refund (admin only)
- */
-export async function DELETE() {
-  return NextResponse.json({ error: 'Removed' }, { status: 410 });
 }

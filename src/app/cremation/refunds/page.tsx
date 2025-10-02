@@ -38,6 +38,7 @@ interface RefundRecord {
   customer_email?: string;
   pet_name?: string;
   payment_reference_number?: string;
+  payment_receipt_path?: string;
 }
 
 function CremationRefundsPage({ userData }: { userData: any }) {
@@ -118,6 +119,35 @@ function CremationRefundsPage({ userData }: { userData: any }) {
     } catch (error) {
       console.error('Reject error:', error);
       showToast('Action failed. Please try again.', 'error');
+    }
+  };
+
+  const handleResetRefund = async (refundId: number) => {
+    if (!confirm('Reset this refund to pending status? You can then approve or decline it again.')) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/refunds/${refundId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'reset_refund',
+          status: 'pending'
+        })
+      });
+
+      if (response.ok) {
+        await fetchRefunds();
+        setSelectedRefund(null);
+        showToast('Refund reset to pending', 'success');
+      } else {
+        const error = await response.json();
+        showToast(`Reset failed: ${error.error}`, 'error');
+      }
+    } catch (error) {
+      console.error('Reset error:', error);
+      showToast('Reset failed. Please try again.', 'error');
     }
   };
 
@@ -322,23 +352,27 @@ function CremationRefundsPage({ userData }: { userData: any }) {
                     <div className="text-sm text-gray-500">{refund.payment_method}</div>
                   </td>
                   <td className="px-6 py-4">
-                    {refund.payment_reference_number ? (
-                      <div className="space-y-1">
+                    <div className="space-y-1">
+                      {refund.payment_reference_number && (
                         <div className="flex items-center gap-1 text-xs text-gray-600">
                           <HashtagIcon className="h-3 w-3" />
                           <span className="font-mono">{refund.payment_reference_number}</span>
                         </div>
+                      )}
+                      {refund.payment_receipt_path ? (
                         <button
-                          onClick={() => refund.receipt_path && viewPaymentReceipt(refund.receipt_path)}
+                          onClick={() => viewPaymentReceipt(refund.payment_receipt_path!)}
                           className="text-xs text-blue-600 hover:text-blue-700 flex items-center gap-1"
                         >
                           <EyeIcon className="h-3 w-3" />
                           View Receipt
                         </button>
-                      </div>
-                    ) : (
-                      <span className="text-xs text-gray-400">No reference</span>
-                    )}
+                      ) : (
+                        <span className="text-xs text-gray-400">
+                          {refund.payment_reference_number ? 'No receipt' : 'No payment info'}
+                        </span>
+                      )}
+                    </div>
                   </td>
                   <td className="px-6 py-4">
                     <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(refund.status)}`}>
@@ -365,6 +399,14 @@ function CremationRefundsPage({ userData }: { userData: any }) {
                             ✕ Decline
                           </button>
                         </div>
+                      )}
+                      {refund.status === 'processing' && (
+                        <button
+                          onClick={() => handleResetRefund(refund.id)}
+                          className="w-full px-3 py-1.5 bg-orange-600 text-white text-xs font-medium rounded hover:bg-orange-700 transition-colors"
+                        >
+                          ↻ Reset to Pending
+                        </button>
                       )}
                       <button
                         onClick={() => setSelectedRefund(refund)}
