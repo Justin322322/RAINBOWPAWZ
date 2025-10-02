@@ -42,7 +42,8 @@ export async function GET(request: NextRequest) {
     if (transactionResult.length === 0) {
       // Check if booking exists but has no payment transactions
       const bookingQuery = `
-        SELECT id, payment_status, payment_method, price
+        SELECT id, payment_status, payment_method,
+               COALESCE(total_price, base_price, 0) AS amount
         FROM bookings
         WHERE id = ?
       `;
@@ -62,7 +63,7 @@ export async function GET(request: NextRequest) {
           booking_id: parseInt(bookingId),
           payment_status: booking.payment_status || 'not_paid',
           payment_method: booking.payment_method || 'cash',
-          amount: booking.price || 0,
+          amount: booking.amount || 0,
           transaction_status: 'no_transaction',
           message: 'No payment transaction found for this booking'
         }

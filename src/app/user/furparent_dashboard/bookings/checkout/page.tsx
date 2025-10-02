@@ -974,12 +974,12 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
           }
 
           showToast('Booking created. Awaiting provider confirmation.', 'success');
-          router.push('/user/furparent_dashboard/bookings');
+          router.push(`/payment/success?booking_id=${bookingId}`);
           return;
         } catch (err) {
           console.error('Receipt upload error:', err);
           showToast('Booking created, but receipt upload failed. You can re-upload from your bookings.', 'warning');
-          router.push('/user/furparent_dashboard/bookings');
+          router.push(`/payment/success?booking_id=${bookingId}`);
           return;
         }
       }
