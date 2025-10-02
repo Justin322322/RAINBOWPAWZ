@@ -313,11 +313,9 @@ function ProfilePage({ userData: initialUserData }: ProfilePageProps) {
       clearTimeout(fallbackTimer);
     }
 
-    // Hide skeleton with a small delay for smooth transition
-    skeletonTimer = setTimeout(() => {
-      console.log('✅ [Profile] Hiding skeleton - userData available');
-      setShowSkeleton(false);
-    }, 300); // Reduced delay for better responsiveness
+    // Hide skeleton immediately when data is available
+    console.log('✅ [Profile] Hiding skeleton - userData available');
+    setShowSkeleton(false);
 
     return () => {
       if (skeletonTimer) {

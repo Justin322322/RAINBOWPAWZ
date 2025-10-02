@@ -79,7 +79,7 @@ const withUserAuth = <P extends object>(
           setUserData(globalUserAuthState.userData);
           setIsAuthenticated(true);
           // Check for first-time login
-          setTimeout(checkFirstTimeLogin, 100);
+          checkFirstTimeLogin();
           return;
         }
 
@@ -97,7 +97,7 @@ const withUserAuth = <P extends object>(
           };
           setUserData(updatedUserData);
           setIsAuthenticated(true);
-          setTimeout(checkFirstTimeLogin, 100);
+          checkFirstTimeLogin();
           return;
         }
 
@@ -131,7 +131,7 @@ const withUserAuth = <P extends object>(
           hasShownOTPModalRef.current = true;
           setShowOTPModal(true);
         } else if (fastCheck.userData.is_otp_verified === 1 || otpVerifiedInSession) {
-          setTimeout(checkFirstTimeLogin, 100);
+          checkFirstTimeLogin();
         }
         return;
       }
@@ -163,7 +163,7 @@ const withUserAuth = <P extends object>(
             hasShownOTPModalRef.current = true;
             setShowOTPModal(true);
           } else if (parsedData.is_otp_verified === 1 || otpVerifiedInSession) {
-            setTimeout(checkFirstTimeLogin, 100);
+            checkFirstTimeLogin();
           }
           return;
         } catch {
@@ -282,7 +282,7 @@ const withUserAuth = <P extends object>(
             hasShownOTPModalRef.current = true;
             setShowOTPModal(true);
           } else if (fetchedUserData.is_otp_verified === 1 || otpVerifiedInSession) {
-            setTimeout(checkFirstTimeLogin, 100);
+            checkFirstTimeLogin();
           }
 
         } catch (error) {
@@ -379,7 +379,7 @@ const withUserAuth = <P extends object>(
         }, 2000);
 
         // Check if Get Started modal should be shown
-        setTimeout(checkFirstTimeLogin, 500);
+        checkFirstTimeLogin();
       }
     };
 

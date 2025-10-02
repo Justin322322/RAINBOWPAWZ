@@ -204,22 +204,11 @@ function CremationSettingsPage({ userData }: CremationSettingsProps) {
     fileInputRef.current?.click();
   };
 
-  // Skeleton loading control with minimum delay
+  // Skeleton loading control
   useEffect(() => {
-    let skeletonTimer: NodeJS.Timeout | null = null;
-
     if (!isLoading && showSkeleton) {
-      // Add minimum 700ms delay for proper skeleton visibility
-      skeletonTimer = setTimeout(() => {
-        setShowSkeleton(false);
-      }, 700);
+      setShowSkeleton(false);
     }
-
-    return () => {
-      if (skeletonTimer) {
-        clearTimeout(skeletonTimer);
-      }
-    };
   }, [isLoading, showSkeleton]);
 
   // Handle toggle changes

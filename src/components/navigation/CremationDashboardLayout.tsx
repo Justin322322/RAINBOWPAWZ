@@ -33,19 +33,9 @@ export default function CremationDashboardLayout({
 
   // Effect to simulate content loading with a short delay
   useEffect(() => {
-    let timer: NodeJS.Timeout | null = null;
-
     if (userData) {
-      timer = setTimeout(() => {
-        setContentLoading(false);
-      }, 300);
+      setContentLoading(false);
     }
-
-    return () => {
-      if (timer) {
-        clearTimeout(timer);
-      }
-    };
   }, [userData]);
 
   // Get display name from user data - prioritize user's actual name over business name

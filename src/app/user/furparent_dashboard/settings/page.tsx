@@ -53,22 +53,11 @@ function SettingsPage({ userData }: SettingsPageProps) {
     loadSettings();
   }, [showToast]);
 
-  // Skeleton loading control with minimum delay (600-800ms for fur parent standards)
+  // Skeleton loading control
   useEffect(() => {
-    let skeletonTimer: NodeJS.Timeout | null = null;
-
     if (!isLoading) {
-      // Add minimum 700ms delay for proper skeleton visibility
-      skeletonTimer = setTimeout(() => {
-        setShowSkeleton(false);
-      }, 700);
+      setShowSkeleton(false);
     }
-
-    return () => {
-      if (skeletonTimer) {
-        clearTimeout(skeletonTimer);
-      }
-    };
   }, [isLoading]);
 
   // Handle toggle changes

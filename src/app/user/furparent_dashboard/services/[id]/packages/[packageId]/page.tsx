@@ -416,8 +416,8 @@ function PackageDetailPage({ userData: _userData }: PackageDetailPageProps) {
                             // Show toast notification
                             showToast('Item added to cart!', 'success', 3000);
 
-                            // Optional: Open cart sidebar after short delay
-                            setTimeout(() => setIsCartOpen(true), 1000);
+                            // Open cart sidebar immediately
+                            setIsCartOpen(true);
                           }
                         }}
                         className="w-full py-3 px-4 border border-[var(--primary-green)] text-[var(--primary-green)] font-medium rounded-md hover:bg-green-50 transition-colors flex items-center justify-center"
