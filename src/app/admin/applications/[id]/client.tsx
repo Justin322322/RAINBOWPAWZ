@@ -216,17 +216,22 @@ function ApplicationDetailContent({ id }: ApplicationDetailContentProps) {
         data.verificationStatus = storedStatus;
         data.status = storedStatus;
 
-        // Clear the storage after using it once
-        try {
-          sessionStorage.removeItem(`application_${id}_status`);
-          localStorage.removeItem(`application_${id}_status`);
-          document.cookie = `application_${id}_status=; path=/; max-age=0`;
-        } catch {
-          // Error clearing storage
-        }
+        // Don't clear the storage immediately - let it persist until status actually changes
+        // This prevents login/logout from resetting the status to an old cached value
       } else if (verificationStatusFromDB) {
         data.verificationStatus = verificationStatusFromDB;
         data.status = verificationStatusFromDB;
+        
+        // If database status is different from API response, clear any stale stored status
+        if (data.application_status && data.application_status !== verificationStatusFromDB) {
+          try {
+            sessionStorage.removeItem(`application_${id}_status`);
+            localStorage.removeItem(`application_${id}_status`);
+            document.cookie = `application_${id}_status=; path=/; max-age=0`;
+          } catch {
+            // Error clearing storage
+          }
+        }
       }
 
       // Set status based on application_status
@@ -318,10 +323,20 @@ function ApplicationDetailContent({ id }: ApplicationDetailContentProps) {
       if (response.ok) {
         await response.json();
 
-        // Update application status locally
+        // Clear any stored status since we're making a new status change
+        try {
+          sessionStorage.removeItem(`application_${id}_status`);
+          localStorage.removeItem(`application_${id}_status`);
+          document.cookie = `application_${id}_status=; path=/; max-age=0`;
+        } catch {
+          // Error clearing storage
+        }
+
+        // Update application status locally (single update)
         setApplication(prev => ({
           ...prev!,
           status: 'approved',
+          verificationStatus: 'approved',
           verificationDate: new Date().toISOString().split('T')[0]
         }));
 
@@ -329,18 +344,16 @@ function ApplicationDetailContent({ id }: ApplicationDetailContentProps) {
         setSuccessBusinessName(application!.businessName);
         setIsApprovalSuccess(true);
 
-        // Close the modal
+        // Close the modal immediately since ConfirmationModal handles success animation
         setIsApproveModalOpen(false);
 
-        // Reset success state after animation completes
+        // Reset success state and refresh data after animation
         setTimeout(() => {
           setIsApprovalSuccess(false);
           setSuccessBusinessName('');
-
-          // Update local state immediately and refresh data
-          setApplication(prev => prev ? { ...prev, status: 'approved', verificationStatus: 'approved' } : prev);
+          // Refresh data from server to ensure consistency
           fetchApplicationData();
-        }, 3000);
+        }, 2000);
       } else {
         const data = await response.json();
         throw new Error(data.message || 'Failed to approve application');
@@ -653,7 +666,8 @@ function ApplicationDetailContent({ id }: ApplicationDetailContentProps) {
                     <div className="grid grid-cols-1 gap-4">
                       <button
                         onClick={() => setIsApproveModalOpen(true)}
-                        className="w-full inline-flex justify-center items-center px-4 py-3 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+                        disabled={_isProcessing}
+                        className="w-full inline-flex justify-center items-center px-4 py-3 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         <CheckCircleIcon className="-ml-1 mr-2 h-5 w-5" />
                         Approve Application
@@ -661,7 +675,8 @@ function ApplicationDetailContent({ id }: ApplicationDetailContentProps) {
 
                       <button
                         onClick={() => setIsDeclineModalOpen(true)}
-                        className="w-full inline-flex justify-center items-center px-4 py-3 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                        disabled={_isProcessing}
+                        className="w-full inline-flex justify-center items-center px-4 py-3 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         <XCircleIcon className="-ml-1 mr-2 h-5 w-5" />
                         Decline Application

@@ -276,8 +276,9 @@ export async function POST(request: NextRequest) {
           }
 
           // Update application status after document upload.
-          // Compute a safe value based on enum values present in DB.
-          let statusToSet: string = 'reviewing';
+          // The key is to clear the documents_required_flag so status resolves correctly
+          let statusToSet: string = 'pending'; // Use pending as safe default
+          
           try {
             const columnsResult = await query(
               `SELECT COLUMN_TYPE FROM INFORMATION_SCHEMA.COLUMNS
@@ -293,24 +294,17 @@ export async function POST(request: NextRequest) {
               const values = match ? match[1].split(',').map((v: string) => v.trim().replace(/^'|'$/g, '')) : [];
               console.log('Available enum values for application_status:', values);
               
-              if (!values.includes('reviewing')) {
-                // Try to add 'reviewing' to the enum if it doesn't exist
-                try {
-                  console.log('Adding reviewing to application_status enum...');
-                  await query(
-                    `ALTER TABLE service_providers MODIFY COLUMN application_status ENUM(${values.map(v => `'${v}'`).join(',')}, 'reviewing') DEFAULT 'pending'`
-                  );
-                  console.log('Successfully added reviewing to enum');
-                  statusToSet = 'reviewing';
-                } catch (alterError) {
-                  console.error('Failed to add reviewing to enum:', alterError);
-                  statusToSet = values.includes('pending') ? 'pending' : (values[0] || 'pending');
-                }
+              // Prefer 'reviewing' if available, otherwise use 'pending'
+              if (values.includes('reviewing')) {
+                statusToSet = 'reviewing';
+              } else if (values.includes('pending')) {
+                statusToSet = 'pending';
+              } else {
+                statusToSet = values[0] || 'pending';
               }
-            } else {
-              statusToSet = 'pending';
             }
-          } catch {
+          } catch (error) {
+            console.error('Error checking enum values:', error);
             statusToSet = 'pending';
           }
           
