@@ -304,7 +304,7 @@ export async function POST(request: NextRequest) {
 }
 
 // Helper function to notify user of restriction
-async function notifyUserOfRestriction(userId: number, reason: string, duration?: string, businessId?: number) {
+async function notifyUserOfRestriction(userId: number, reason: string, duration?: string, _businessId?: number) {
   try {
     // Get user details for notifications_unified with timeout
     const userResult = await Promise.race([
@@ -408,7 +408,7 @@ async function notifyUserOfRestriction(userId: number, reason: string, duration?
 }
 
 // Helper function to notify user of restoration
-async function notifyUserOfRestoration(userId: number, businessId: number) {
+async function notifyUserOfRestoration(userId: number, _businessId: number) {
   try {
     // Get user details for notifications_unified with timeout
     const userResult = await Promise.race([
