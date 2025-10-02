@@ -291,8 +291,21 @@ export async function POST(request: NextRequest) {
               const columnType: string = columnsResult[0].COLUMN_TYPE;
               const match = columnType.match(/enum\((.+)\)/i);
               const values = match ? match[1].split(',').map((v: string) => v.trim().replace(/^'|'$/g, '')) : [];
+              console.log('Available enum values for application_status:', values);
+              
               if (!values.includes('reviewing')) {
-                statusToSet = values.includes('pending') ? 'pending' : (values[0] || 'pending');
+                // Try to add 'reviewing' to the enum if it doesn't exist
+                try {
+                  console.log('Adding reviewing to application_status enum...');
+                  await query(
+                    `ALTER TABLE service_providers MODIFY COLUMN application_status ENUM(${values.map(v => `'${v}'`).join(',')}, 'reviewing') DEFAULT 'pending'`
+                  );
+                  console.log('Successfully added reviewing to enum');
+                  statusToSet = 'reviewing';
+                } catch (alterError) {
+                  console.error('Failed to add reviewing to enum:', alterError);
+                  statusToSet = values.includes('pending') ? 'pending' : (values[0] || 'pending');
+                }
               }
             } else {
               statusToSet = 'pending';
@@ -300,6 +313,8 @@ export async function POST(request: NextRequest) {
           } catch {
             statusToSet = 'pending';
           }
+          
+          console.log(`Setting status to: ${statusToSet} for provider ${providerId}`);
 
           updateFields.push('application_status = ?');
           updateValues.push(statusToSet);
@@ -317,8 +332,11 @@ export async function POST(request: NextRequest) {
                AND COLUMN_NAME = 'documents_required_flag'`
             ) as any[];
             if (columnCheck.length > 0) {
+              console.log('Clearing documents_required_flag for provider', providerId);
               updateFields.push('documents_required_flag = ?');
               updateValues.push(0);
+            } else {
+              console.log('documents_required_flag column does not exist');
             }
           } catch (error) {
             console.log('Could not check for documents_required_flag column:', error);
@@ -326,12 +344,16 @@ export async function POST(request: NextRequest) {
 
           if (updateFields.length > 0) {
             updateValues.push(providerId);
-            await query(
+            console.log('Executing update with fields:', updateFields);
+            console.log('Update values:', updateValues);
+            
+            const updateResult = await query(
               `UPDATE service_providers SET ${updateFields.join(', ')}, updated_at = NOW() WHERE provider_id = ?`,
               updateValues
             );
-
-            console.log(`Updated service provider ${providerId} with ${Object.keys(filePaths).length} document(s) and changed status to reviewing`);
+            
+            console.log('Update result:', updateResult);
+            console.log(`Updated service provider ${providerId} with ${Object.keys(filePaths).length} document(s) and changed status to ${statusToSet}`);
 
             // Also upsert into business_documents table as a secondary source of truth
             try {
