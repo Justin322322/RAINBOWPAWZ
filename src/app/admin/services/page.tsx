@@ -135,6 +135,11 @@ const CategoryBadge = React.memo(function CategoryBadge({ category }: { category
 // Module-level cache that persists across component remounts
 const servicesCache = new Map<string, { data: any; timestamp: number }>();
 
+// Function to clear cache (can be called manually)
+export function clearServicesCache() {
+  servicesCache.clear();
+}
+
 // Hook to fetch services + stats + pagination
 function useServices(params: {
   search: string;
@@ -143,8 +148,9 @@ function useServices(params: {
   page: number;
   limit: number;
   onError: (msg: string) => void;
+  forceRefresh?: boolean;
 }) {
-  const { search, status, category, page, limit, onError } = params;
+  const { search, status, category, page, limit, onError, forceRefresh } = params;
   const [services, setServices] = useState<Service[]>([]);
   const [loading, setLoading] = useState(true);
   const [_error, setError] = useState<string | null>(null);
@@ -163,7 +169,7 @@ function useServices(params: {
   });
 
   // Persistent cache implementation using module-level variable
-  const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+  const CACHE_DURATION = 30 * 60 * 1000; // 30 minutes (longer cache)
 
   useEffect(() => {
     const controller = new AbortController();
