@@ -11,7 +11,6 @@ import {
   EyeIcon,
   XMarkIcon,
   EnvelopeIcon,
-  FunnelIcon,
   PencilSquareIcon,
   CheckCircleIcon,
   XCircleIcon,
