@@ -132,6 +132,9 @@ const CategoryBadge = React.memo(function CategoryBadge({ category }: { category
   }
 });
 
+// Module-level cache that persists across component remounts
+const servicesCache = new Map<string, { data: any; timestamp: number }>();
+
 // Hook to fetch services + stats + pagination
 function useServices(params: {
   search: string;
@@ -159,8 +162,7 @@ function useServices(params: {
     totalPages: 1,
   });
 
-  // Simple cache implementation
-  const [cache, setCache] = useState<Map<string, { data: any; timestamp: number }>>(new Map());
+  // Persistent cache implementation using module-level variable
   const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 
   useEffect(() => {
@@ -174,7 +176,7 @@ function useServices(params: {
     const now = Date.now();
 
     // Check cache first
-    const cachedData = cache.get(cacheKey);
+    const cachedData = servicesCache.get(cacheKey);
     if (cachedData && (now - cachedData.timestamp) < CACHE_DURATION) {
       // Use cached data
       setServices(cachedData.data.services || []);
@@ -243,17 +245,13 @@ function useServices(params: {
         setStats(statsData);
 
         // Update cache
-        setCache(prev => {
-          const newCache = new Map(prev);
-          newCache.set(cacheKey, {
-            data: {
-              services: servicesData,
-              pagination: paginationData,
-              stats: statsData
-            },
-            timestamp: now
-          });
-          return newCache;
+        servicesCache.set(cacheKey, {
+          data: {
+            services: servicesData,
+            pagination: paginationData,
+            stats: statsData
+          },
+          timestamp: now
         });
 
         setError(null);
@@ -293,7 +291,7 @@ function useServices(params: {
       controller.abort();
       if (retryTimer) clearTimeout(retryTimer);
     };
-  }, [search, status, category, page, limit, onError, retryCount, cache, CACHE_DURATION]);
+  }, [search, status, category, page, limit, onError, retryCount, CACHE_DURATION]);
 
   return { services, loading, stats, pagination, setPagination };
 }
