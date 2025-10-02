@@ -9,12 +9,43 @@ import { query } from '@/lib/db/query';
 import { initializeRefundTables } from '@/lib/db/refunds';
 
 /**
+ * Ensure payment_receipts table exists with all required columns
+ */
+async function ensurePaymentReceiptsTable(): Promise<void> {
+  try {
+    await query(`
+      CREATE TABLE IF NOT EXISTS payment_receipts (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        booking_id INT NOT NULL,
+        user_id INT NOT NULL,
+        receipt_path VARCHAR(500),
+        reference_number VARCHAR(50),
+        notes TEXT,
+        status ENUM('awaiting', 'confirmed', 'rejected') DEFAULT 'awaiting',
+        uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        confirmed_by INT NULL,
+        confirmed_at TIMESTAMP NULL,
+        rejection_reason TEXT,
+        INDEX idx_booking_id (booking_id),
+        INDEX idx_user_id (user_id),
+        INDEX idx_status (status),
+        INDEX idx_reference_number (reference_number)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    `);
+  } catch (error) {
+    // Table creation may fail in production; log but continue
+    console.warn('Could not ensure payment_receipts table:', error);
+  }
+}
+
+/**
  * GET /api/cremation/refunds - Get refunds for the authenticated cremation business
  */
 export async function GET(request: NextRequest) {
   try {
     // Ensure refund tables exist first
     await initializeRefundTables();
+    await ensurePaymentReceiptsTable();
 
     const authResult = await verifySecureAuth(request);
     if (!authResult) {
