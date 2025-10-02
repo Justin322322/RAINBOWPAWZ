@@ -47,7 +47,6 @@ function CremationRefundsPageEnhanced({ userData }: { userData: any }) {
   const [_error, _setError] = useState<string | null>(null);
   const [selectedRefund, setSelectedRefund] = useState<RefundRecord | null>(null);
   const [filter, setFilter] = useState<'all' | 'pending' | 'completed'>('all');
-  const [_uploadingReceipt, _setUploadingReceipt] = useState<number | null>(null);
   const [showReceiptModal, setShowReceiptModal] = useState(false);
   const [selectedReceiptUrl, setSelectedReceiptUrl] = useState<string | null>(null);
   const { showToast } = useToast();
@@ -75,34 +74,6 @@ function CremationRefundsPageEnhanced({ userData }: { userData: any }) {
       _setError(error instanceof Error ? error.message : 'Failed to fetch refunds');
     } finally {
       setIsLoading(false);
-    }
-  };
-
-  const _handleFileUpload = async (refundId: number, file: File) => {
-    if (!file) return;
-
-    _setUploadingReceipt(refundId);
-    const formData = new FormData();
-    formData.append('receipt', file);
-
-    try {
-      const response = await fetch(`/api/refunds/${refundId}/upload-receipt`, {
-        method: 'POST',
-        body: formData
-      });
-
-      if (response.ok) {
-        await fetchRefunds();
-        showToast('Refund receipt uploaded successfully', 'success');
-      } else {
-        const error = await response.json();
-        showToast(`Upload failed: ${error.error}`, 'error');
-      }
-    } catch (error) {
-      console.error('Upload error:', error);
-      showToast('Upload failed. Please try again.', 'error');
-    } finally {
-      _setUploadingReceipt(null);
     }
   };
 
@@ -278,8 +249,8 @@ function CremationRefundsPageEnhanced({ userData }: { userData: any }) {
               key={key}
               onClick={() => setFilter(key as any)}
               className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${filter === key
-                  ? 'bg-blue-600 text-white'
-                  : 'text-gray-600 hover:bg-gray-100'
+                ? 'bg-blue-600 text-white'
+                : 'text-gray-600 hover:bg-gray-100'
                 }`}
             >
               {label}
@@ -379,31 +350,33 @@ function CremationRefundsPageEnhanced({ userData }: { userData: any }) {
                     </span>
                   </td>
                   <td className="px-6 py-4">
-                    {(refund.status === 'pending' || refund.status === 'pending_approval') && (
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => handleApproveRefund(refund.id)}
-                          className="px-3 py-1 bg-green-600 text-white text-xs rounded hover:bg-green-700"
-                        >
-                          Approve
-                        </button>
-                        <button
-                          onClick={() => {
-                            const reason = prompt('Rejection reason:');
-                            if (reason) handleRejectRefund(refund.id, reason);
-                          }}
-                          className="px-3 py-1 bg-red-600 text-white text-xs rounded hover:bg-red-700"
-                        >
-                          Reject
-                        </button>
-                      </div>
-                    )}
-                    <button
-                      onClick={() => setSelectedRefund(refund)}
-                      className="text-blue-600 hover:text-blue-900 text-sm mt-2"
-                    >
-                      View Details
-                    </button>
+                    <div className="flex flex-col gap-2">
+                      {(refund.status === 'pending' || refund.status === 'pending_approval') && (
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => handleApproveRefund(refund.id)}
+                            className="flex-1 px-3 py-1.5 bg-green-600 text-white text-xs font-medium rounded hover:bg-green-700 transition-colors"
+                          >
+                            ✓ Approve
+                          </button>
+                          <button
+                            onClick={() => {
+                              const reason = prompt('Rejection reason:');
+                              if (reason) handleRejectRefund(refund.id, reason);
+                            }}
+                            className="flex-1 px-3 py-1.5 bg-red-600 text-white text-xs font-medium rounded hover:bg-red-700 transition-colors"
+                          >
+                            ✕ Decline
+                          </button>
+                        </div>
+                      )}
+                      <button
+                        onClick={() => setSelectedRefund(refund)}
+                        className="w-full px-3 py-1.5 text-blue-600 hover:text-white hover:bg-blue-600 border border-blue-600 text-xs font-medium rounded transition-colors"
+                      >
+                        View Details
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
