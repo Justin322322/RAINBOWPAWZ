@@ -117,7 +117,6 @@ function ServicesPage({ userData }: ServicesPageProps) {
 
   // Cache management
   const [cache, setCache] = useState<Map<string, { data: any; timestamp: number }>>(new Map());
-  const [lastFetchParams, setLastFetchParams] = useState<string>('');
 
   // Function to extract distance value from string (e.g., "2.2 km away" -> 2.2)
   const extractDistanceValue = (distanceStr: string): number => {
@@ -211,8 +210,6 @@ function ServicesPage({ userData }: ServicesPageProps) {
         });
         return newCache;
       });
-
-      setLastFetchParams(queryString);
     } catch (error) {
       console.error('Error fetching service providers:', error);
       setServiceProviders([]);
@@ -228,6 +225,7 @@ function ServicesPage({ userData }: ServicesPageProps) {
     if (!isLoadingLocation && userLocation) {
       fetchServiceProviders(1);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userLocation?.address, isLoadingLocation]);
 
 
