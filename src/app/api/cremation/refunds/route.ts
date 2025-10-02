@@ -32,8 +32,32 @@ async function ensurePaymentReceiptsTable(): Promise<void> {
         INDEX idx_reference_number (reference_number)
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     `);
+
+    // Add missing columns if table already exists
+    try {
+      const columns = (await query(`
+        SELECT COLUMN_NAME 
+        FROM INFORMATION_SCHEMA.COLUMNS 
+        WHERE TABLE_SCHEMA = DATABASE() 
+        AND TABLE_NAME = 'payment_receipts' 
+        AND COLUMN_NAME = 'reference_number'
+      `)) as any[];
+
+      if (columns.length === 0) {
+        await query(`
+          ALTER TABLE payment_receipts 
+          ADD COLUMN reference_number VARCHAR(50) AFTER receipt_path
+        `);
+        await query(`
+          ALTER TABLE payment_receipts 
+          ADD INDEX idx_reference_number (reference_number)
+        `);
+        console.log("Added reference_number column to payment_receipts");
+      }
+    } catch (alterError) {
+      console.warn("Could not add reference_number column:", alterError);
+    }
   } catch (error) {
-    // Table creation may fail in production; log but continue
     console.warn("Could not ensure payment_receipts table:", error);
   }
 }
@@ -91,13 +115,15 @@ export async function GET(request: NextRequest) {
     // Check if payment_receipts table exists and has the required columns
     let hasPaymentReceipts = false;
     try {
-      const tableCheck = (await query(
-        `SELECT COUNT(*) as count FROM information_schema.tables 
-         WHERE table_schema = DATABASE() AND table_name = 'payment_receipts'`
+      const columnCheck = (await query(
+        `SELECT COUNT(*) as count FROM information_schema.columns 
+         WHERE table_schema = DATABASE() 
+         AND table_name = 'payment_receipts' 
+         AND column_name = 'reference_number'`
       )) as any[];
-      hasPaymentReceipts = tableCheck[0]?.count > 0;
+      hasPaymentReceipts = columnCheck[0]?.count > 0;
     } catch (error) {
-      console.warn("Could not check payment_receipts table:", error);
+      console.warn("Could not check payment_receipts columns:", error);
     }
 
     // Build the refunds query with conditional payment receipt data
