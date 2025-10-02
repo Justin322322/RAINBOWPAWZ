@@ -274,14 +274,14 @@ export async function POST(request: NextRequest) {
     // Send notifications_unified asynchronously after successful database operations
     if (action === 'restrict' && businessUserId) {
       // Don't await this to prevent blocking the response
-      notifyUserOfRestriction(businessUserId, body.reason || 'Restricted by admin', body.duration, businessId)
+      notifyUserOfRestriction(businessUserId, body.reason || 'Restricted by admin', body.duration)
         .catch(error => {
           console.error('Failed to send restriction notification:', error);
           // Don't throw error as this is not critical for the main operation
         });
     } else if (action === 'restore' && businessUserId) {
       // Send restoration notifications_unified
-      notifyUserOfRestoration(businessUserId, businessId)
+      notifyUserOfRestoration(businessUserId)
         .catch(error => {
           console.error('Failed to send restoration notification:', error);
           // Don't throw error as this is not critical for the main operation
@@ -304,7 +304,7 @@ export async function POST(request: NextRequest) {
 }
 
 // Helper function to notify user of restriction
-async function notifyUserOfRestriction(userId: number, reason: string, duration?: string, _businessId?: number) {
+async function notifyUserOfRestriction(userId: number, reason: string, duration?: string) {
   try {
     // Get user details for notifications_unified with timeout
     const userResult = await Promise.race([
@@ -408,7 +408,7 @@ async function notifyUserOfRestriction(userId: number, reason: string, duration?
 }
 
 // Helper function to notify user of restoration
-async function notifyUserOfRestoration(userId: number, _businessId: number) {
+async function notifyUserOfRestoration(userId: number) {
   try {
     // Get user details for notifications_unified with timeout
     const userResult = await Promise.race([
