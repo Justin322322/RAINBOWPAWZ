@@ -147,6 +147,8 @@ function AdminApplicationsContent() {
           >
             <option value="all">All Statuses </option>
             <option value="pending">Pending</option>
+            <option value="reviewing">Under Review</option>
+            <option value="documents_required">Documents Required</option>
             <option value="approved">Approved</option>
             <option value="declined">Declined</option>
             <option value="restricted">Restricted</option>
@@ -244,6 +246,11 @@ function AdminApplicationsContent() {
                           Pending
                         </span>
                       )}
+                      {application.applicationStatus === 'reviewing' && (
+                        <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
+                          Under Review
+                        </span>
+                      )}
                       {application.applicationStatus === 'approved' && (
                         <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
                           Approved
@@ -257,6 +264,11 @@ function AdminApplicationsContent() {
                       {application.applicationStatus === 'restricted' && (
                         <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-purple-100 text-purple-800">
                           Restricted
+                        </span>
+                      )}
+                      {application.applicationStatus === 'documents_required' && (
+                        <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-orange-100 text-orange-800">
+                          Documents Required
                         </span>
                       )}
                     </td>
