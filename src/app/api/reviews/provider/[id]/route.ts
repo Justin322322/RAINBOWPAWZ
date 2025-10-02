@@ -51,6 +51,18 @@ export async function GET(
       const hasServiceNameColumn = columns.includes('service_name');
       const hasBookingDateColumn = columns.includes('booking_date');
 
+      // Check if report columns exist
+      const reportColumnsResult = await query(`
+        SELECT COLUMN_NAME
+        FROM INFORMATION_SCHEMA.COLUMNS
+        WHERE TABLE_SCHEMA = DATABASE()
+        AND TABLE_NAME = 'reviews'
+        AND COLUMN_NAME IN ('report_reason', 'report_status', 'reported_by', 'reported_at')
+      `) as any[];
+
+      const reportColumns = reportColumnsResult.map((row: any) => row.COLUMN_NAME);
+      const hasReportColumns = reportColumns.length > 0;
+
       // Construct a query based on available columns
       let selectFields = `
         r.*,
@@ -58,6 +70,13 @@ export async function GET(
         u.email as user_email,
         r.booking_id
       `;
+
+      if (hasReportColumns) {
+        if (reportColumns.includes('report_reason')) selectFields += `, r.report_reason`;
+        if (reportColumns.includes('report_status')) selectFields += `, r.report_status`;
+        if (reportColumns.includes('reported_by')) selectFields += `, r.reported_by`;
+        if (reportColumns.includes('reported_at')) selectFields += `, r.reported_at`;
+      }
 
       if (hasBookingDateColumn) {
         selectFields += `, sb.booking_date`;

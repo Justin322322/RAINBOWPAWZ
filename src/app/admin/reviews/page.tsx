@@ -11,6 +11,7 @@ import {
   TrashIcon,
   ExclamationTriangleIcon,
   XCircleIcon,
+  FlagIcon,
 } from '@heroicons/react/24/outline';
 import AdminDashboardLayout from '@/components/navigation/AdminDashboardLayout';
 import withAdminAuth from '@/components/withAdminAuth';
@@ -30,6 +31,10 @@ interface Review {
   updated_at: string;
   user_name: string;
   provider_name: string;
+  report_reason?: string;
+  report_status?: 'none' | 'pending' | 'reviewed' | 'dismissed';
+  reported_by?: number;
+  reported_at?: string;
 }
 
 interface BookingDetails {
@@ -67,6 +72,8 @@ function AdminReviewsPage() {
   const [selectedBookingId, setSelectedBookingId] = useState<number | null>(null);
   const [bookingDetails, setBookingDetails] = useState<BookingDetails | null>(null);
   const [loadingBooking, setLoadingBooking] = useState(false);
+  const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+  const [selectedReportReview, setSelectedReportReview] = useState<Review | null>(null);
 
   useEffect(() => {
     // Flag to prevent multiple error toasts
@@ -174,6 +181,36 @@ function AdminReviewsPage() {
   const handleDeleteClick = (review: Review) => {
     setReviewToDelete(review);
     setIsDeleteModalOpen(true);
+  };
+
+  const handleReportBadgeClick = (review: Review) => {
+    setSelectedReportReview(review);
+    setIsReportModalOpen(true);
+  };
+
+  const handleDismissReport = async () => {
+    if (!selectedReportReview) return;
+
+    try {
+      const response = await fetch(`/api/admin/reviews/${selectedReportReview.id}/dismiss-report`, {
+        method: 'PATCH',
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to dismiss report');
+      }
+
+      // Update the review in the state
+      setReviews(reviews.map(review => 
+        review.id === selectedReportReview.id 
+          ? { ...review, report_status: 'dismissed' as const }
+          : review
+      ));
+      showToast('Report dismissed successfully', 'success');
+      setIsReportModalOpen(false);
+    } catch (error) {
+      showToast('Error dismissing report: ' + (error instanceof Error ? error.message : 'Unknown error'), 'error');
+    }
   };
 
   const handleBookingClick = async (bookingId: number) => {
@@ -382,6 +419,16 @@ function AdminReviewsPage() {
                     <div className="flex items-center">
                       <h3 className="font-medium text-gray-900 mr-2">{review.user_name}</h3>
                       <StarRating rating={review.rating} size="small" />
+                      {review.report_status === 'pending' && (
+                        <button
+                          onClick={() => handleReportBadgeClick(review)}
+                          className="ml-2 inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800 hover:bg-red-200 transition-colors"
+                          title="View report"
+                        >
+                          <FlagIcon className="h-3 w-3 mr-1" />
+                          Reported
+                        </button>
+                      )}
                     </div>
                     <p className="text-sm text-gray-500 mt-1">{formatDate(review.created_at)}</p>
                   </div>
@@ -583,6 +630,76 @@ function AdminReviewsPage() {
               )}
             </button>
           </div>
+        </div>
+      </Modal>
+
+      {/* Report Review Modal */}
+      <Modal
+        isOpen={isReportModalOpen}
+        onClose={() => setIsReportModalOpen(false)}
+        title="Reported Review"
+        size="medium"
+      >
+        <div className="p-6">
+          {selectedReportReview && (
+            <>
+              <div className="mb-6">
+                <div className="flex items-center justify-center mb-4">
+                  <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-red-100 text-red-600">
+                    <FlagIcon className="h-6 w-6" />
+                  </div>
+                </div>
+                <h3 className="text-lg font-medium text-gray-900 text-center mb-2">Review Report Details</h3>
+              </div>
+
+              {/* Review Information */}
+              <div className="bg-gray-50 p-4 rounded-lg mb-4">
+                <h4 className="text-sm font-medium text-gray-700 mb-2">Review Content</h4>
+                <div className="flex items-center mb-2">
+                  <span className="text-sm text-gray-600 mr-2">By:</span>
+                  <span className="font-medium">{selectedReportReview.user_name}</span>
+                  <span className="ml-2">
+                    <StarRating rating={selectedReportReview.rating} size="small" />
+                  </span>
+                </div>
+                {selectedReportReview.comment && (
+                  <div className="mt-2">
+                    <p className="text-sm text-gray-700 italic">&quot;{selectedReportReview.comment}&quot;</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Report Reason */}
+              <div className="bg-red-50 p-4 rounded-lg mb-6">
+                <h4 className="text-sm font-medium text-red-800 mb-2">Report Reason</h4>
+                <p className="text-sm text-red-700">{selectedReportReview.report_reason}</p>
+                {selectedReportReview.reported_at && (
+                  <p className="text-xs text-red-600 mt-2">
+                    Reported on {formatDate(selectedReportReview.reported_at)}
+                  </p>
+                )}
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex justify-center space-x-4">
+                <button
+                  onClick={handleDismissReport}
+                  className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+                >
+                  Dismiss Report
+                </button>
+                <button
+                  onClick={() => {
+                    setIsReportModalOpen(false);
+                    handleDeleteClick(selectedReportReview);
+                  }}
+                  className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700"
+                >
+                  Delete Review
+                </button>
+              </div>
+            </>
+          )}
         </div>
       </Modal>
     </AdminDashboardLayout>

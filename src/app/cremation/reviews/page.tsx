@@ -8,7 +8,9 @@ import {
   FunnelIcon,
   MagnifyingGlassIcon,
   ExclamationTriangleIcon,
+  FlagIcon,
 } from '@heroicons/react/24/outline';
+import { Modal } from '@/components/ui/Modal';
 import CremationDashboardLayout from '@/components/navigation/CremationDashboardLayout';
 import withBusinessVerification from '@/components/withBusinessVerification';
 import { useToast } from '@/context/ToastContext';
@@ -33,6 +35,8 @@ interface Review {
   booking_date?: string;
   service_name?: string;
   user_email?: string;
+  report_reason?: string;
+  report_status?: 'none' | 'pending' | 'reviewed' | 'dismissed';
 }
 
 function ReviewsPage({ userData }: ReviewsPageProps) {
@@ -46,6 +50,10 @@ function ReviewsPage({ userData }: ReviewsPageProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [services, setServices] = useState<{id: number, name: string}[]>([]);
   const [filterService, setFilterService] = useState<string>('');
+  const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+  const [selectedReview, setSelectedReview] = useState<Review | null>(null);
+  const [reportReason, setReportReason] = useState('');
+  const [isSubmittingReport, setIsSubmittingReport] = useState(false);
 
   // Ref to track if we've already shown an error toast
   const hasShownErrorRef = useRef(false);
@@ -196,6 +204,58 @@ function ReviewsPage({ userData }: ReviewsPageProps) {
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchTerm(e.target.value);
+  };
+
+  const handleReportClick = (review: Review) => {
+    setSelectedReview(review);
+    setReportReason('');
+    setIsReportModalOpen(true);
+  };
+
+  const handleSubmitReport = async () => {
+    if (!selectedReview || !reportReason.trim()) {
+      showToast('Please provide a reason for reporting this review', 'error');
+      return;
+    }
+
+    try {
+      setIsSubmittingReport(true);
+
+      const response = await fetch('/api/reviews/report', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          review_id: selectedReview.id,
+          report_reason: reportReason.trim(),
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to report review');
+      }
+
+      // Update the review in the state
+      setReviews(reviews.map(review => 
+        review.id === selectedReview.id 
+          ? { ...review, report_status: 'pending' as const, report_reason: reportReason.trim() }
+          : review
+      ));
+
+      showToast('Review reported successfully. An admin will review it shortly.', 'success');
+      setIsReportModalOpen(false);
+      setSelectedReview(null);
+      setReportReason('');
+    } catch (error) {
+      showToast(
+        error instanceof Error ? error.message : 'Failed to report review',
+        'error'
+      );
+    } finally {
+      setIsSubmittingReport(false);
+    }
   };
 
   const formatDate = (dateString: string) => {
@@ -354,11 +414,25 @@ function ReviewsPage({ userData }: ReviewsPageProps) {
                     </div>
                     <p className="text-sm text-gray-500 mt-1">{formatDate(review.created_at)}</p>
                   </div>
-                  <div className="mt-2 md:mt-0 flex items-center">
+                  <div className="mt-2 md:mt-0 flex items-center space-x-2">
                     {review.service_name && (
-                      <span className="text-sm text-gray-600 mr-4">
+                      <span className="text-sm text-gray-600 mr-2">
                         Service: <span className="font-medium">{review.service_name}</span>
                       </span>
+                    )}
+                    {review.report_status === 'pending' ? (
+                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                        <FlagIcon className="h-3 w-3 mr-1" />
+                        Report Pending
+                      </span>
+                    ) : (
+                      <button
+                        onClick={() => handleReportClick(review)}
+                        className="text-gray-500 hover:text-red-600 p-1 rounded-full hover:bg-red-50 transition-colors"
+                        title="Report this review"
+                      >
+                        <FlagIcon className="h-5 w-5" />
+                      </button>
                     )}
                   </div>
                 </div>
@@ -387,6 +461,86 @@ function ReviewsPage({ userData }: ReviewsPageProps) {
           </div>
         )}
       </div>
+
+      {/* Report Review Modal */}
+      <Modal
+        isOpen={isReportModalOpen}
+        onClose={() => setIsReportModalOpen(false)}
+        title="Report Review"
+        size="medium"
+      >
+        <div className="p-6">
+          {selectedReview && (
+            <>
+              <div className="mb-6">
+                <div className="flex items-center justify-center mb-4">
+                  <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-red-100 text-red-600">
+                    <FlagIcon className="h-6 w-6" />
+                  </div>
+                </div>
+                <h3 className="text-lg font-medium text-gray-900 text-center mb-2">Report This Review</h3>
+                <p className="text-sm text-gray-600 text-center">
+                  If you believe this review violates our guidelines or contains defamatory content, please provide details below.
+                </p>
+              </div>
+
+              {/* Review Being Reported */}
+              <div className="bg-gray-50 p-4 rounded-lg mb-4">
+                <h4 className="text-sm font-medium text-gray-700 mb-2">Review Content</h4>
+                <div className="flex items-center mb-2">
+                  <span className="text-sm text-gray-600 mr-2">By:</span>
+                  <span className="font-medium">{selectedReview.user_name}</span>
+                  <span className="ml-2">
+                    <StarRating rating={selectedReview.rating} size="small" />
+                  </span>
+                </div>
+                {selectedReview.comment && (
+                  <div className="mt-2">
+                    <p className="text-sm text-gray-700 italic">&quot;{selectedReview.comment}&quot;</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Report Reason Input */}
+              <div className="mb-6">
+                <label htmlFor="report-reason" className="block text-sm font-medium text-gray-700 mb-2">
+                  Reason for Reporting
+                </label>
+                <textarea
+                  id="report-reason"
+                  rows={4}
+                  value={reportReason}
+                  onChange={(e) => setReportReason(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--primary-green)] focus:border-transparent"
+                  placeholder="Please explain why you believe this review should be removed (e.g., defamatory content, false information, harassment, etc.)"
+                  disabled={isSubmittingReport}
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  An admin will review your report and take appropriate action.
+                </p>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex justify-center space-x-4">
+                <button
+                  onClick={() => setIsReportModalOpen(false)}
+                  className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+                  disabled={isSubmittingReport}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleSubmitReport}
+                  className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabled={isSubmittingReport || !reportReason.trim()}
+                >
+                  {isSubmittingReport ? 'Submitting...' : 'Submit Report'}
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+      </Modal>
     </CremationDashboardLayout>
   );
 }

@@ -27,12 +27,27 @@ export function usePackages({ userData }: UsePackagesProps) {
   }, [showToast]);
   
   // Fetch packages function - stabilize the dependency on userData.business_id
-  const providerId = userData?.business_id || userData?.provider_id || 999; // Fallback to 999 for demo
+  const providerId = userData?.business_id || userData?.provider_id || userData?.service_provider_id || null;
 
   const fetchPackages = useCallback(async () => {
     setIsLoading(true);
     try {
       // Log the provider ID for debugging
+      console.log('[usePackages] Fetching packages with providerId:', providerId);
+      console.log('[usePackages] userData:', {
+        business_id: userData?.business_id,
+        provider_id: userData?.provider_id,
+        service_provider_id: userData?.service_provider_id,
+        id: userData?.id
+      });
+
+      if (!providerId) {
+        console.error('[usePackages] No provider ID found in userData');
+        showToastRef.current?.('Unable to load packages: Provider ID not found', 'error');
+        setPackages([]);
+        setIsLoading(false);
+        return;
+      }
 
       // Fetch packages from API
       const response = await fetch(`/api/packages?providerId=${providerId}&includeInactive=true`, {
@@ -49,6 +64,10 @@ export function usePackages({ userData }: UsePackagesProps) {
       }
 
       const data = await response.json();
+      console.log('[usePackages] API response:', {
+        packagesCount: data.packages?.length || 0,
+        pagination: data.pagination
+      });
 
       // Helper: normalize image paths similar to Edit Package modal
       const normalizeImagePath = (imagePath: string): string => {
