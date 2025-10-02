@@ -115,6 +115,12 @@ export async function cancelBookingWithRefund(
       console.warn('Cancellation: failed to restore availability slot (non-fatal):', availError);
     }
 
+    // Calculate refund amount first
+    const refundAmount = calculateRefundAmount(
+      bookingInfo,
+      request.cancelledByType
+    );
+
     // Determine if refund should be processed (enhanced for GCASH/e-payments)
     const shouldProcessRefund = await shouldInitiateRefundAsync(
       bookingInfo,
@@ -126,32 +132,60 @@ export async function cancelBookingWithRefund(
       bookingId: request.bookingId,
       paymentMethod: bookingInfo.payment_method,
       paymentStatus: bookingInfo.payment_status,
+      refundAmount: refundAmount,
       shouldRefund: shouldProcessRefund.shouldRefund,
       reason: shouldProcessRefund.reason
     });
 
-    if (!shouldProcessRefund.shouldRefund) {
-      return {
-        success: true,
-        bookingCancelled: true,
-        refundInitiated: false,
-        message: `Booking cancelled successfully. ${shouldProcessRefund.reason}`,
-      };
-    }
+    // Always create a refund record for cancelled bookings (for tracking)
+    // Even if payment wasn't made, create a $0 refund record
+    const actualRefundAmount = shouldProcessRefund.shouldRefund && refundAmount > 0 
+      ? refundAmount 
+      : 0;
 
-    // Calculate refund amount
-    const refundAmount = calculateRefundAmount(
-      bookingInfo,
-      request.cancelledByType
-    );
+    // If no refund needed, still create a record with status 'cancelled' for tracking
+    if (!shouldProcessRefund.shouldRefund || actualRefundAmount <= 0) {
+      try {
+        const trackingRefundId = await createRefundRecord({
+          booking_id: request.bookingId,
+          user_id: bookingInfo.userId,
+          amount: actualRefundAmount,
+          reason: `Booking cancellation: ${request.reason}${!shouldProcessRefund.shouldRefund ? ` (${shouldProcessRefund.reason})` : ''}`,
+          status: actualRefundAmount > 0 ? 'pending' : 'cancelled',
+          refund_type: 'manual',
+          payment_method: (bookingInfo.payment_method || 'cash') as any,
+          initiated_at: new Date()
+        });
 
-    if (refundAmount <= 0) {
-      return {
-        success: true,
-        bookingCancelled: true,
-        refundInitiated: false,
-        message: 'Booking cancelled successfully. No refund amount calculated.',
-      };
+        await logRefundAudit({
+          refund_id: trackingRefundId,
+          action: 'created',
+          new_status: actualRefundAmount > 0 ? 'pending' : 'cancelled',
+          performed_by: request.cancelledBy,
+          performed_by_type: request.cancelledByType === 'admin' ? 'admin' : 'system',
+          details: `Tracking refund created for cancelled booking ${request.bookingId}`,
+          ip_address: request.ipAddress
+        });
+
+        return {
+          success: true,
+          bookingCancelled: true,
+          refundInitiated: actualRefundAmount > 0,
+          refundId: trackingRefundId,
+          refundType: 'manual',
+          message: actualRefundAmount > 0 
+            ? `Booking cancelled successfully. Refund of ₱${actualRefundAmount.toFixed(2)} pending approval.`
+            : `Booking cancelled successfully. ${shouldProcessRefund.reason}`,
+        };
+      } catch (trackingError) {
+        console.error('Failed to create tracking refund:', trackingError);
+        return {
+          success: true,
+          bookingCancelled: true,
+          refundInitiated: false,
+          message: `Booking cancelled successfully. ${shouldProcessRefund.reason}`,
+        };
+      }
     }
 
     // Process the refund
