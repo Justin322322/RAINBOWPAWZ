@@ -72,9 +72,21 @@ const nextConfig = {
     // Keep images unoptimized locally; use optimizer in production
     unoptimized: !isProd,
   },
-  // Allow connections from any origin in development
+  // Optimal cache-control headers
   async headers() {
     return [
+      // ============================================
+      // STATIC ASSETS - Long-term caching
+      // ============================================
+      {
+        source: '/_next/static/:path*',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=31536000, immutable',
+          }
+        ],
+      },
       {
         source: '/logo.png',
         headers: [
@@ -84,7 +96,28 @@ const nextConfig = {
           }
         ],
       },
-      // Disable caching for dynamic content like images in the uploads folder
+      {
+        source: '/fonts/:path*',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=31536000, immutable',
+          }
+        ],
+      },
+      {
+        source: '/images/:path*',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=31536000, immutable',
+          }
+        ],
+      },
+      
+      // ============================================
+      // DYNAMIC UPLOADS - No caching
+      // ============================================
       {
         source: '/uploads/:path*',
         headers: [
@@ -94,7 +127,81 @@ const nextConfig = {
           }
         ],
       },
-      // Add proper CORS headers for all routes - more restrictive in production
+      
+      // ============================================
+      // API ROUTES - Semi-static data (public lists)
+      // ============================================
+      {
+        source: '/api/service-providers',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, s-maxage=300, stale-while-revalidate=600',
+          }
+        ],
+      },
+      {
+        source: '/api/admin/services/listing',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, s-maxage=300, stale-while-revalidate=600',
+          }
+        ],
+      },
+      {
+        source: '/api/packages',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, s-maxage=300, stale-while-revalidate=600',
+          }
+        ],
+      },
+      
+      // ============================================
+      // API ROUTES - User-specific data (no caching)
+      // ============================================
+      {
+        source: '/api/bookings',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'private, no-cache, no-store, max-age=0, must-revalidate',
+          }
+        ],
+      },
+      {
+        source: '/api/user/:path*',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'private, no-cache, no-store, max-age=0, must-revalidate',
+          }
+        ],
+      },
+      {
+        source: '/api/auth/:path*',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'private, no-cache, no-store, max-age=0, must-revalidate',
+          }
+        ],
+      },
+      {
+        source: '/api/payments/:path*',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'private, no-cache, no-store, max-age=0, must-revalidate',
+          }
+        ],
+      },
+      
+      // ============================================
+      // CORS HEADERS
+      // ============================================
       {
         source: '/:path*',
         headers: [
@@ -104,7 +211,6 @@ const nextConfig = {
           { key: 'Access-Control-Allow-Headers', value: 'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization' },
         ],
       },
-      // Specific CORS headers for geocoding API
       {
         source: '/api/geocoding',
         headers: [

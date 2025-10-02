@@ -148,9 +148,8 @@ function useServices(params: {
   page: number;
   limit: number;
   onError: (msg: string) => void;
-  forceRefresh?: boolean;
 }) {
-  const { search, status, category, page, limit, onError, forceRefresh } = params;
+  const { search, status, category, page, limit, onError } = params;
   const [services, setServices] = useState<Service[]>([]);
   const [loading, setLoading] = useState(true);
   const [_error, setError] = useState<string | null>(null);
@@ -169,7 +168,7 @@ function useServices(params: {
   });
 
   // Persistent cache implementation using module-level variable
-  const CACHE_DURATION = 30 * 60 * 1000; // 30 minutes (longer cache)
+  const CACHE_DURATION = 24 * 60 * 60 * 1000; // 1 day
 
   useEffect(() => {
     const controller = new AbortController();

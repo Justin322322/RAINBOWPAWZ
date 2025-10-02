@@ -130,7 +130,7 @@ export async function GET(request: Request) {
         const paginatedProviders = cachedData.providers.slice(offset, offset + limit);
         const total = cachedData.providers.length;
         
-        return NextResponse.json({
+        const response = NextResponse.json({
           providers: paginatedProviders,
           pagination: {
             total,
@@ -144,12 +144,12 @@ export async function GET(request: Request) {
             totalProviders: total,
             filteredCount: paginatedProviders.length
           }
-        }, {
-          headers: {
-            'Cache-Control': 'private, max-age=600', // Cache for 10 minutes
-            'X-Cache': 'HIT'
-          }
         });
+        
+        // Set cache headers for public list data
+        response.headers.set('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=600');
+        response.headers.set('X-Cache', 'HIT');
+        return response;
       }
 
       let providersResult: any[];
@@ -443,7 +443,7 @@ export async function GET(request: Request) {
         // Apply pagination to response
         const paginatedProviders = processedProviders.slice(offset, offset + limit);
 
-        return NextResponse.json({
+        const response = NextResponse.json({
           providers: paginatedProviders,
           pagination: {
             total,
@@ -457,12 +457,12 @@ export async function GET(request: Request) {
             totalProviders: total,
             filteredCount: paginatedProviders.length
           }
-        }, {
-          headers: {
-            'Cache-Control': 'private, max-age=600', // Cache for 10 minutes
-            'X-Cache': 'MISS'
-          }
         });
+        
+        // Set cache headers for public list data
+        response.headers.set('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=600');
+        response.headers.set('X-Cache', 'MISS');
+        return response;
       }
 
       // If no providers found, return empty array with pagination metadata
