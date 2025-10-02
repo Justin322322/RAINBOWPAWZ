@@ -69,7 +69,7 @@ function PaymentFailedContent() {
 
         <h1 className="text-2xl font-bold text-gray-900 mb-2">Payment Failed</h1>
         <p className="text-gray-600 mb-6">
-          Unfortunately, your GCash payment could not be processed.
+          Unfortunately, your payment could not be processed.
         </p>
 
         {error && (
@@ -109,7 +109,7 @@ function PaymentFailedContent() {
               <h4 className="text-sm font-medium text-blue-800">Common Issues</h4>
               <div className="mt-1 text-sm text-blue-700">
                 <ul className="list-disc list-inside space-y-1">
-                  <li>Insufficient GCash balance</li>
+                  <li>Payment processing issues</li>
                   <li>Network connectivity issues</li>
                   <li>Payment timeout</li>
                   <li>Invalid payment details</li>

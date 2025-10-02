@@ -103,7 +103,7 @@ function PaymentSuccessContent() {
 
         <h1 className="text-2xl font-bold text-gray-900 mb-2">Payment Successful!</h1>
         <p className="text-gray-600 mb-6">
-          Your GCash payment has been processed successfully.
+          Your payment has been processed successfully.
         </p>
 
         {paymentDetails && (
@@ -128,7 +128,7 @@ function PaymentSuccessContent() {
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-600">Payment Method:</span>
-                <span className="font-medium capitalize">{paymentDetails.payment_method || 'GCash'}</span>
+                <span className="font-medium capitalize">{paymentDetails.payment_method || 'QR Transfer'}</span>
               </div>
               {paymentDetails.service_name && (
                 <div className="flex justify-between">

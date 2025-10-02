@@ -19,7 +19,7 @@ import {
 } from '@heroicons/react/24/outline';
 
 import FurParentPageSkeleton from '@/components/ui/FurParentPageSkeleton';
-import GCashIcon from '@/components/ui/GCashIcon';
+
 import { useCart } from '@/contexts/CartContext';
 import TimeSlotSelector from '@/components/booking/TimeSlotSelector';
 import AddOnSelector, { AddOn } from '@/components/booking/AddOnSelector';
@@ -43,7 +43,7 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [bookingData, setBookingData] = useState<any>(null);
-  
+
   // State for accurate delivery distance calculation
   const [actualDeliveryDistance, setActualDeliveryDistance] = useState<number | null>(null);
   const [isCalculatingDistance, setIsCalculatingDistance] = useState(false);
@@ -81,7 +81,7 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
 
     return () => clearTimeout(authTimeout);
   }, [userData]);
-  const [paymentMethod, setPaymentMethod] = useState<string>('gcash');
+  const [paymentMethod, setPaymentMethod] = useState<string>('qr_manual');
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
   const [receiptProgress, setReceiptProgress] = useState(0);
   const [receiptPreview, setReceiptPreview] = useState<string | null>(null);
@@ -91,7 +91,7 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
   // Handle receipt file selection with preview
   const handleReceiptFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0] || null;
-    
+
     if (file) {
       // Validate file type
       const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
@@ -102,7 +102,7 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
         setReceiptPreview(null);
         return;
       }
-      
+
       // Validate file size (10MB max)
       const maxSize = 10 * 1024 * 1024; // 10MB
       if (file.size > maxSize) {
@@ -112,9 +112,9 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
         setReceiptPreview(null);
         return;
       }
-      
+
       setReceiptFile(file);
-      
+
       // Create preview URL
       const reader = new FileReader();
       reader.onload = (e) => {
@@ -169,6 +169,7 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
     providerId?: string;
     packageId?: string;
     receipt?: string;
+    qrCode?: string;
     formSubmitted: boolean;
   }>({
     formSubmitted: false
@@ -383,8 +384,13 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
     if (!providerId) errs.providerId = 'Missing provider. Please reselect a provider.';
     if (!packageId) errs.packageId = 'Missing package. Please reselect a package.';
 
+    // QR code required for payment
+    if (paymentMethod === 'qr_manual' && !_providerQr) {
+      errs.qrCode = 'Provider has not uploaded a QR code. Payment is not available.';
+    }
+
     // Payment receipt required for manual QR
-    if (paymentMethod === 'qr_manual' && !receiptFile) {
+    if (paymentMethod === 'qr_manual' && !receiptFile && _providerQr) {
       errs.receipt = 'Payment receipt is required for QR transfer payments';
     }
 
@@ -476,12 +482,12 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
     const paymentMethodParam = searchParams.get('payment-method');
     const deliveryOptionParam = searchParams.get('delivery-option');
 
-    // Set payment method if provided in URL (only accept gcash)
-    if (paymentMethodParam && paymentMethodParam === 'gcash') {
-      setPaymentMethod('gcash');
+    // Set payment method if provided in URL (only accept qr_manual)
+    if (paymentMethodParam && paymentMethodParam === 'qr_manual') {
+      setPaymentMethod('qr_manual');
     } else {
-      // Default to gcash regardless of what's in the URL
-      setPaymentMethod('gcash');
+      // Default to qr_manual
+      setPaymentMethod('qr_manual');
     }
 
     // Set delivery option if provided in URL
@@ -684,12 +690,12 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
           const distance = calculateDistance(deliveryCoordinates, providerCoordinates);
 
           setActualDeliveryDistance(distance);
-          
+
           // Update delivery fee based on actual distance
           const ratePerKm = bookingData?.package?.deliveryFeePerKm || 50;
           const fee = Math.round(distance * ratePerKm);
           setDeliveryFee(fee);
-          
+
         } catch (error) {
           console.error('❌ [Checkout] Error calculating delivery distance:', error);
           // Fallback to original distance calculation
@@ -722,12 +728,7 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
     fetchProviderQr();
   }, [providerId, paymentMethod]);
 
-  // Auto-switch to GCash if QR is not available and user has selected QR payment
-  useEffect(() => {
-    if (paymentMethod === 'qr_manual' && !_providerQr) {
-      setPaymentMethod('gcash');
-    }
-  }, [_providerQr, paymentMethod]);
+  // No auto-switching - if QR is not available, payment will be disabled
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -875,7 +876,7 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
 
       // Prepare booking data for submission
       const bookingSubmissionData = {
-                    userId: currentUserData.id,
+        userId: currentUserData.id,
         providerId: providerId || 0,
         packageId: packageId || 0,
         bookingDate: selectedDate,
@@ -894,7 +895,7 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
         deliveryOption,
         // Use user's existing address from profile for delivery
         deliveryAddress: deliveryOption === 'delivery'
-                      ? (currentUserData.address || currentUserData.city || '')
+          ? (currentUserData.address || currentUserData.city || '')
           : undefined,
         deliveryDistance: deliveryOption === 'delivery' ? deliveryDistance : 0,
         deliveryFee: deliveryOption === 'delivery' ? deliveryFee : 0,
@@ -939,75 +940,7 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
       // Store the booking ID for reference
       const bookingId = responseData.bookingId;
 
-      // For GCash payments, create payment intent and redirect to payment
-      if (paymentMethod === 'gcash') {
-        try {
-          const paymentResponse = await fetch('/api/payments/create-intent', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              booking_id: bookingId,
-              amount: calculateTotalPrice(),
-              currency: 'PHP',
-              payment_method: 'gcash',
-              description: `Payment for ${bookingData?.package?.name || 'Cremation Service'} - ${petName}`,
-              customer_info: {
-                            name: `${currentUserData.first_name} ${currentUserData.last_name}`,
-            email: currentUserData.email,
-            phone: currentUserData.phone
-              }
-            })
-          });
-
-          const paymentData = await paymentResponse.json();
-
-          if (!paymentResponse.ok) {
-            throw new Error(paymentData.details || paymentData.error || 'Payment creation failed');
-          }
-
-          if (paymentData.success && paymentData.data.checkout_url) {
-            // Clear cart if booking was from cart
-            if (searchParams.get('fromCart') === 'true') {
-              try {
-                removeItem(items[0]?.id);
-              } catch {
-                // Don't fail the checkout if cart clearing fails
-              }
-            }
-
-            // Show success toast for booking creation
-            showToast('Booking created! Redirecting to payment...', 'success');
-
-            // Redirect to GCash payment page
-            window.location.href = paymentData.data.checkout_url;
-            return; // Exit early to prevent further execution
-          } else {
-            throw new Error('No checkout URL received from payment provider');
-          }
-        } catch (paymentError) {
-          console.error('Payment creation error:', paymentError);
-          const errorMessage = paymentError instanceof Error ? paymentError.message : 'Payment setup failed';
-
-          // Check if it's the "Payment already processed" error
-          if (errorMessage.includes('Payment already processed')) {
-            showToast('This booking has already been paid for. Redirecting to your bookings...', 'info');
-            setTimeout(() => {
-              router.push('/user/furparent_dashboard/bookings?bookingId=' + bookingId);
-            }, 2000);
-            return;
-          }
-
-          showToast(`Booking created but payment setup failed: ${errorMessage}`, 'warning');
-
-          // Still redirect to bookings page so user can retry payment later
-          setTimeout(() => {
-            router.push('/user/furparent_dashboard/bookings?bookingId=' + bookingId + '&payment_error=true');
-          }, 2000);
-          return;
-        }
-      }
+      // Only QR manual payment is supported
 
       // For manual QR transfer, upload receipt (if provided) and set awaiting confirmation
       if (paymentMethod === 'qr_manual') {
@@ -1240,11 +1173,10 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
                               value={petName}
                               onChange={handlePetNameChange}
                               onBlur={handlePetNameBlur}
-                              className={`w-full p-3 border ${
-                                validationErrors.petName && validationErrors.formSubmitted
+                              className={`w-full p-3 border ${validationErrors.petName && validationErrors.formSubmitted
                                   ? 'border-red-500 bg-red-50'
                                   : 'border-gray-300'
-                              } rounded-md focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)]`}
+                                } rounded-md focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)]`}
                               placeholder="Enter your pet's name"
                               required
                               aria-invalid={validationErrors.petName && validationErrors.formSubmitted ? 'true' : 'false'}
@@ -1273,11 +1205,10 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
                               value={petType}
                               onChange={handlePetTypeChange}
                               onBlur={handlePetTypeBlur}
-                              className={`w-full p-3 border ${
-                                validationErrors.petType && validationErrors.formSubmitted
+                              className={`w-full p-3 border ${validationErrors.petType && validationErrors.formSubmitted
                                   ? 'border-red-500 bg-red-50'
                                   : 'border-gray-300'
-                              } rounded-md focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)]`}
+                                } rounded-md focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)]`}
                               required
                               aria-invalid={validationErrors.petType && validationErrors.formSubmitted ? 'true' : 'false'}
                               aria-describedby={validationErrors.petType && validationErrors.formSubmitted ? 'pet-type-error' : undefined}
@@ -1441,9 +1372,8 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
                             }}
                             min="0"
                             step="0.1"
-                            className={`w-full p-3 border rounded-md focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)] ${
-                              validationErrors.petWeight ? 'border-red-500 error-field' : 'border-gray-300'
-                            }`}
+                            className={`w-full p-3 border rounded-md focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)] ${validationErrors.petWeight ? 'border-red-500 error-field' : 'border-gray-300'
+                              }`}
                             placeholder="Enter weight in kilograms"
                           />
                           {validationErrors.petWeight && (
@@ -1583,31 +1513,10 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
                       </h3>
 
                       <div className="space-y-3">
-                        <label className="flex items-center p-4 border rounded-md cursor-pointer hover:bg-gray-50 transition-colors">
-                          <input
-                            type="radio"
-                            name="payment-method"
-                            value="gcash"
-                            checked={paymentMethod === 'gcash'}
-                            onChange={() => setPaymentMethod('gcash')}
-                            className="h-4 w-4 text-[var(--primary-green)] focus:ring-[var(--primary-green)]"
-                          />
-                          <div className="h-6 w-6 flex-shrink-0 ml-2">
-                            <GCashIcon className="h-6 w-6" />
-                          </div>
-                          <div className="ml-3">
-                            <span className="font-medium text-gray-800">GCash</span>
-                            <p className="text-sm text-gray-600 mt-1">
-                              Pay securely using your GCash account. You will receive payment instructions after booking.
-                            </p>
-                          </div>
-                        </label>
-
-                        <label className={`block p-4 border rounded-md transition-colors ${
-                          !_providerQr 
-                            ? 'cursor-not-allowed bg-gray-50 opacity-60' 
+                        <label className={`block p-4 border rounded-md transition-colors ${!_providerQr
+                            ? 'cursor-not-allowed bg-gray-50 opacity-60'
                             : 'cursor-pointer hover:bg-gray-50'
-                        }`}>
+                          }`}>
                           <div className="flex items-start">
                             <input
                               type="radio"
@@ -1616,9 +1525,8 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
                               checked={paymentMethod === 'qr_manual'}
                               onChange={() => setPaymentMethod('qr_manual')}
                               disabled={!_providerQr}
-                              className={`h-4 w-4 mt-1 text-[var(--primary-green)] focus:ring-[var(--primary-green)] ${
-                                !_providerQr ? 'opacity-50 cursor-not-allowed' : ''
-                              }`}
+                              className={`h-4 w-4 mt-1 text-[var(--primary-green)] focus:ring-[var(--primary-green)] ${!_providerQr ? 'opacity-50 cursor-not-allowed' : ''
+                                }`}
                             />
                             <div className="ml-3 flex-1">
                               <div className="flex items-center gap-2">
@@ -1713,6 +1621,16 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
                           </div>
                         </label>
                       </div>
+
+                      {/* QR Code Error Display */}
+                      {validationErrors.qrCode && validationErrors.formSubmitted && (
+                        <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-md">
+                          <div className="flex items-center">
+                            <ExclamationCircleIcon className="h-5 w-5 text-red-500 mr-2" />
+                            <p className="text-sm text-red-700">{validationErrors.qrCode}</p>
+                          </div>
+                        </div>
+                      )}
                     </div>
 
                     {/* Delivery Options Section */}
@@ -1759,13 +1677,11 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
                         </label>
 
                         {deliveryOption === 'delivery' && (
-                          <div className={`ml-7 mt-2 p-4 ${
-                            validationErrors.deliveryAddress && validationErrors.formSubmitted
+                          <div className={`ml-7 mt-2 p-4 ${validationErrors.deliveryAddress && validationErrors.formSubmitted
                               ? 'bg-red-50 border border-red-200'
                               : 'bg-gray-50'
-                          } rounded-md ${
-                            validationErrors.deliveryAddress && validationErrors.formSubmitted ? 'error-field' : ''
-                          }`}>
+                            } rounded-md ${validationErrors.deliveryAddress && validationErrors.formSubmitted ? 'error-field' : ''
+                            }`}>
                             <div className="flex justify-between items-center mb-2">
                               <label className="block text-sm font-medium text-gray-700">
                                 Delivery Distance
@@ -1787,8 +1703,8 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
                             {currentUserData?.address ? (
                               <div className="mb-3">
                                 <p className="text-sm font-medium text-gray-700">Delivery Address:</p>
-                                                  <p className="text-sm text-gray-600 mt-1">{currentUserData.address}</p>
-                  <p className="text-sm text-gray-600">{currentUserData.city}</p>
+                                <p className="text-sm text-gray-600 mt-1">{currentUserData.address}</p>
+                                <p className="text-sm text-gray-600">{currentUserData.city}</p>
                               </div>
                             ) : (
                               <div className="mb-3 p-2 bg-red-50 border border-red-200 rounded-md">
@@ -1834,14 +1750,13 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
                   <div className="mt-8">
                     <button
                       type="submit"
-                      disabled={isProcessing || (paymentMethod === 'qr_manual' && !receiptFile)}
-                      className={`w-full py-3 px-4 ${
-                        Object.keys(validationErrors).filter(key => key !== 'formSubmitted').length > 0 && validationErrors.formSubmitted
+                      disabled={isProcessing || (paymentMethod === 'qr_manual' && (!_providerQr || !receiptFile))}
+                      className={`w-full py-3 px-4 ${Object.keys(validationErrors).filter(key => key !== 'formSubmitted').length > 0 && validationErrors.formSubmitted
                           ? 'bg-gray-400 hover:bg-gray-500'
-                          : (paymentMethod === 'qr_manual' && !receiptFile)
-                          ? 'bg-gray-400'
-                          : 'bg-[var(--primary-green)] hover:bg-[var(--primary-green-hover)]'
-                      } text-white font-medium rounded-md transition-colors disabled:opacity-70 flex items-center justify-center`}
+                          : (paymentMethod === 'qr_manual' && (!_providerQr || !receiptFile))
+                            ? 'bg-gray-400'
+                            : 'bg-[var(--primary-green)] hover:bg-[var(--primary-green-hover)]'
+                        } text-white font-medium rounded-md transition-colors disabled:opacity-70 flex items-center justify-center`}
                       onClick={(e) => {
                         // If there are validation errors and the form has been submitted,
                         // show a toast reminding the user to fix the errors
@@ -1855,7 +1770,10 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
                             firstErrorField.scrollIntoView({ behavior: 'smooth', block: 'center' });
                           }
                         }
-                        if (paymentMethod === 'qr_manual' && !receiptFile) {
+                        if (paymentMethod === 'qr_manual' && !_providerQr) {
+                          e.preventDefault();
+                          showToast('Provider has not uploaded a QR code. Payment is not available.', 'error');
+                        } else if (paymentMethod === 'qr_manual' && !receiptFile) {
                           e.preventDefault();
                           showToast('Please upload your payment receipt to continue.', 'warning');
                         }
@@ -1870,6 +1788,11 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
                         <>
                           <ExclamationCircleIcon className="h-5 w-5 mr-2" />
                           Fix Required Fields
+                        </>
+                      ) : (paymentMethod === 'qr_manual' && !_providerQr) ? (
+                        <>
+                          <ExclamationCircleIcon className="h-5 w-5 mr-2" />
+                          QR Code Not Available
                         </>
                       ) : (paymentMethod === 'qr_manual' && !receiptFile) ? (
                         <>
@@ -1921,7 +1844,7 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
                       <span className="text-[var(--primary-green)] mr-2">✓</span>
                       {bookingData.package.category} • {bookingData.package.processingTime}
                     </div>
-                    
+
                   </div>
 
                   <div className="space-y-3 mb-6">
@@ -1935,7 +1858,7 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
                       const weight = parseFloat(petWeight);
                       const tiers = Array.isArray(bookingData.package.sizePricing) ? bookingData.package.sizePricing : [];
                       const overage = Number(bookingData.package.overageFeePerKg || 0);
-                      
+
                       // Find applicable tier for display using same rules as total:
                       const sortedByMin = [...tiers].sort((a: any, b: any) => Number(a.weightRangeMin) - Number(b.weightRangeMin));
                       const eligibleIndexes = sortedByMin
@@ -1946,18 +1869,18 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
                         const lastPaid = [...eligibleIndexes].reverse().find(({ t }) => Number(t.price) > 0);
                         tier = (lastPaid ?? eligibleIndexes[eligibleIndexes.length - 1]).t;
                       }
-                      
+
                       let basePrice = 0;
                       let overagePrice = 0;
                       let tierName = '';
                       let overageWeight = 0;
-                      
+
                       if (tier) {
                         basePrice = Number(tier.price) || 0;
                         // Generate proper tier name
                         const min = tier.weightRangeMin !== undefined ? tier.weightRangeMin : 0;
                         const max = tier.weightRangeMax !== undefined ? tier.weightRangeMax : null;
-                        
+
                         let _tierName = '';
                         if (min === 0 && max === 10) {
                           _tierName = 'Small';
@@ -1987,7 +1910,7 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
                           // Generate proper tier name for highest tier
                           const min = last.weightRangeMin !== undefined ? last.weightRangeMin : 0;
                           const max = last.weightRangeMax !== undefined ? last.weightRangeMax : null;
-                          
+
                           let _tierName = '';
                           if (min === 0 && max === 10) {
                             _tierName = 'Small';
@@ -2011,7 +1934,7 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
                           }
                         }
                       }
-                      
+
                       return (
                         <div className="space-y-2">
                           <div className="flex justify-between">
