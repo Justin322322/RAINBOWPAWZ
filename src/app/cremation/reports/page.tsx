@@ -205,7 +205,14 @@ ${reportData.topServices.map((service: any, index: number) =>
               <div className="flex items-center justify-between mb-2">
                 <h2 className="text-lg font-medium text-gray-800">Revenue Overview</h2>
                 {!loading && (
-                  <span className="text-sm text-gray-500">Monthly</span>
+                  <span className="text-sm text-gray-500">
+                    {dateFilter === 'last7days' && 'Last 7 Days'}
+                    {dateFilter === 'last30days' && 'Last 30 Days'}
+                    {dateFilter === 'last90days' && 'Last 90 Days'}
+                    {dateFilter === 'last6months' && 'Last 6 Months'}
+                    {dateFilter === 'thisyear' && 'This Year'}
+                    {dateFilter === 'all' && 'All Time'}
+                  </span>
                 )}
               </div>
               {!loading && (
@@ -247,7 +254,14 @@ ${reportData.topServices.map((service: any, index: number) =>
                 <div className="flex items-center justify-between mb-4">
                   <h2 className="text-lg font-medium text-gray-800">Refunds Overview</h2>
                   {!loading && (
-                    <span className="text-sm text-gray-500">Last 6 months</span>
+                    <span className="text-sm text-gray-500">
+                      {dateFilter === 'last7days' && 'Last 7 Days'}
+                      {dateFilter === 'last30days' && 'Last 30 Days'}
+                      {dateFilter === 'last90days' && 'Last 90 Days'}
+                      {dateFilter === 'last6months' && 'Last 6 Months'}
+                      {dateFilter === 'thisyear' && 'This Year'}
+                      {dateFilter === 'all' && 'All Time'}
+                    </span>
                   )}
                 </div>
                 {!loading && (
