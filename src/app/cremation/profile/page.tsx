@@ -194,12 +194,12 @@ function CremationProfilePage({ userData }: { userData: any }) {
     if (!isMountedRef.current) {
       return;
     }
-    
+
     // Check if user is logging out to prevent 401 error toasts
     if (typeof window !== 'undefined' && sessionStorage.getItem('is_logging_out') === 'true') {
       return;
     }
-    
+
     try {
       if (forceLoading) {
         setInitialLoading(true);
@@ -211,7 +211,7 @@ function CremationProfilePage({ userData }: { userData: any }) {
       }
       abortControllerRef.current = new AbortController();
 
-      const response = await fetch(`/api/cremation/profile?t=${Date.now()}` , {
+      const response = await fetch(`/api/cremation/profile?t=${Date.now()}`, {
         method: 'GET',
         headers: {
           'Cache-Control': 'no-cache',
@@ -222,7 +222,7 @@ function CremationProfilePage({ userData }: { userData: any }) {
         signal: abortControllerRef.current.signal
       });
 
-      let data;
+      let data: any;
       try {
         data = await response.json();
       } catch {
@@ -259,7 +259,7 @@ function CremationProfilePage({ userData }: { userData: any }) {
         if (cachedPicture) {
           mappedProfile.profilePicturePath = cachedPicture;
         }
-      } catch {}
+      } catch { }
 
       setProfileData((prev: any) => {
         if (!prev || !prev.documents) return mappedProfile;
@@ -326,7 +326,7 @@ function CremationProfilePage({ userData }: { userData: any }) {
       if (!isMountedRef.current) {
         return;
       }
-      
+
       // Don't show errors for 401 during logout
       const errorMessage = error instanceof Error ? error.message : 'An error occurred while fetching data';
       if (errorMessage.includes('401') || errorMessage.includes('Unauthorized')) {
@@ -335,7 +335,7 @@ function CremationProfilePage({ userData }: { userData: any }) {
           return;
         }
       }
-      
+
       console.error('Error fetching profile data:', error);
       setError(errorMessage);
       showToastRef.current(errorMessage, 'error');
@@ -473,57 +473,57 @@ function CremationProfilePage({ userData }: { userData: any }) {
     }
   };
 
-    const handleGetLocation = async () => {
-        setIsGettingLocation(true);
-        try {
-            const position = await new Promise<GeolocationPosition>((resolve, reject) => {
-                navigator.geolocation.getCurrentPosition(resolve, reject, {
-                    enableHighAccuracy: true,
-                    timeout: 10000,
-                    maximumAge: 60000
-                });
-            });
-            const { latitude, longitude } = position.coords;
+  const handleGetLocation = async () => {
+    setIsGettingLocation(true);
+    try {
+      const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(resolve, reject, {
+          enableHighAccuracy: true,
+          timeout: 10000,
+          maximumAge: 60000
+        });
+      });
+      const { latitude, longitude } = position.coords;
 
-            // Simple reverse geocoding for demonstration
-            const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`);
-            if (!response.ok) throw new Error('Failed to fetch address');
-            
-            const data = await response.json();
-            if (data && data.display_name) {
-                const addr = data.display_name as string;
-                const parts = addr.split(',').map((p:string) => p.trim());
-                const segment = {
-                  streetAddress: parts[0] || '',
-                  barangay: '',
-                  city: parts[1] || '',
-                  province: parts[2] || '',
-                  postalCode: (parts[3] || '').replace(/[^0-9]/g,'')
-                };
-                setContactInfo(prev => ({ 
-                  ...prev, 
-                  address: addr,
-                  streetAddress: segment.streetAddress,
-                  barangay: segment.barangay,
-                  city: segment.city,
-                  province: segment.province,
-                  postalCode: segment.postalCode
-                }));
-                showToast('Location detected successfully! Fields populated.', 'success');
-            } else {
-                throw new Error('Could not determine address');
-            }
-        } catch (error: any) {
-            let errorMessage = 'Failed to get your location.';
-            if (error.code === 1) errorMessage = 'Location access denied.';
-            if (error.code === 2) errorMessage = 'Location unavailable.';
-            if (error.code === 3) errorMessage = 'Location request timed out.';
-            showToast(errorMessage, 'error');
-        } finally {
-            setIsGettingLocation(false);
-        }
-    };
-  
+      // Simple reverse geocoding for demonstration
+      const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`);
+      if (!response.ok) throw new Error('Failed to fetch address');
+
+      const data = await response.json();
+      if (data && data.display_name) {
+        const addr = data.display_name as string;
+        const parts = addr.split(',').map((p: string) => p.trim());
+        const segment = {
+          streetAddress: parts[0] || '',
+          barangay: '',
+          city: parts[1] || '',
+          province: parts[2] || '',
+          postalCode: (parts[3] || '').replace(/[^0-9]/g, '')
+        };
+        setContactInfo(prev => ({
+          ...prev,
+          address: addr,
+          streetAddress: segment.streetAddress,
+          barangay: segment.barangay,
+          city: segment.city,
+          province: segment.province,
+          postalCode: segment.postalCode
+        }));
+        showToast('Location detected successfully! Fields populated.', 'success');
+      } else {
+        throw new Error('Could not determine address');
+      }
+    } catch (error: any) {
+      let errorMessage = 'Failed to get your location.';
+      if (error.code === 1) errorMessage = 'Location access denied.';
+      if (error.code === 2) errorMessage = 'Location unavailable.';
+      if (error.code === 3) errorMessage = 'Location request timed out.';
+      showToast(errorMessage, 'error');
+    } finally {
+      setIsGettingLocation(false);
+    }
+  };
+
   const handleBusinessUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
     setBusinessSuccess('');
@@ -599,474 +599,477 @@ function CremationProfilePage({ userData }: { userData: any }) {
     }));
   };
 
-    const handleDocumentsUpload = async () => {
-        if (!userData?.user_id) {
-            setUploadError('User ID not available. Please try logging in again.');
-            return;
-        }
-        const hasFiles = Object.values(documents).some(doc => doc.file !== null);
-        if (!hasFiles) {
-            setUploadError('Please select at least one document to upload');
-            return;
-        }
-        setUploading(true);
-        setUploadError('');
+  const handleDocumentsUpload = async () => {
+    if (!userData?.user_id) {
+      setUploadError('User ID not available. Please try logging in again.');
+      return;
+    }
+    const hasFiles = Object.values(documents).some(doc => doc.file !== null);
+    if (!hasFiles) {
+      setUploadError('Please select at least one document to upload');
+      return;
+    }
+    setUploading(true);
+    setUploadError('');
 
-        // Upload via server: send files as multipart/form-data to our API.
-        const appendIfPresent = (fd: FormData, key: string, value: File | null) => {
-            if (value) fd.append(key, value);
-        };
+    // Upload via server: send files as multipart/form-data to our API.
+    const appendIfPresent = (fd: FormData, key: string, value: File | null) => {
+      if (value) fd.append(key, value);
+    };
 
+    try {
+      const form = new FormData();
+      appendIfPresent(form, 'businessPermit', documents.businessPermit.file);
+      appendIfPresent(form, 'birCertificate', documents.birCertificate.file);
+      appendIfPresent(form, 'governmentId', documents.governmentId.file);
+
+      const response = await fetch('/api/businesses/upload-documents', {
+        method: 'POST',
+        body: form,
+        credentials: 'include',
+      });
+      if (!response.ok) {
+        let message = 'Failed to save document URLs';
         try {
-            const form = new FormData();
-            appendIfPresent(form, 'businessPermit', documents.businessPermit.file);
-            appendIfPresent(form, 'birCertificate', documents.birCertificate.file);
-            appendIfPresent(form, 'governmentId', documents.governmentId.file);
-
-            const response = await fetch('/api/businesses/upload-documents', {
-                method: 'POST',
-                body: form,
-                credentials: 'include',
-            });
-            if (!response.ok) {
-                let message = 'Failed to save document URLs';
-                try {
-                    const txt = await response.text();
-                    try {
-                        const j = JSON.parse(txt);
-                        message = j.error || message;
-                    } catch {
-                        message = txt || message;
-                    }
-                } catch {}
-                throw new Error(message);
-            }
-            const data = await response.json().catch(() => ({}));
-            showToast('Documents uploaded successfully!', 'success');
-
-            const newDocs = {
-                businessPermitPath: (data?.filePaths?.business_permit_path as string) || null,
-                birCertificatePath: (data?.filePaths?.bir_certificate_path as string) || null,
-                governmentIdPath: (data?.filePaths?.government_id_path as string) || null,
-            };
-            setProfileData((prev: any) => ({
-                ...(prev || {}),
-                documents: {
-                    ...(prev?.documents || {}),
-                    ...newDocs,
-                },
-            }));
-
-            await fetchProfileData(false);
-            setDocuments({
-                businessPermit: { file: null, preview: null },
-                birCertificate: { file: null, preview: null },
-                governmentId: { file: null, preview: null }
-            });
-        } catch (error) {
-            showUploadError(error instanceof Error ? error.message : 'Failed to upload documents');
-        } finally {
-            setUploading(false);
-        }
-    };
-
-    const getDocumentImageSource = (documentPath: string | null | undefined): string => {
-        if (!documentPath) return '';
-        if (documentPath.startsWith('data:')) return documentPath; // do not append cache busting
-        // If it's already a full Blob URL, use it directly
-        if (documentPath.startsWith('https://') && documentPath.includes('.public.blob.vercel-storage.com')) {
-            return documentPath;
-        }
-        // Otherwise, use the existing image path logic
-        return getImagePath(documentPath, false);
-    };
-
-    const getCurrentDocument = (type: 'businessPermit' | 'birCertificate' | 'governmentId'): string | null => {
-        const preview = documents[type]?.preview;
-        const saved = profileData?.documents ? (
-            type === 'businessPermit' ? profileData.documents.businessPermitPath :
-            type === 'birCertificate' ? profileData.documents.birCertificatePath :
-            profileData.documents.governmentIdPath
-        ) : null;
-        return preview || saved || null;
-    };
-    
-    const isPdfDocument = (source: string): boolean => {
-        if (!source) return false;
-        const lower = source.toLowerCase();
-        return lower.endsWith('.pdf') || lower.startsWith('data:application/pdf');
-    };
-
-    const openPreviewModal = (imagePath: string, title: string) => {
-        setPreviewImage({ url: getDocumentImageSource(imagePath), title });
-        setShowPreviewModal(true);
-    };
-
-    const closePreviewModal = () => {
-        setShowPreviewModal(false);
-        setPreviewImage(null);
-    };
-
-    const profilePictureAdditionalData = useMemo(() => {
-        return userData?.user_id ? { userId: userData.user_id.toString() } : undefined;
-    }, [userData?.user_id]);
-
-    const handleProfilePictureUploadSuccess = useCallback((profilePicturePath: string) => {
-        setProfileData((prev: any) => ({
-            ...(prev || {}),
-            profilePicturePath
-        }));
-    }, []);
-
-    // Load cached documents on initial mount to prevent UI flicker
-    useEffect(() => {
-      try {
-        const cachedDocs = sessionStorage.getItem('business_documents_cache');
-        if (cachedDocs) {
-          const docs = JSON.parse(cachedDocs);
-          setProfileData((prev: any) => ({
-            ...(prev || {}),
-            documents: {
-              ...prev?.documents,
-              ...docs
-            }
-          }));
-        }
-      } catch (error) {
-        console.error("Failed to load documents from cache:", error);
+          const txt = await response.text();
+          try {
+            const j = JSON.parse(txt);
+            message = j.error || message;
+          } catch {
+            message = txt || message;
+          }
+        } catch { }
+        throw new Error(message);
       }
-    }, []);
+      const data = await response.json().catch(() => ({}));
+      showToast('Documents uploaded successfully!', 'success');
 
-    return (
-        <CremationDashboardLayout activePage="profile" userData={userData} skipSkeleton={true}>
-            <ProfileLayout
-                title="My Profile"
-                subtitle="Manage your account settings and business information"
-                icon={<UserIcon className="h-8 w-8 text-white" />}
-                className="p-6"
-                showSkeleton={showSkeleton || initialLoading}
+      const newDocs = {
+        businessPermitPath: (data?.filePaths?.business_permit_path as string) || null,
+        birCertificatePath: (data?.filePaths?.bir_certificate_path as string) || null,
+        governmentIdPath: (data?.filePaths?.government_id_path as string) || null,
+      };
+      setProfileData((prev: any) => ({
+        ...(prev || {}),
+        documents: {
+          ...(prev?.documents || {}),
+          ...newDocs,
+        },
+      }));
+
+      await fetchProfileData(false);
+      setDocuments({
+        businessPermit: { file: null, preview: null },
+        birCertificate: { file: null, preview: null },
+        governmentId: { file: null, preview: null }
+      });
+    } catch (error) {
+      showUploadError(error instanceof Error ? error.message : 'Failed to upload documents');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const getDocumentImageSource = (documentPath: string | null | undefined): string => {
+    if (!documentPath) return '';
+    if (documentPath.startsWith('data:')) return documentPath; // do not append cache busting
+    // If it's already a full Blob URL, use it directly
+    if (documentPath.startsWith('https://') && documentPath.includes('.public.blob.vercel-storage.com')) {
+      return documentPath;
+    }
+    // Otherwise, use the existing image path logic
+    return getImagePath(documentPath, false);
+  };
+
+  const getCurrentDocument = (type: 'businessPermit' | 'birCertificate' | 'governmentId'): string | null => {
+    const preview = documents[type]?.preview;
+    const saved = profileData?.documents ? (
+      type === 'businessPermit' ? profileData.documents.businessPermitPath :
+        type === 'birCertificate' ? profileData.documents.birCertificatePath :
+          profileData.documents.governmentIdPath
+    ) : null;
+    return preview || saved || null;
+  };
+
+  const isPdfDocument = (source: string): boolean => {
+    if (!source) return false;
+    const lower = source.toLowerCase();
+    return lower.endsWith('.pdf') || lower.startsWith('data:application/pdf');
+  };
+
+  const openPreviewModal = (imagePath: string, title: string) => {
+    setPreviewImage({ url: getDocumentImageSource(imagePath), title });
+    setShowPreviewModal(true);
+  };
+
+  const closePreviewModal = () => {
+    setShowPreviewModal(false);
+    setPreviewImage(null);
+  };
+
+  const profilePictureAdditionalData = useMemo(() => {
+    return userData?.user_id ? { userId: userData.user_id.toString() } : undefined;
+  }, [userData?.user_id]);
+
+  const handleProfilePictureUploadSuccess = useCallback((profilePicturePath: string) => {
+    setProfileData((prev: any) => ({
+      ...(prev || {}),
+      profilePicturePath
+    }));
+  }, []);
+
+  // Load cached documents on initial mount to prevent UI flicker
+  useEffect(() => {
+    try {
+      const cachedDocs = sessionStorage.getItem('business_documents_cache');
+      if (cachedDocs) {
+        const docs = JSON.parse(cachedDocs);
+        setProfileData((prev: any) => ({
+          ...(prev || {}),
+          documents: {
+            ...prev?.documents,
+            ...docs
+          }
+        }));
+      }
+    } catch (error) {
+      console.error("Failed to load documents from cache:", error);
+    }
+  }, []);
+
+  return (
+    <CremationDashboardLayout activePage="profile" userData={userData} skipSkeleton={true}>
+      <ProfileLayout
+        title="My Profile"
+        subtitle="Manage your account settings and business information"
+        icon={<UserIcon className="h-8 w-8 text-white" />}
+        className="p-6"
+        showSkeleton={showSkeleton || initialLoading}
+      >
+        {/* Profile Picture Section */}
+        <ProfileSection
+          title="Profile Picture"
+          subtitle="Upload and manage your profile picture"
+          showSkeleton={showSkeleton || initialLoading}
+        >
+          <ProfileCard>
+            <div className="p-6">
+              <ProfilePictureUpload
+                currentImagePath={profileData?.profilePicturePath || (userData?.user_id ? `/api/image/profile/${userData.user_id}` : undefined)}
+                userType="business"
+                apiEndpoint="/api/cremation/upload-profile-picture"
+                additionalData={profilePictureAdditionalData}
+                size="lg"
+                onUploadSuccess={handleProfilePictureUploadSuccess}
+              />
+            </div>
+          </ProfileCard>
+        </ProfileSection>
+
+        {error ? (
+          <ProfileCard>
+            <div className="text-center py-8">
+              <div className="text-red-500 mb-4">
+                <ExclamationTriangleIcon className="h-16 w-16 mx-auto" />
+              </div>
+              <h3 className="text-xl font-semibold text-gray-900 mb-2">Error Loading Profile</h3>
+              <p className="text-gray-600 mb-6">{error}</p>
+              <ProfileButton variant="primary" onClick={() => window.location.reload()}>
+                Try Again
+              </ProfileButton>
+            </div>
+          </ProfileCard>
+        ) : (
+          <>
+            {/* Account Information Section */}
+            <ProfileSection
+              title="Account Information"
+              subtitle="Read-only information for reference"
+              showSkeleton={showSkeleton || initialLoading}
             >
-                {/* Profile Picture Section */}
-                <ProfileSection
-                    title="Profile Picture"
-                    subtitle="Upload and manage your profile picture"
-                    showSkeleton={showSkeleton || initialLoading}
-                >
-                    <ProfileCard>
-                        <div className="p-6">
-                            <ProfilePictureUpload
-                                currentImagePath={profileData?.profilePicturePath || (userData?.user_id ? `/api/image/profile/${userData.user_id}` : undefined)}
-                                userType="business"
-                                apiEndpoint="/api/cremation/upload-profile-picture"
-                                additionalData={profilePictureAdditionalData}
-                                size="lg"
-                                onUploadSuccess={handleProfilePictureUploadSuccess}
-                            />
+              <ProfileCard>
+                <ProfileGrid cols={3}>
+                  <ProfileField label="Business Name" value={profileData?.business_name || 'Not available'} icon={<BuildingStorefrontIcon className="h-5 w-5" />} />
+                  <ProfileField label="Email Address" value={profileData?.email || 'Not available'} icon={<EnvelopeIcon className="h-5 w-5" />} />
+                  <ProfileField label="Phone Number" value={profileData?.business_phone || profileData?.phone || 'Not available'} icon={<PhoneIcon className="h-5 w-5" />} />
+                </ProfileGrid>
+              </ProfileCard>
+            </ProfileSection>
+
+            {/* Business Information Section */}
+            <ProfileSection
+              title="Business Information"
+              subtitle="Update your business details and information"
+              showSkeleton={showSkeleton || initialLoading}
+            >
+              <ProfileCard>
+                <form onSubmit={handleBusinessUpdate} className="space-y-6">
+                  {businessSuccess && <ProfileAlert type="success" message={businessSuccess} onClose={() => setBusinessSuccess('')} />}
+                  <ProfileFormGroup title="Basic Information" subtitle="Essential business details">
+                    <ProfileInput label="Business Name" value={businessInfo.businessName} onChange={(value) => startBusinessTransition(() => setBusinessInfo(prev => ({ ...prev, businessName: value })))} placeholder="Enter your business name" required icon={<BuildingStorefrontIcon className="h-5 w-5" />} />
+                    <ProfileTextArea label="Business Description" value={businessInfo.description} onChange={(value) => startBusinessTransition(() => setBusinessInfo(prev => ({ ...prev, description: value })))} placeholder="Describe your cremation services..." rows={4} />
+                    <ProfileInput label="Business Hours" value={businessInfo.hours} onChange={(value) => startBusinessTransition(() => setBusinessInfo(prev => ({ ...prev, hours: value })))} placeholder="e.g., Monday-Friday: 9AM-6PM" />
+                  </ProfileFormGroup>
+                  <div className="flex justify-end pt-4 border-t border-gray-100">
+                    <ProfileButton type="submit" variant="primary" icon={<CheckCircleIcon className="h-5 w-5" />}>
+                      Update Business Information
+                    </ProfileButton>
+                  </div>
+                </form>
+              </ProfileCard>
+            </ProfileSection>
+
+            {/* Contact Information Section */}
+            <ProfileSection
+              title="Contact Information"
+              subtitle="Update your personal contact details and address"
+              showSkeleton={showSkeleton || initialLoading}
+            >
+              <ProfileCard>
+                <form onSubmit={handleContactUpdate} className="space-y-6">
+                  {contactSuccess && <ProfileAlert type="success" message={contactSuccess} onClose={() => setContactSuccess('')} />}
+                  <ProfileFormGroup title="Personal & Location Details" subtitle="Your name and primary business address">
+                    <ProfileGrid cols={2}>
+                      <ProfileInput label="First Name" value={contactInfo.firstName} onChange={(value) => startContactTransition(() => setContactInfo(prev => ({ ...prev, firstName: value })))} required icon={<UserIcon className="h-5 w-5" />} />
+                      <ProfileInput label="Last Name" value={contactInfo.lastName} onChange={(value) => startContactTransition(() => setContactInfo(prev => ({ ...prev, lastName: value })))} required icon={<UserIcon className="h-5 w-5" />} />
+                    </ProfileGrid>
+                    <ProfileInput label="Email Address" type="email" value={contactInfo.email} onChange={(value) => startContactTransition(() => setContactInfo(prev => ({ ...prev, email: value })))} required icon={<EnvelopeIcon className="h-5 w-5" />} />
+                    <PhilippinePhoneInput id="phone" name="phone" label="Phone Number" value={contactInfo.phone} onChange={(value) => startContactTransition(() => setContactInfo(prev => ({ ...prev, phone: value })))} size="lg" />
+                    <div className="space-y-6">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">Street Address</label>
+                          <Input
+                            id="streetAddress"
+                            name="streetAddress"
+                            value={contactInfo.streetAddress}
+                            onChange={(e) => setContactInfo(prev => ({ ...prev, streetAddress: e.target.value }))}
+                            placeholder="Capitol Drive"
+                            size="lg"
+                            autoComplete="street-address"
+                            rightIcon={
+                              <button
+                                type="button"
+                                onClick={(e) => { e.preventDefault(); handleGetLocation(); }}
+                                disabled={isGettingLocation}
+                                className="text-sm font-medium text-[var(--primary-green)] hover:text-[var(--primary-green-hover)] disabled:text-gray-400 disabled:cursor-not-allowed whitespace-nowrap"
+                              >
+                                {isGettingLocation ? 'Detecting...' : 'Use My Location'}
+                              </button>
+                            }
+                          />
                         </div>
-                    </ProfileCard>
-                </ProfileSection>
-
-                {error ? (
-                    <ProfileCard>
-                        <div className="text-center py-8">
-                            <div className="text-red-500 mb-4">
-                                <ExclamationTriangleIcon className="h-16 w-16 mx-auto" />
-                            </div>
-                            <h3 className="text-xl font-semibold text-gray-900 mb-2">Error Loading Profile</h3>
-                            <p className="text-gray-600 mb-6">{error}</p>
-                            <ProfileButton variant="primary" onClick={() => window.location.reload()}>
-                                Try Again
-                            </ProfileButton>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">&nbsp;</label>
+                          <Input
+                            id="barangay"
+                            name="barangay"
+                            label={undefined}
+                            placeholder="Barangay"
+                            value={contactInfo.barangay}
+                            onChange={(e) => setContactInfo(prev => ({ ...prev, barangay: e.target.value }))}
+                            size="lg"
+                          />
                         </div>
-                    </ProfileCard>
-                ) : (
-                    <>
-                        {/* Account Information Section */}
-                        <ProfileSection
-                            title="Account Information"
-                            subtitle="Read-only information for reference"
-                            showSkeleton={showSkeleton || initialLoading}
-                        >
-                            <ProfileCard>
-                                <ProfileGrid cols={3}>
-                                    <ProfileField label="Business Name" value={profileData?.business_name || 'Not available'} icon={<BuildingStorefrontIcon className="h-5 w-5" />} />
-                                    <ProfileField label="Email Address" value={profileData?.email || 'Not available'} icon={<EnvelopeIcon className="h-5 w-5" />} />
-                                    <ProfileField label="Phone Number" value={profileData?.business_phone || profileData?.phone || 'Not available'} icon={<PhoneIcon className="h-5 w-5" />} />
-                                </ProfileGrid>
-                            </ProfileCard>
-                        </ProfileSection>
-
-                        {/* Business Information Section */}
-                        <ProfileSection
-                            title="Business Information"
-                            subtitle="Update your business details and information"
-                            showSkeleton={showSkeleton || initialLoading}
-                        >
-                            <ProfileCard>
-                                <form onSubmit={handleBusinessUpdate} className="space-y-6">
-                                    {businessSuccess && <ProfileAlert type="success" message={businessSuccess} onClose={() => setBusinessSuccess('')} />}
-                                    <ProfileFormGroup title="Basic Information" subtitle="Essential business details">
-                                        <ProfileInput label="Business Name" value={businessInfo.businessName} onChange={(value) => startBusinessTransition(() => setBusinessInfo(prev => ({ ...prev, businessName: value })))} placeholder="Enter your business name" required icon={<BuildingStorefrontIcon className="h-5 w-5" />} />
-                                        <ProfileTextArea label="Business Description" value={businessInfo.description} onChange={(value) => startBusinessTransition(() => setBusinessInfo(prev => ({ ...prev, description: value })))} placeholder="Describe your cremation services..." rows={4} />
-                                        <ProfileInput label="Business Hours" value={businessInfo.hours} onChange={(value) => startBusinessTransition(() => setBusinessInfo(prev => ({ ...prev, hours: value })))} placeholder="e.g., Monday-Friday: 9AM-6PM" />
-                                    </ProfileFormGroup>
-                                    <div className="flex justify-end pt-4 border-t border-gray-100">
-                                        <ProfileButton type="submit" variant="primary" icon={<CheckCircleIcon className="h-5 w-5" />}>
-                                            Update Business Information
-                                        </ProfileButton>
-                                    </div>
-                                </form>
-                            </ProfileCard>
-                        </ProfileSection>
-
-                        {/* Contact Information Section */}
-                        <ProfileSection
-                            title="Contact Information"
-                            subtitle="Update your personal contact details and address"
-                            showSkeleton={showSkeleton || initialLoading}
-                        >
-                            <ProfileCard>
-                                <form onSubmit={handleContactUpdate} className="space-y-6">
-                                    {contactSuccess && <ProfileAlert type="success" message={contactSuccess} onClose={() => setContactSuccess('')} />}
-                                    <ProfileFormGroup title="Personal & Location Details" subtitle="Your name and primary business address">
-                                        <ProfileGrid cols={2}>
-                                            <ProfileInput label="First Name" value={contactInfo.firstName} onChange={(value) => startContactTransition(() => setContactInfo(prev => ({ ...prev, firstName: value })))} required icon={<UserIcon className="h-5 w-5" />} />
-                                            <ProfileInput label="Last Name" value={contactInfo.lastName} onChange={(value) => startContactTransition(() => setContactInfo(prev => ({ ...prev, lastName: value })))} required icon={<UserIcon className="h-5 w-5" />} />
-                                        </ProfileGrid>
-                                        <ProfileInput label="Email Address" type="email" value={contactInfo.email} onChange={(value) => startContactTransition(() => setContactInfo(prev => ({ ...prev, email: value })))} required icon={<EnvelopeIcon className="h-5 w-5" />} />
-                                        <PhilippinePhoneInput id="phone" name="phone" label="Phone Number" value={contactInfo.phone} onChange={(value) => startContactTransition(() => setContactInfo(prev => ({ ...prev, phone: value })))} />
-                                        <div className="space-y-4">
-                                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                            <div>
-                                              <label className="block text-sm font-medium text-gray-700">Street Address</label>
-                                              <Input
-                                                id="streetAddress"
-                                                name="streetAddress"
-                                                value={contactInfo.streetAddress}
-                                                onChange={(e) => setContactInfo(prev => ({ ...prev, streetAddress: e.target.value }))}
-                                                placeholder="123 Main Street"
-                                                size="lg"
-                                                autoComplete="street-address"
-                                                rightIcon={
-                                                  <button
-                                                    type="button"
-                                                    onClick={(e) => { e.preventDefault(); handleGetLocation(); }}
-                                                    disabled={isGettingLocation}
-                                                    className="text-sm font-medium text-[var(--primary-green)] hover:text-[var(--primary-green-hover)] disabled:text-gray-400 disabled:cursor-not-allowed"
-                                                  >
-                                                    {isGettingLocation ? 'Detecting...' : 'Use My Location'}
-                                                  </button>
-                                                }
-                                              />
-                                            </div>
-                                            <Input
-                                              id="barangay"
-                                              name="barangay"
-                                              label={undefined}
-                                              placeholder="Barangay"
-                                              value={contactInfo.barangay}
-                                              onChange={(e) => setContactInfo(prev => ({ ...prev, barangay: e.target.value }))}
-                                              size="lg"
-                                            />
-                                          </div>
-                                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                            <Input
-                                              id="city"
-                                              name="city"
-                                              label={undefined}
-                                              placeholder="City/Municipality"
-                                              value={contactInfo.city}
-                                              onChange={(e) => setContactInfo(prev => ({ ...prev, city: e.target.value }))}
-                                              size="lg"
-                                            />
-                                            <Input
-                                              id="province"
-                                              name="province"
-                                              label={undefined}
-                                              placeholder="Province"
-                                              value={contactInfo.province}
-                                              onChange={(e) => setContactInfo(prev => ({ ...prev, province: e.target.value }))}
-                                              size="lg"
-                                            />
-                                            <Input
-                                              id="postalCode"
-                                              name="postalCode"
-                                              label={undefined}
-                                              placeholder="Postal Code"
-                                              value={contactInfo.postalCode}
-                                              onChange={(e) => setContactInfo(prev => ({ ...prev, postalCode: e.target.value }))}
-                                              size="lg"
-                                            />
-                                          </div>
-                                        </div>
-                                    </ProfileFormGroup>
-                                    <div className="flex justify-end pt-4 border-t border-gray-100">
-                                        <ProfileButton type="submit" variant="primary" icon={<CheckCircleIcon className="h-5 w-5" />}>
-                                            Update Contact Information
-                                        </ProfileButton>
-                                    </div>
-                                </form>
-                            </ProfileCard>
-                        </ProfileSection>
-
-                        {/* Change Password Section -- ADDED */}
-                        <ProfileSection
-                          title="Change Password"
-                          subtitle="Update your account password"
-                          showSkeleton={showSkeleton || initialLoading}
-                        >
-                          <ProfileCard>
-                            <form onSubmit={handlePasswordChange} className="space-y-6">
-                                {passwordSuccess && <ProfileAlert type="success" message={passwordSuccess} onClose={() => setPasswordSuccess('')} />}
-                                
-                                <ProfileFormGroup title="Security" subtitle="Choose a strong, new password">
-                                  <ProfileInput label="Current Password" type="password" value={currentPassword} onChange={setCurrentPassword} required icon={<KeyIcon className="h-5 w-5" />} />
-                                  <ProfileInput label="New Password" type="password" value={newPassword} onChange={setNewPassword} required icon={<KeyIcon className="h-5 w-5" />} />
-                                  <ProfileInput label="Confirm New Password" type="password" value={confirmPassword} onChange={setConfirmPassword} required icon={<KeyIcon className="h-5 w-5" />} />
-                                </ProfileFormGroup>
-                                
-                                <div className="flex justify-end pt-4 border-t border-gray-100">
-                                  <ProfileButton type="submit" variant="primary" icon={<CheckCircleIcon className="h-5 w-5" />}>
-                                    Change Password
-                                  </ProfileButton>
-                                </div>
-                            </form>
-                          </ProfileCard>
-                        </ProfileSection>
-
-                        {/* Document Upload Section */}
-                        <ProfileSection
-                            title="Business Documents"
-                            subtitle="Upload and manage your business verification documents"
-                            showSkeleton={showSkeleton || initialLoading}
-                        >
-                            <ProfileCard>
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                                    {/* Business Permit */}
-                                    <div className="space-y-3">
-                                      <h4 className="font-medium text-gray-900 flex items-center">
-                                        <BuildingStorefrontIcon className="h-5 w-5 mr-2 text-[var(--primary-green)]" />
-                                        Business Permit
-                                      </h4>
-                                      {getCurrentDocument('businessPermit') ? (
-                                        <div className="relative group border-2 border-gray-200 rounded-lg overflow-hidden cursor-pointer hover:border-blue-400" onClick={() => openPreviewModal(getCurrentDocument('businessPermit') as string, 'Business Permit')}>
-                                          <div className="h-32 bg-gray-50 flex items-center justify-center">
-                                            {isPdfDocument(getCurrentDocument('businessPermit') as string) ? <DocumentTextIcon className="h-10 w-10 text-red-500" /> : <Image src={getDocumentImageSource(getCurrentDocument('businessPermit'))} alt="Business Permit" layout="fill" objectFit="cover" />}
-                                            <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 transition-all flex items-center justify-center"><EyeIcon className="h-8 w-8 text-white opacity-0 group-hover:opacity-100 transition-opacity" /></div>
-                                          </div>
-                                          <div className="p-3 border-t"><span className="text-xs text-green-600 font-medium">Uploaded</span></div>
-                                        </div>
-                                      ) : (
-                                        <div className="space-y-2">
-                                          <input type="file" ref={fileInputRefs.businessPermit} onChange={(e) => handleFileChange(e, 'businessPermit')} className="hidden" accept=".pdf,.jpg,.jpeg,.png" />
-                                          <div className="w-full h-32 border-2 border-dashed rounded-lg flex flex-col items-center justify-center cursor-pointer hover:bg-gray-50" onClick={() => triggerFileInput(fileInputRefs.businessPermit)}>
-                                            <ArrowUpTrayIcon className="h-8 w-8 text-gray-400 mb-1" />
-                                            <p className="text-sm text-gray-600">Upload File</p>
-                                          </div>
-                                          {documents.businessPermit.preview && <div className="flex items-center justify-between p-2 bg-green-50 rounded"><span className="text-sm text-green-700">File selected</span><button onClick={() => handleRemoveFile('businessPermit')} className="text-red-500"><XMarkIcon className="h-4 w-4" /></button></div>}
-                                        </div>
-                                      )}
-                                    </div>
-                                    {/* BIR Certificate */}
-                                    <div className="space-y-3">
-                                      <h4 className="font-medium text-gray-900 flex items-center">
-                                        <DocumentIcon className="h-5 w-5 mr-2 text-[var(--primary-green)]" />
-                                        BIR Certificate
-                                      </h4>
-                                      {getCurrentDocument('birCertificate') ? (
-                                         <div className="relative group border-2 border-gray-200 rounded-lg overflow-hidden cursor-pointer hover:border-blue-400" onClick={() => openPreviewModal(getCurrentDocument('birCertificate') as string, 'BIR Certificate')}>
-                                           <div className="h-32 bg-gray-50 flex items-center justify-center">
-                                             {isPdfDocument(getCurrentDocument('birCertificate') as string) ? <DocumentTextIcon className="h-10 w-10 text-red-500" /> : <Image src={getDocumentImageSource(getCurrentDocument('birCertificate'))} alt="BIR Certificate" layout="fill" objectFit="cover" />}
-                                             <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 transition-all flex items-center justify-center"><EyeIcon className="h-8 w-8 text-white opacity-0 group-hover:opacity-100 transition-opacity" /></div>
-                                           </div>
-                                           <div className="p-3 border-t"><span className="text-xs text-green-600 font-medium">Uploaded</span></div>
-                                         </div>
-                                       ) : (
-                                        <div className="space-y-2">
-                                          <input type="file" ref={fileInputRefs.birCertificate} onChange={(e) => handleFileChange(e, 'birCertificate')} className="hidden" accept=".pdf,.jpg,.jpeg,.png" />
-                                          <div className="w-full h-32 border-2 border-dashed rounded-lg flex flex-col items-center justify-center cursor-pointer hover:bg-gray-50" onClick={() => triggerFileInput(fileInputRefs.birCertificate)}>
-                                            <ArrowUpTrayIcon className="h-8 w-8 text-gray-400 mb-1" />
-                                            <p className="text-sm text-gray-600">Upload File</p>
-                                          </div>
-                                          {documents.birCertificate.preview && <div className="flex items-center justify-between p-2 bg-green-50 rounded"><span className="text-sm text-green-700">File selected</span><button onClick={() => handleRemoveFile('birCertificate')} className="text-red-500"><XMarkIcon className="h-4 w-4" /></button></div>}
-                                        </div>
-                                       )}
-                                    </div>
-                                    {/* Government ID */}
-                                    <div className="space-y-3">
-                                      <h4 className="font-medium text-gray-900 flex items-center">
-                                        <UserIcon className="h-5 w-5 mr-2 text-[var(--primary-green)]" />
-                                        Government ID
-                                      </h4>
-                                      {getCurrentDocument('governmentId') ? (
-                                         <div className="relative group border-2 border-gray-200 rounded-lg overflow-hidden cursor-pointer hover:border-blue-400" onClick={() => openPreviewModal(getCurrentDocument('governmentId') as string, 'Government ID')}>
-                                           <div className="h-32 bg-gray-50 flex items-center justify-center">
-                                             {isPdfDocument(getCurrentDocument('governmentId') as string) ? <DocumentTextIcon className="h-10 w-10 text-red-500" /> : <Image src={getDocumentImageSource(getCurrentDocument('governmentId'))} alt="Government ID" layout="fill" objectFit="cover" />}
-                                             <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 transition-all flex items-center justify-center"><EyeIcon className="h-8 w-8 text-white opacity-0 group-hover:opacity-100 transition-opacity" /></div>
-                                           </div>
-                                           <div className="p-3 border-t"><span className="text-xs text-green-600 font-medium">Uploaded</span></div>
-                                         </div>
-                                       ) : (
-                                        <div className="space-y-2">
-                                          <input type="file" ref={fileInputRefs.governmentId} onChange={(e) => handleFileChange(e, 'governmentId')} className="hidden" accept=".pdf,.jpg,.jpeg,.png" />
-                                          <div className="w-full h-32 border-2 border-dashed rounded-lg flex flex-col items-center justify-center cursor-pointer hover:bg-gray-50" onClick={() => triggerFileInput(fileInputRefs.governmentId)}>
-                                            <ArrowUpTrayIcon className="h-8 w-8 text-gray-400 mb-1" />
-                                            <p className="text-sm text-gray-600">Upload File</p>
-                                          </div>
-                                          {documents.governmentId.preview && <div className="flex items-center justify-between p-2 bg-green-50 rounded"><span className="text-sm text-green-700">File selected</span><button onClick={() => handleRemoveFile('governmentId')} className="text-red-500"><XMarkIcon className="h-4 w-4" /></button></div>}
-                                        </div>
-                                       )}
-                                    </div>
-                                </div>
-                                {(documents.businessPermit.file || documents.birCertificate.file || documents.governmentId.file) && (
-                                    <div className="flex justify-end pt-4 border-t border-gray-100">
-                                        <ProfileButton variant="primary" onClick={handleDocumentsUpload} loading={uploading} icon={<ArrowUpTrayIcon className="h-5 w-5" />}>
-                                            {uploading ? 'Uploading...' : 'Upload Selected Documents'}
-                                        </ProfileButton>
-                                    </div>
-                                )}
-                            </ProfileCard>
-                        </ProfileSection>
-                    </>
-                )}
-
-                {/* Document Preview Modal */}
-                {showPreviewModal && previewImage && (
-                    <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
-                        <div className="bg-white rounded-lg max-w-4xl max-h-[90vh] overflow-auto relative">
-                            <div className="sticky top-0 bg-white flex justify-between items-center p-4 border-b z-10">
-                                <h3 className="text-lg font-semibold">{previewImage.title}</h3>
-                                <button onClick={closePreviewModal} className="text-gray-500 hover:text-gray-800"><XMarkIcon className="h-6 w-6" /></button>
-                            </div>
-                            <div className="p-4">
-                                <Image src={previewImage.url} alt={previewImage.title} width={800} height={600} style={{ objectFit: 'contain' }} />
-                            </div>
-                        </div>
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <Input
+                          id="city"
+                          name="city"
+                          label={undefined}
+                          placeholder="City/Municipality"
+                          value={contactInfo.city}
+                          onChange={(e) => setContactInfo(prev => ({ ...prev, city: e.target.value }))}
+                          size="lg"
+                        />
+                        <Input
+                          id="province"
+                          name="province"
+                          label={undefined}
+                          placeholder="Province"
+                          value={contactInfo.province}
+                          onChange={(e) => setContactInfo(prev => ({ ...prev, province: e.target.value }))}
+                          size="lg"
+                        />
+                        <Input
+                          id="postalCode"
+                          name="postalCode"
+                          label={undefined}
+                          placeholder="Postal Code"
+                          value={contactInfo.postalCode}
+                          onChange={(e) => setContactInfo(prev => ({ ...prev, postalCode: e.target.value }))}
+                          size="lg"
+                        />
+                      </div>
                     </div>
-                )}
+                  </ProfileFormGroup>
+                  <div className="flex justify-end pt-4 border-t border-gray-100">
+                    <ProfileButton type="submit" variant="primary" icon={<CheckCircleIcon className="h-5 w-5" />}>
+                      Update Contact Information
+                    </ProfileButton>
+                  </div>
+                </form>
+              </ProfileCard>
+            </ProfileSection>
 
-                {/* Error Modals */}
-                {showPasswordErrorModal && (
-                    <ErrorModal
-                        isOpen={showPasswordErrorModal}
-                        title="Password Update Error"
-                        message={passwordError}
-                        onClose={closePasswordErrorModal}
-                    />
-                )}
+            {/* Change Password Section -- ADDED */}
+            <ProfileSection
+              title="Change Password"
+              subtitle="Update your account password"
+              showSkeleton={showSkeleton || initialLoading}
+            >
+              <ProfileCard>
+                <form onSubmit={handlePasswordChange} className="space-y-6">
+                  {passwordSuccess && <ProfileAlert type="success" message={passwordSuccess} onClose={() => setPasswordSuccess('')} />}
 
-                {showUploadErrorModal && (
-                    <ErrorModal
-                        isOpen={showUploadErrorModal}
-                        title="Document Upload Error"
-                        message={uploadError}
-                        onClose={closeUploadErrorModal}
-                    />
-                )}
+                  <ProfileFormGroup title="Security" subtitle="Choose a strong, new password">
+                    <ProfileInput label="Current Password" type="password" value={currentPassword} onChange={setCurrentPassword} required icon={<KeyIcon className="h-5 w-5" />} />
+                    <ProfileInput label="New Password" type="password" value={newPassword} onChange={setNewPassword} required icon={<KeyIcon className="h-5 w-5" />} />
+                    <ProfileInput label="Confirm New Password" type="password" value={confirmPassword} onChange={setConfirmPassword} required icon={<KeyIcon className="h-5 w-5" />} />
+                  </ProfileFormGroup>
 
-            </ProfileLayout>
-        </CremationDashboardLayout>
-    );
+                  <div className="flex justify-end pt-4 border-t border-gray-100">
+                    <ProfileButton type="submit" variant="primary" icon={<CheckCircleIcon className="h-5 w-5" />}>
+                      Change Password
+                    </ProfileButton>
+                  </div>
+                </form>
+              </ProfileCard>
+            </ProfileSection>
+
+            {/* Document Upload Section */}
+            <ProfileSection
+              title="Business Documents"
+              subtitle="Upload and manage your business verification documents"
+              showSkeleton={showSkeleton || initialLoading}
+            >
+              <ProfileCard>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                  {/* Business Permit */}
+                  <div className="space-y-3">
+                    <h4 className="font-medium text-gray-900 flex items-center">
+                      <BuildingStorefrontIcon className="h-5 w-5 mr-2 text-[var(--primary-green)]" />
+                      Business Permit
+                    </h4>
+                    {getCurrentDocument('businessPermit') ? (
+                      <div className="relative group border-2 border-gray-200 rounded-lg overflow-hidden cursor-pointer hover:border-blue-400" onClick={() => openPreviewModal(getCurrentDocument('businessPermit') as string, 'Business Permit')}>
+                        <div className="h-32 bg-gray-50 flex items-center justify-center">
+                          {isPdfDocument(getCurrentDocument('businessPermit') as string) ? <DocumentTextIcon className="h-10 w-10 text-red-500" /> : <Image src={getDocumentImageSource(getCurrentDocument('businessPermit'))} alt="Business Permit" layout="fill" objectFit="cover" />}
+                          <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 transition-all flex items-center justify-center"><EyeIcon className="h-8 w-8 text-white opacity-0 group-hover:opacity-100 transition-opacity" /></div>
+                        </div>
+                        <div className="p-3 border-t"><span className="text-xs text-green-600 font-medium">Uploaded</span></div>
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        <input type="file" ref={fileInputRefs.businessPermit} onChange={(e) => handleFileChange(e, 'businessPermit')} className="hidden" accept=".pdf,.jpg,.jpeg,.png" />
+                        <div className="w-full h-32 border-2 border-dashed rounded-lg flex flex-col items-center justify-center cursor-pointer hover:bg-gray-50" onClick={() => triggerFileInput(fileInputRefs.businessPermit)}>
+                          <ArrowUpTrayIcon className="h-8 w-8 text-gray-400 mb-1" />
+                          <p className="text-sm text-gray-600">Upload File</p>
+                        </div>
+                        {documents.businessPermit.preview && <div className="flex items-center justify-between p-2 bg-green-50 rounded"><span className="text-sm text-green-700">File selected</span><button onClick={() => handleRemoveFile('businessPermit')} className="text-red-500"><XMarkIcon className="h-4 w-4" /></button></div>}
+                      </div>
+                    )}
+                  </div>
+                  {/* BIR Certificate */}
+                  <div className="space-y-3">
+                    <h4 className="font-medium text-gray-900 flex items-center">
+                      <DocumentIcon className="h-5 w-5 mr-2 text-[var(--primary-green)]" />
+                      BIR Certificate
+                    </h4>
+                    {getCurrentDocument('birCertificate') ? (
+                      <div className="relative group border-2 border-gray-200 rounded-lg overflow-hidden cursor-pointer hover:border-blue-400" onClick={() => openPreviewModal(getCurrentDocument('birCertificate') as string, 'BIR Certificate')}>
+                        <div className="h-32 bg-gray-50 flex items-center justify-center">
+                          {isPdfDocument(getCurrentDocument('birCertificate') as string) ? <DocumentTextIcon className="h-10 w-10 text-red-500" /> : <Image src={getDocumentImageSource(getCurrentDocument('birCertificate'))} alt="BIR Certificate" layout="fill" objectFit="cover" />}
+                          <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 transition-all flex items-center justify-center"><EyeIcon className="h-8 w-8 text-white opacity-0 group-hover:opacity-100 transition-opacity" /></div>
+                        </div>
+                        <div className="p-3 border-t"><span className="text-xs text-green-600 font-medium">Uploaded</span></div>
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        <input type="file" ref={fileInputRefs.birCertificate} onChange={(e) => handleFileChange(e, 'birCertificate')} className="hidden" accept=".pdf,.jpg,.jpeg,.png" />
+                        <div className="w-full h-32 border-2 border-dashed rounded-lg flex flex-col items-center justify-center cursor-pointer hover:bg-gray-50" onClick={() => triggerFileInput(fileInputRefs.birCertificate)}>
+                          <ArrowUpTrayIcon className="h-8 w-8 text-gray-400 mb-1" />
+                          <p className="text-sm text-gray-600">Upload File</p>
+                        </div>
+                        {documents.birCertificate.preview && <div className="flex items-center justify-between p-2 bg-green-50 rounded"><span className="text-sm text-green-700">File selected</span><button onClick={() => handleRemoveFile('birCertificate')} className="text-red-500"><XMarkIcon className="h-4 w-4" /></button></div>}
+                      </div>
+                    )}
+                  </div>
+                  {/* Government ID */}
+                  <div className="space-y-3">
+                    <h4 className="font-medium text-gray-900 flex items-center">
+                      <UserIcon className="h-5 w-5 mr-2 text-[var(--primary-green)]" />
+                      Government ID
+                    </h4>
+                    {getCurrentDocument('governmentId') ? (
+                      <div className="relative group border-2 border-gray-200 rounded-lg overflow-hidden cursor-pointer hover:border-blue-400" onClick={() => openPreviewModal(getCurrentDocument('governmentId') as string, 'Government ID')}>
+                        <div className="h-32 bg-gray-50 flex items-center justify-center">
+                          {isPdfDocument(getCurrentDocument('governmentId') as string) ? <DocumentTextIcon className="h-10 w-10 text-red-500" /> : <Image src={getDocumentImageSource(getCurrentDocument('governmentId'))} alt="Government ID" layout="fill" objectFit="cover" />}
+                          <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 transition-all flex items-center justify-center"><EyeIcon className="h-8 w-8 text-white opacity-0 group-hover:opacity-100 transition-opacity" /></div>
+                        </div>
+                        <div className="p-3 border-t"><span className="text-xs text-green-600 font-medium">Uploaded</span></div>
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        <input type="file" ref={fileInputRefs.governmentId} onChange={(e) => handleFileChange(e, 'governmentId')} className="hidden" accept=".pdf,.jpg,.jpeg,.png" />
+                        <div className="w-full h-32 border-2 border-dashed rounded-lg flex flex-col items-center justify-center cursor-pointer hover:bg-gray-50" onClick={() => triggerFileInput(fileInputRefs.governmentId)}>
+                          <ArrowUpTrayIcon className="h-8 w-8 text-gray-400 mb-1" />
+                          <p className="text-sm text-gray-600">Upload File</p>
+                        </div>
+                        {documents.governmentId.preview && <div className="flex items-center justify-between p-2 bg-green-50 rounded"><span className="text-sm text-green-700">File selected</span><button onClick={() => handleRemoveFile('governmentId')} className="text-red-500"><XMarkIcon className="h-4 w-4" /></button></div>}
+                      </div>
+                    )}
+                  </div>
+                </div>
+                {(documents.businessPermit.file || documents.birCertificate.file || documents.governmentId.file) && (
+                  <div className="flex justify-end pt-4 border-t border-gray-100">
+                    <ProfileButton variant="primary" onClick={handleDocumentsUpload} loading={uploading} icon={<ArrowUpTrayIcon className="h-5 w-5" />}>
+                      {uploading ? 'Uploading...' : 'Upload Selected Documents'}
+                    </ProfileButton>
+                  </div>
+                )}
+              </ProfileCard>
+            </ProfileSection>
+          </>
+        )}
+
+        {/* Document Preview Modal */}
+        {showPreviewModal && previewImage && (
+          <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-lg max-w-4xl max-h-[90vh] overflow-auto relative">
+              <div className="sticky top-0 bg-white flex justify-between items-center p-4 border-b z-10">
+                <h3 className="text-lg font-semibold">{previewImage.title}</h3>
+                <button onClick={closePreviewModal} className="text-gray-500 hover:text-gray-800"><XMarkIcon className="h-6 w-6" /></button>
+              </div>
+              <div className="p-4">
+                <Image src={previewImage.url} alt={previewImage.title} width={800} height={600} style={{ objectFit: 'contain' }} />
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Error Modals */}
+        {showPasswordErrorModal && (
+          <ErrorModal
+            isOpen={showPasswordErrorModal}
+            title="Password Update Error"
+            message={passwordError}
+            onClose={closePasswordErrorModal}
+          />
+        )}
+
+        {showUploadErrorModal && (
+          <ErrorModal
+            isOpen={showUploadErrorModal}
+            title="Document Upload Error"
+            message={uploadError}
+            onClose={closeUploadErrorModal}
+          />
+        )}
+
+      </ProfileLayout>
+    </CremationDashboardLayout>
+  );
 }
 
 export default withBusinessVerification(CremationProfilePage);

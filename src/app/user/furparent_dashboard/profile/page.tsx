@@ -1037,26 +1037,27 @@ function ProfilePage({ userData: initialUserData }: ProfilePageProps) {
                         value={contactInfo.phone}
                         onChange={(value) => setContactInfo(prev => ({ ...prev, phone: value }))}
                         placeholder="Enter your phone number"
+                        size="lg"
                       />
                     </div>
 
-                    <div className="space-y-4">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-6">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
-                          <label className="block text-sm font-medium text-gray-700">Street Address</label>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">Street Address</label>
                           <Input
                             id="fp-street"
                             name="fp-street"
                             value={contactInfo.streetAddress}
                             onChange={(e) => setContactInfo(prev => ({ ...prev, streetAddress: e.target.value }))}
-                            placeholder="123 Main Street"
+                            placeholder="Balanga"
                             size="lg"
                             rightIcon={
                               <button
                                 type="button"
                                 onClick={getCurrentLocation}
                                 disabled={isGettingLocation}
-                                className="text-sm font-medium text-[var(--primary-green)] hover:text-[var(--primary-green-hover)] disabled:text-gray-400 disabled:cursor-not-allowed"
+                                className="text-sm font-medium text-[var(--primary-green)] hover:text-[var(--primary-green-hover)] disabled:text-gray-400 disabled:cursor-not-allowed whitespace-nowrap"
                               >
                                 {isGettingLocation ? (
                                   <div className="flex items-center">
@@ -1070,14 +1071,17 @@ function ProfilePage({ userData: initialUserData }: ProfilePageProps) {
                             }
                           />
                         </div>
-                        <Input id="fp-barangay" name="fp-barangay" label={undefined} placeholder="Barangay" value={contactInfo.barangay} onChange={(e) => setContactInfo(prev => ({ ...prev, barangay: e.target.value }))} size="lg" />
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">&nbsp;</label>
+                          <Input id="fp-barangay" name="fp-barangay" label={undefined} placeholder="Barangay" value={contactInfo.barangay} onChange={(e) => setContactInfo(prev => ({ ...prev, barangay: e.target.value }))} size="lg" />
+                        </div>
                       </div>
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                         <Input id="fp-city" name="fp-city" label={undefined} placeholder="City/Municipality" value={contactInfo.city} onChange={(e) => setContactInfo(prev => ({ ...prev, city: e.target.value }))} size="lg" />
                         <Input id="fp-province" name="fp-province" label={undefined} placeholder="Province" value={contactInfo.province} onChange={(e) => setContactInfo(prev => ({ ...prev, province: e.target.value }))} size="lg" />
                         <Input id="fp-postal" name="fp-postal" label={undefined} placeholder="Postal Code" value={contactInfo.postalCode} onChange={(e) => setContactInfo(prev => ({ ...prev, postalCode: e.target.value }))} size="lg" />
                       </div>
-                      <div className="text-xs text-gray-500 mt-1">
+                      <div className="text-xs text-gray-500">
                         Location detection powered by{' '}
                         <a
                           href="https://www.openstreetmap.org/copyright"

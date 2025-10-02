@@ -13,6 +13,7 @@ interface PhilippinePhoneInputProps {
   required?: boolean;
   disabled?: boolean;
   showFormatPreview?: boolean;
+  size?: 'sm' | 'md' | 'lg';
 }
 
 /**
@@ -53,7 +54,8 @@ export default function PhilippinePhoneInput({
   label,
   required = false,
   disabled = false,
-  showFormatPreview = true
+  showFormatPreview = true,
+  size = 'md'
 }: PhilippinePhoneInputProps) {
   const [formatPreview, setFormatPreview] = useState({ formatted: '', isValid: false });
 
@@ -69,11 +71,18 @@ export default function PhilippinePhoneInput({
     onChange(inputValue);
   };
 
+  const sizeClasses = {
+    sm: 'py-1.5',
+    md: 'py-2',
+    lg: 'py-3.5'
+  };
+
   const baseInputClasses = `
-    block w-full px-3 py-2 border border-gray-300 rounded-md 
+    block w-full px-3 border border-gray-300 rounded-md 
     focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500
     disabled:bg-gray-100 disabled:cursor-not-allowed
     transition-colors duration-200
+    ${sizeClasses[size]}
   `;
 
   const inputClasses = className || baseInputClasses;

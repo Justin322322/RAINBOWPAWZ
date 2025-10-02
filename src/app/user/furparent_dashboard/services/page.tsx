@@ -1,5 +1,13 @@
 'use client';
 
+// NOTE: If there's still no cache and the page takes a long time to load,
+// consider the following optimizations:
+// 1. Check if the API route (/api/service-providers) has proper caching headers
+// 2. Verify database query performance and add indexes if needed
+// 3. Consider implementing server-side caching (Redis, etc.)
+// 4. Review the 10-minute client-side cache duration and adjust if needed
+// 5. Add loading states or skeleton screens for better UX during initial load
+
 import { useState, useEffect, useCallback } from 'react';
 import MapWithServicesList from '@/components/map/MapWithServicesList';
 // Geolocation utils removed

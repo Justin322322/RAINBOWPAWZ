@@ -25,6 +25,7 @@ interface SelectInputProps {
   required?: boolean;
   id?: string;
   name?: string;
+  size?: 'sm' | 'md' | 'lg';
 }
 
 const SelectInput = forwardRef<HTMLDivElement, SelectInputProps>(
@@ -43,6 +44,7 @@ const SelectInput = forwardRef<HTMLDivElement, SelectInputProps>(
     required = false,
     id,
     name,
+    size = 'md',
   }, ref) => {
     const [isOpen, setIsOpen] = useState(false);
     const selectRef = useRef<HTMLDivElement>(null);
@@ -76,7 +78,10 @@ const SelectInput = forwardRef<HTMLDivElement, SelectInputProps>(
             id={id}
             disabled={disabled}
             className={cn(
-              "w-full flex items-center justify-between px-4 py-2.5 text-sm text-gray-900 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:ring-2 focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)] transition-colors",
+              "w-full flex items-center justify-between px-4 text-sm text-gray-900 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:ring-2 focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)] transition-colors",
+              size === 'sm' && "py-1.5",
+              size === 'md' && "py-2.5",
+              size === 'lg' && "py-3.5",
               isOpen && "ring-2 ring-[var(--primary-green)] border-[var(--primary-green)]",
               error && "border-red-500 focus:ring-red-500",
               disabled && "opacity-50 cursor-not-allowed bg-gray-100",

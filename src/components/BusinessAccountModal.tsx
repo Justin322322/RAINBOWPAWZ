@@ -455,7 +455,7 @@ const BusinessAccountModal: React.FC<BusinessAccountModalProps> = ({ isOpen, onC
                 <Input label="First Name" id="firstName" name="firstName" value={formData.firstName} onChange={handleChange} placeholder="Juan" required size="lg" />
                 <Input label="Last Name" id="lastName" name="lastName" value={formData.lastName} onChange={handleChange} placeholder="Dela Cruz" required size="lg" />
                 <Input label="Email Address" id="email" type="email" name="email" value={formData.email} onChange={handleChange} placeholder="you@example.com" required size="lg" />
-                <SelectInput id="sex" name="sex" label="Sex" value={formData.sex} onChange={(value) => setFormData({ ...formData, sex: value })} options={[{ value: "", label: "Select Sex" }, { value: "male", label: "Male" }, { value: "female", label: "Female" }, { value: "other", label: "Other" }, { value: "prefer-not-to-say", label: "Prefer not to say" }]} required />
+                <SelectInput id="sex" name="sex" label="Sex" value={formData.sex} onChange={(value) => setFormData({ ...formData, sex: value })} options={[{ value: "", label: "Select Sex" }, { value: "male", label: "Male" }, { value: "female", label: "Female" }, { value: "other", label: "Other" }, { value: "prefer-not-to-say", label: "Prefer not to say" }]} required size="lg" />
               </div>
             </div>
 
@@ -463,14 +463,14 @@ const BusinessAccountModal: React.FC<BusinessAccountModalProps> = ({ isOpen, onC
               <h3 className="text-lg font-semibold text-gray-700 mb-4">Business Details</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <Input label="Business Name" id="businessName" name="businessName" value={formData.businessName} onChange={handleChange} placeholder="ABC Pet Cremation" required size="lg" />
-                <PhilippinePhoneInput id="businessPhone" name="businessPhone" label="Business Phone" value={formData.businessPhone} onChange={(value) => setFormData({ ...formData, businessPhone: value })} required />
+                <PhilippinePhoneInput id="businessPhone" name="businessPhone" label="Business Phone" value={formData.businessPhone} onChange={(value) => setFormData({ ...formData, businessPhone: value })} required size="lg" />
                 <Input label="Business Email" id="businessEmail" type="email" name="businessEmail" value={formData.businessEmail} onChange={handleChange} placeholder="contact@abccremation.com" required size="lg" />
                 <Input label="Business Hours" id="businessHours" name="businessHours" value={formData.businessHours} onChange={handleChange} placeholder="e.g., Mon-Fri, 9am-5pm" size="lg" />
               </div>
               <div className="mt-6">
                 <h4 className="text-sm font-medium text-gray-700 mb-4">Business Address</h4>
-                <div className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <Input
                       label="Street Address"
                       id="businessStreetAddress"
@@ -494,7 +494,7 @@ const BusinessAccountModal: React.FC<BusinessAccountModalProps> = ({ isOpen, onC
                       hideOptionalHint
                     />
                   </div>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     <Input
                       label="City/Municipality"
                       id="businessCity"
@@ -538,6 +538,7 @@ const BusinessAccountModal: React.FC<BusinessAccountModalProps> = ({ isOpen, onC
                   value={formData.businessEntityType}
                   onChange={(value) => setFormData({ ...formData, businessEntityType: value })}
                   required
+                  size="lg"
                   options={[
                     { value: "sole_proprietorship", label: "Sole Proprietorship" },
                     { value: "corporation", label: "Corporation" },
