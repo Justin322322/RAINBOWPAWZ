@@ -211,32 +211,88 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
 
       // Default fallback statuses if we cannot detect enum values
       let statusToSet = desiredStatus;
+      let useDocumentsRequiredField = false;
+      
       try {
         if (columnsResult && columnsResult.length > 0 && typeof columnsResult[0].COLUMN_TYPE === 'string') {
           const columnType: string = columnsResult[0].COLUMN_TYPE; // e.g., "enum('pending','approved','declined')"
           const match = columnType.match(/enum\((.+)\)/i);
           const values = match ? match[1].split(',').map(v => v.trim().replace(/^'|'$/g, '')) : [];
-          // If desired status is not supported by enum, choose a safe fallback
-          if (!values.includes(desiredStatus)) {
+          
+          // If documents_required is not in enum but we need it, try to add it
+          if (desiredStatus === 'documents_required' && !values.includes('documents_required')) {
+            try {
+              console.log('Adding documents_required to application_status enum...');
+              await query(
+                `ALTER TABLE ${tableName} MODIFY COLUMN application_status ENUM(${values.map(v => `'${v}'`).join(',')}, 'documents_required') DEFAULT 'pending'`
+              );
+              console.log('Successfully added documents_required to enum');
+              statusToSet = 'documents_required';
+            } catch (alterError) {
+              console.error('Failed to add documents_required to enum:', alterError);
+              // Alternative approach: use a separate field to track document requests
+              console.log('Using alternative approach with documents_required_flag field');
+              statusToSet = 'pending';
+              useDocumentsRequiredField = true;
+            }
+          } else if (!values.includes(desiredStatus)) {
+            // If desired status is not supported by enum, choose a safe fallback
             statusToSet = values.includes('reviewing') ? 'reviewing' : (values.includes('pending') ? 'pending' : (values[0] || 'pending'));
           }
         } else {
-          // Column may not be enum or not present; fallback to pending
-          statusToSet = desiredStatus === 'documents_required' ? 'pending' : desiredStatus;
+          // Column may not be enum or not present; use alternative approach for documents_required
+          if (desiredStatus === 'documents_required') {
+            statusToSet = 'pending';
+            useDocumentsRequiredField = true;
+          } else {
+            statusToSet = desiredStatus;
+          }
         }
       } catch {
-        statusToSet = desiredStatus === 'documents_required' ? 'pending' : desiredStatus;
+        if (desiredStatus === 'documents_required') {
+          statusToSet = 'pending';
+          useDocumentsRequiredField = true;
+        } else {
+          statusToSet = desiredStatus;
+        }
       }
 
-      updateResult = await query(
-        `UPDATE ${tableName}
-         SET application_status = ?,
-             verification_notes = ?,
-             verification_date = NOW(),
-             updated_at = NOW()
-         WHERE provider_id = ?`,
-        [statusToSet, structuredNotes, businessId]
-      ) as unknown as mysql.ResultSetHeader;
+      // If using alternative approach, create documents_required_flag field if needed
+      if (useDocumentsRequiredField) {
+        try {
+          // Try to add the documents_required_flag column if it doesn't exist
+          await query(
+            `ALTER TABLE ${tableName} ADD COLUMN documents_required_flag TINYINT(1) DEFAULT 0`
+          );
+          console.log('Added documents_required_flag column');
+        } catch (alterError) {
+          // Column might already exist, which is fine
+          console.log('documents_required_flag column already exists or failed to add:', alterError);
+        }
+        
+        // Update with the flag set
+        updateResult = await query(
+          `UPDATE ${tableName}
+           SET application_status = ?,
+               verification_notes = ?,
+               documents_required_flag = 1,
+               verification_date = NOW(),
+               updated_at = NOW()
+           WHERE provider_id = ?`,
+          [statusToSet, structuredNotes, businessId]
+        ) as unknown as mysql.ResultSetHeader;
+      } else {
+        // Normal update without the flag
+        updateResult = await query(
+          `UPDATE ${tableName}
+           SET application_status = ?,
+               verification_notes = ?,
+               verification_date = NOW(),
+               updated_at = NOW()
+           WHERE provider_id = ?`,
+          [statusToSet, structuredNotes, businessId]
+        ) as unknown as mysql.ResultSetHeader;
+      }
     }
 
     if (updateResult.affectedRows === 0) {

@@ -46,8 +46,14 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
           sp.description as service_description,
           sp.contact_first_name,
           sp.contact_last_name,
-          sp.application_status,
-          sp.application_status as verification_status, /* For backward compatibility */
+          CASE 
+            WHEN sp.documents_required_flag = 1 AND sp.application_status = 'pending' THEN 'documents_required'
+            ELSE sp.application_status
+          END as application_status,
+          CASE 
+            WHEN sp.documents_required_flag = 1 AND sp.application_status = 'pending' THEN 'documents_required'
+            ELSE sp.application_status
+          END as verification_status, /* For backward compatibility */
           u.status as account_status
         FROM
           service_providers sp

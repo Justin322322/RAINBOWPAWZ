@@ -85,7 +85,11 @@ export async function GET() {
     if (serviceProviderColumns.includes('contact_last_name')) selectFields.push('sp.contact_last_name');
     if (serviceProviderColumns.includes('contact_email')) selectFields.push('sp.contact_email');
     if (serviceProviderColumns.includes('application_status')) {
-      selectFields.push('sp.application_status');
+      // Check for documents_required_flag and adjust status accordingly
+      selectFields.push(`CASE 
+        WHEN sp.documents_required_flag = 1 AND sp.application_status = 'pending' THEN 'documents_required'
+        ELSE sp.application_status
+      END as application_status`);
     } else {
       // Fallback to a default status if the column doesn't exist
       selectFields.push('\'pending\' AS application_status');
@@ -143,7 +147,10 @@ export async function GET() {
           minimalSelectFields.push('sp.created_at');
         }        // Add at least one status field if available
         if (serviceProviderColumns.includes('application_status')) {
-          minimalSelectFields.push('sp.application_status');
+          minimalSelectFields.push(`CASE 
+            WHEN sp.documents_required_flag = 1 AND sp.application_status = 'pending' THEN 'documents_required'
+            ELSE sp.application_status
+          END as application_status`);
         } else if (serviceProviderColumns.includes('verification_status')) {
           minimalSelectFields.push('sp.verification_status AS application_status');
         } else {

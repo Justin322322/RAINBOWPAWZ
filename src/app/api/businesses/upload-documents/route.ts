@@ -307,6 +307,10 @@ export async function POST(request: NextRequest) {
           // Clear verification notes since documents have been uploaded
           updateFields.push('verification_notes = ?');
           updateValues.push('Documents uploaded for review');
+          
+          // Clear documents_required_flag since documents have been uploaded
+          updateFields.push('documents_required_flag = ?');
+          updateValues.push(0);
 
           if (updateFields.length > 0) {
             updateValues.push(providerId);
