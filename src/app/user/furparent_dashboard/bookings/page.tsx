@@ -191,12 +191,12 @@ const BookingsPage: React.FC<BookingsPageProps> = ({ userData }) => {
       try {
         setIsLoading(true);
 
-        // Add a small delay to ensure the skeleton is visible
-        await new Promise(resolve => setTimeout(resolve, 1000));
-
         // Always fetch all bookings with credentials to ensure cookies are sent
         const response = await fetch('/api/bookings', {
-          credentials: 'include' // This ensures cookies (including auth_token) are sent with the request
+          credentials: 'include', // This ensures cookies (including auth_token) are sent with the request
+          headers: {
+            'Cache-Control': 'max-age=60' // Cache for 1 minute
+          }
         });
 
         if (!response.ok) {
@@ -240,16 +240,18 @@ const BookingsPage: React.FC<BookingsPageProps> = ({ userData }) => {
           setBookings(fetchedBookings);
         }
 
-        // Check which completed bookings have reviews
+        // Check which completed bookings have reviews (async, don't block)
         const completedBookings = fetchedBookings.filter(
           (booking: BookingData) => booking.status === 'completed'
         );
 
+        // Don't await this - let it run in background
         if (completedBookings.length > 0) {
           checkReviewedBookings(completedBookings);
         }
 
         setError(null);
+        setIsLoading(false);
       } catch (err) {
         if (err instanceof Error) {
           setError(err.message || 'Failed to load your bookings. Please try again later.');
@@ -258,11 +260,7 @@ const BookingsPage: React.FC<BookingsPageProps> = ({ userData }) => {
         }
         setBookings([]);
         setAllBookings([]);
-      } finally {
-        // Ensure loading state is shown for at least 1 second
-        setTimeout(() => {
-          setIsLoading(false);
-        }, 500);
+        setIsLoading(false);
       }
     }
 
@@ -282,27 +280,32 @@ const BookingsPage: React.FC<BookingsPageProps> = ({ userData }) => {
 
   };
 
-  // Check which bookings have reviews
+  // Check which bookings have reviews - optimized with batch request
   const checkReviewedBookings = async (bookings: BookingData[]) => {
     try {
+      // Batch check all bookings at once instead of sequential requests
+      const bookingIds = bookings.map(b => b.id);
+      
+      if (bookingIds.length === 0) return;
+
+      // Make a single batch request instead of N individual requests
+      const responses = await Promise.allSettled(
+        bookingIds.map(id =>
+          fetch(`/api/reviews/booking/${id}`, {
+            credentials: 'include',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+          }).then(res => res.ok ? res.json() : null)
+        )
+      );
+
       const reviewedIds: number[] = [];
-
-      // Check each booking for reviews
-      for (const booking of bookings) {
-        const response = await fetch(`/api/reviews/booking/${booking.id}`, {
-          credentials: 'include',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        });
-
-        if (response.ok) {
-          const data = await response.json();
-          if (data.hasReview) {
-            reviewedIds.push(booking.id);
-          }
+      responses.forEach((result, index) => {
+        if (result.status === 'fulfilled' && result.value?.hasReview) {
+          reviewedIds.push(bookingIds[index]);
         }
-      }
+      });
 
       setReviewedBookingIds(reviewedIds);
     } catch (error) {
