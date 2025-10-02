@@ -8,6 +8,7 @@ import {
   CheckCircleIcon,
   XCircleIcon,
   DocumentTextIcon,
+  DocumentIcon,
   ArrowPathIcon,
   ExclamationTriangleIcon,
   ArrowLeftIcon,
@@ -646,7 +647,8 @@ function ApplicationDetailContent({ id }: ApplicationDetailContentProps) {
                 const actualStatus = application.verificationStatus || application.status;
 
                 // Show approve/decline buttons for actionable statuses
-                if (actualStatus === 'pending' || actualStatus === 'reviewing' || actualStatus === 'documents_required') {
+                // Note: documents_required means waiting for user to upload documents, so hide buttons
+                if (actualStatus === 'pending' || actualStatus === 'reviewing') {
                   return (
                     <div className="grid grid-cols-1 gap-4">
                       <button
@@ -672,6 +674,17 @@ function ApplicationDetailContent({ id }: ApplicationDetailContentProps) {
                       <p className="text-sm text-red-700">
                         This application has been declined. No further actions are available.
                       </p>
+                    </div>
+                  );
+                } else if (actualStatus === 'documents_required') {
+                  return (
+                    <div className="p-4 bg-orange-50 rounded-md">
+                      <div className="flex items-center">
+                        <DocumentIcon className="h-5 w-5 text-orange-600 mr-2" />
+                        <p className="text-sm text-orange-700">
+                          Waiting for applicant to upload required documents. Actions will be available once documents are submitted.
+                        </p>
+                      </div>
                     </div>
                   );
                 } else if (actualStatus === 'restricted') {
