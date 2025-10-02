@@ -463,9 +463,16 @@ export async function PATCH(
     try {
       const result = await withTransaction(async (transaction) => {
         // Validate required fields
-        if (!body.name || !body.description || !body.price) {
+        if (!body.name || !body.description || body.price === undefined || body.price === null) {
           console.error('Missing required fields:', { name: body.name, description: body.description, price: body.price });
           throw new Error('Missing required fields: name, description, and price are required');
+        }
+
+        // Validate price is a valid number (can be 0 for free packages)
+        const priceValue = Number(body.price);
+        if (isNaN(priceValue) || priceValue < 0) {
+          console.error('Invalid price value:', body.price);
+          throw new Error('Price must be a valid number greater than or equal to 0');
         }
 
         // update core fields
