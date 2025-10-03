@@ -76,7 +76,7 @@ export async function GET(request: NextRequest) {
         JOIN users u ON sp.user_id = u.user_id
         WHERE sp.provider_type = 'cremation'
         ORDER BY sp.created_at DESC
-        LIMIT 5
+        LIMIT 3
       `) as any[];
 
       // Format dates
@@ -102,7 +102,7 @@ export async function GET(request: NextRequest) {
           FROM service_providers
           WHERE provider_type = 'cremation'
           ORDER BY created_at DESC
-          LIMIT 5
+          LIMIT 3
         `) as any[];
 
         // Format dates
