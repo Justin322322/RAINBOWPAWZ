@@ -135,7 +135,7 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
           title: 'Application Approved',
           message: `Your business application for ${business.business_name || business.name} has been approved. You can now start managing your services and receiving bookings.`,
           type: 'success',
-          link: null,
+          link: '/cremation/dashboard',
           providerId: business.provider_id,
           category: 'admin',
           priority: 'normal',

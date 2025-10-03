@@ -67,6 +67,7 @@ export async function GET(
         id,
         rating,
         comment,
+        images,
         created_at
       FROM reviews
       WHERE booking_id = ? AND user_id = ?`,
@@ -80,10 +81,28 @@ export async function GET(
       });
     }
 
+    const review = reviews[0];
+    
+    // Parse images JSON if it exists
+    let images = [];
+    if (review.images) {
+      try {
+        images = typeof review.images === 'string' 
+          ? JSON.parse(review.images) 
+          : review.images;
+      } catch (error) {
+        console.error('Error parsing review images:', error);
+        images = [];
+      }
+    }
+
     // Return the review data
     return NextResponse.json({
       hasReview: true,
-      review: reviews[0]
+      review: {
+        ...review,
+        images
+      }
     });
   } catch (error) {
     console.error('Error fetching review:', error);

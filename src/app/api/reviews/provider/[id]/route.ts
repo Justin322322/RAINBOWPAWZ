@@ -115,6 +115,21 @@ export async function GET(
 
       reviews = await query(fullQuery, [providerIdParam]) as any[];
 
+      // Parse images JSON if it exists
+      reviews = reviews.map(review => {
+        if (review.images) {
+          try {
+            review.images = typeof review.images === 'string' 
+              ? JSON.parse(review.images) 
+              : review.images;
+          } catch (error) {
+            console.error('Error parsing review images:', error);
+            review.images = [];
+          }
+        }
+        return review;
+      });
+
       // Log the first review for debugging
       if (reviews.length > 0) {
         console.log('First review sample:', {
@@ -147,6 +162,21 @@ export async function GET(
            ORDER BY r.created_at DESC`,
           [providerIdParam]
         ) as any[];
+
+        // Parse images JSON if it exists
+        reviews = reviews.map(review => {
+          if (review.images) {
+            try {
+              review.images = typeof review.images === 'string' 
+                ? JSON.parse(review.images) 
+                : review.images;
+            } catch (error) {
+              console.error('Error parsing review images:', error);
+              review.images = [];
+            }
+          }
+          return review;
+        });
 
         // Log the first review for debugging
         if (reviews.length > 0) {

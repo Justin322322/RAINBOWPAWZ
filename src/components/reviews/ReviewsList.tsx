@@ -8,6 +8,7 @@ import {
   CheckBadgeIcon
 } from '@heroicons/react/24/outline';
 import StarRating from '@/components/ui/StarRating';
+import ImageModal from '@/components/ui/ImageModal';
 
 interface Review {
   id: number;
@@ -21,6 +22,7 @@ interface Review {
   user_name?: string; // Real user name from database join
   service_name?: string; // Service specific details
   booking_date?: string; // Booking date if available
+  images?: string[]; // Review images
 }
 
 interface ReviewsListProps {
@@ -57,6 +59,9 @@ const ReviewsList: React.FC<ReviewsListProps> = ({ providerId, className = '' })
   const [averageRating, setAverageRating] = useState(0);
   const [totalReviews, setTotalReviews] = useState(0);
   const [ratingDistribution, setRatingDistribution] = useState<number[]>([0, 0, 0, 0, 0]);
+  const [showImageModal, setShowImageModal] = useState(false);
+  const [selectedImages, setSelectedImages] = useState<string[]>([]);
+  const [selectedImageIndex, setSelectedImageIndex] = useState(0);
 
 
 
@@ -221,6 +226,27 @@ const ReviewsList: React.FC<ReviewsListProps> = ({ providerId, className = '' })
                 </div>
               )}
 
+              {/* Review Images */}
+              {review.images && review.images.length > 0 && (
+                <div className="mb-4 grid grid-cols-3 gap-2">
+                  {review.images.map((imageUrl, index) => (
+                    <div key={index} className="relative w-full h-24">
+                      <Image
+                        src={imageUrl}
+                        alt={`Review image ${index + 1}`}
+                        fill
+                        className="object-cover rounded-lg border border-gray-200 cursor-pointer hover:opacity-90 transition-opacity"
+                        onClick={() => {
+                          setSelectedImages(review.images || []);
+                          setSelectedImageIndex(index);
+                          setShowImageModal(true);
+                        }}
+                      />
+                    </div>
+                  ))}
+                </div>
+              )}
+
               {/* Review Footer */}
               {(review.booking_id || review.booking_date) && (
                 <div className="flex items-center justify-between pt-4 border-t border-gray-100">
@@ -241,6 +267,15 @@ const ReviewsList: React.FC<ReviewsListProps> = ({ providerId, className = '' })
           );
         })}
       </div>
+
+      {/* Image Modal */}
+      <ImageModal
+        isOpen={showImageModal}
+        onClose={() => setShowImageModal(false)}
+        images={selectedImages}
+        currentIndex={selectedImageIndex}
+        onNavigate={setSelectedImageIndex}
+      />
     </div>
   );
 };

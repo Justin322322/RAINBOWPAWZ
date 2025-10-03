@@ -66,7 +66,7 @@ export default function NotificationBell() {
   const handleNotificationClick = async (notification: Notification) => {
     try {
       if (process.env.NODE_ENV === 'development') {
-        console.log('Notification clicked:', notification.id, 'status:', notification.status);
+        console.log('Notification clicked:', notification.id, 'status:', notification.status, 'link:', notification.link);
       }
 
       // Prevent multiple rapid clicks on the same notification
@@ -75,24 +75,21 @@ export default function NotificationBell() {
         return;
       }
 
-      // Mark as read if unread
+      // Mark as read if unread (don't await - let it happen in background)
       if (notification.status === 0) {
         if (process.env.NODE_ENV === 'development') {
           console.log('Marking notification as read:', notification.id);
         }
         setClickingNotificationId(notification.id);
 
-        try {
-          await markAsRead(notification.id);
-        } finally {
+        // Mark as read in background without blocking navigation
+        markAsRead(notification.id).finally(() => {
           setClickingNotificationId(null);
-        }
+        });
       }
 
-      // Close the dropdown after a short delay to allow the state to update
-      setTimeout(() => {
-        setIsOpen(false);
-      }, 100);
+      // Close the dropdown immediately to allow navigation
+      setIsOpen(false);
     } catch (error) {
       console.error('Error handling notification click:', error);
       setClickingNotificationId(null);
@@ -104,6 +101,12 @@ export default function NotificationBell() {
   // Normalize notification link to avoid cross-origin auth issues
   const getSafeHref = (link: string | null): { href?: string; external: boolean } => {
     if (!link) return { external: false };
+    
+    // If it's already a relative path, return it directly
+    if (link.startsWith('/')) {
+      return { href: link, external: false };
+    }
+    
     try {
       const url = new URL(link, typeof window !== 'undefined' ? window.location.origin : 'http://localhost');
       const sameOrigin = typeof window !== 'undefined' && url.origin === window.location.origin;
@@ -343,11 +346,17 @@ export default function NotificationBell() {
                     <div className="relative group">
                       {(() => {
                         const { href, external } = getSafeHref(notification.link);
+                        if (process.env.NODE_ENV === 'development') {
+                          console.log('Notification link:', notification.link, '-> href:', href, 'external:', external);
+                        }
                         return (
                           <Link
                             href={href || '#'}
                             className="flex items-start pr-8"
-                            onClick={() => handleNotificationClick(notification)}
+                            onClick={() => {
+                              handleNotificationClick(notification);
+                              // Don't prevent default - let Next.js Link handle navigation
+                            }}
                             target={external ? '_blank' : undefined}
                             rel={external ? 'noopener noreferrer' : undefined}
                           >

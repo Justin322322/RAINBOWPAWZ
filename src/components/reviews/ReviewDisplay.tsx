@@ -5,6 +5,7 @@ import Image from 'next/image';
 import { StarIcon } from '@heroicons/react/24/solid';
 import { StarIcon as StarIconOutline } from '@heroicons/react/24/outline';
 import { format } from 'date-fns';
+import ImageModal from '@/components/ui/ImageModal';
 
 interface ReviewDisplayProps {
   bookingId: number;
@@ -23,6 +24,8 @@ const ReviewDisplay: React.FC<ReviewDisplayProps> = ({ bookingId, userId }) => {
   const [review, setReview] = useState<Review | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showImageModal, setShowImageModal] = useState(false);
+  const [selectedImageIndex, setSelectedImageIndex] = useState(0);
 
   useEffect(() => {
     const fetchReview = async () => {
@@ -122,19 +125,33 @@ const ReviewDisplay: React.FC<ReviewDisplayProps> = ({ bookingId, userId }) => {
 
       {/* Display review images */}
       {review.images && review.images.length > 0 && (
-        <div className="mt-3 grid grid-cols-3 gap-2">
-          {review.images.map((imageUrl, index) => (
-            <div key={index} className="relative w-full h-24">
-              <Image
-                src={imageUrl}
-                alt={`Review image ${index + 1}`}
-                fill
-                className="object-cover rounded-lg border border-gray-200 cursor-pointer hover:opacity-90 transition-opacity"
-                onClick={() => window.open(imageUrl, '_blank')}
-              />
-            </div>
-          ))}
-        </div>
+        <>
+          <div className="mt-3 grid grid-cols-3 gap-2">
+            {review.images.map((imageUrl, index) => (
+              <div key={index} className="relative w-full h-24">
+                <Image
+                  src={imageUrl}
+                  alt={`Review image ${index + 1}`}
+                  fill
+                  className="object-cover rounded-lg border border-gray-200 cursor-pointer hover:opacity-90 transition-opacity"
+                  onClick={() => {
+                    setSelectedImageIndex(index);
+                    setShowImageModal(true);
+                  }}
+                />
+              </div>
+            ))}
+          </div>
+
+          {/* Image Modal */}
+          <ImageModal
+            isOpen={showImageModal}
+            onClose={() => setShowImageModal(false)}
+            images={review.images}
+            currentIndex={selectedImageIndex}
+            onNavigate={setSelectedImageIndex}
+          />
+        </>
       )}
     </div>
   );

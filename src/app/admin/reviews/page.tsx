@@ -19,6 +19,7 @@ import { useToast } from '@/context/ToastContext';
 import StarRating from '@/components/ui/StarRating';
 import { Modal } from '@/components/ui/Modal';
 import { SectionLoader } from '@/components/ui/SectionLoader';
+import ImageModal from '@/components/ui/ImageModal';
 
 interface Review {
   id: number;
@@ -75,6 +76,9 @@ function AdminReviewsPage() {
   const [loadingBooking, setLoadingBooking] = useState(false);
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
   const [selectedReportReview, setSelectedReportReview] = useState<Review | null>(null);
+  const [showImageModal, setShowImageModal] = useState(false);
+  const [selectedImages, setSelectedImages] = useState<string[]>([]);
+  const [selectedImageIndex, setSelectedImageIndex] = useState(0);
 
   useEffect(() => {
     // Flag to prevent multiple error toasts
@@ -460,7 +464,11 @@ function AdminReviewsPage() {
                           alt={`Review image ${index + 1}`}
                           fill
                           className="object-cover rounded-lg border border-gray-200 cursor-pointer hover:opacity-90 transition-opacity"
-                          onClick={() => window.open(imageUrl, '_blank')}
+                          onClick={() => {
+                            setSelectedImages(review.images || []);
+                            setSelectedImageIndex(index);
+                            setShowImageModal(true);
+                          }}
                         />
                       </div>
                     ))}
@@ -718,6 +726,15 @@ function AdminReviewsPage() {
           )}
         </div>
       </Modal>
+
+      {/* Image Modal */}
+      <ImageModal
+        isOpen={showImageModal}
+        onClose={() => setShowImageModal(false)}
+        images={selectedImages}
+        currentIndex={selectedImageIndex}
+        onNavigate={setSelectedImageIndex}
+      />
     </AdminDashboardLayout>
   );
 }

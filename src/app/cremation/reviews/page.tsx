@@ -16,6 +16,7 @@ import withBusinessVerification from '@/components/withBusinessVerification';
 import { useToast } from '@/context/ToastContext';
 import StarRating from '@/components/ui/StarRating';
 import { LoadingSpinner } from '@/app/cremation/components/LoadingComponents';
+import ImageModal from '@/components/ui/ImageModal';
 
 interface ReviewsPageProps {
   userData?: any;
@@ -55,6 +56,9 @@ function ReviewsPage({ userData }: ReviewsPageProps) {
   const [selectedReview, setSelectedReview] = useState<Review | null>(null);
   const [reportReason, setReportReason] = useState('');
   const [isSubmittingReport, setIsSubmittingReport] = useState(false);
+  const [showImageModal, setShowImageModal] = useState(false);
+  const [selectedImages, setSelectedImages] = useState<string[]>([]);
+  const [selectedImageIndex, setSelectedImageIndex] = useState(0);
 
   // Ref to track if we've already shown an error toast
   const hasShownErrorRef = useRef(false);
@@ -451,7 +455,11 @@ function ReviewsPage({ userData }: ReviewsPageProps) {
                           alt={`Review image ${index + 1}`}
                           fill
                           className="object-cover rounded-lg border border-gray-200 cursor-pointer hover:opacity-90 transition-opacity"
-                          onClick={() => window.open(imageUrl, '_blank')}
+                          onClick={() => {
+                            setSelectedImages(review.images || []);
+                            setSelectedImageIndex(index);
+                            setShowImageModal(true);
+                          }}
                         />
                       </div>
                     ))}
@@ -557,6 +565,15 @@ function ReviewsPage({ userData }: ReviewsPageProps) {
           )}
         </div>
       </Modal>
+
+      {/* Image Modal */}
+      <ImageModal
+        isOpen={showImageModal}
+        onClose={() => setShowImageModal(false)}
+        images={selectedImages}
+        currentIndex={selectedImageIndex}
+        onNavigate={setSelectedImageIndex}
+      />
     </CremationDashboardLayout>
   );
 }
