@@ -1,4 +1,4 @@
-# Rainbow Paws System Capabilities
+<img width="794" height="653" alt="image" src="https://github.com/user-attachments/assets/b4207c58-86d7-42e8-9a9c-ac2a8c8f0a83" /># Rainbow Paws System Capabilities
 
 ## A Pet Memorial Services Platform
 
@@ -12,11 +12,11 @@
 
 | Feature                                                                                           | Screenshot          |
 | ------------------------------------------------------------------------------------------------- | ------------------- |
-| Pet owners (fur parents) can create personal accounts with their email and password               | [Insert Screenshot] |
-| Cremation centers can register business accounts with company information                         | [Insert Screenshot] |
-| The system sends a verification code to your email to confirm your identity                       | [Insert Screenshot] |
-| You must enter this code to activate your account and start using the platform                    | [Insert Screenshot] |
-| Cremation centers must submit business documents (permits, certificates, IDs) during registration | [Insert Screenshot] |
+| Pet owners (fur parents) can create personal accounts with their email and password               |<img width="689" height="721" alt="image" src="https://github.com/user-attachments/assets/74a588b5-3f15-4651-a4b6-47142c4df088" />|
+| Cremation centers can register business accounts with company information                         |<img width="675" height="717" alt="image" src="https://github.com/user-attachments/assets/d3966c96-fe52-4219-8873-dbee421c8d37" />|
+| The system sends a verification code to your email to confirm your identity                       |<img width="617" height="657" alt="image" src="https://github.com/user-attachments/assets/2f5c7b88-f7fe-43cf-9151-cfbd91beed6d" />|
+| You must enter this code to activate your account and start using the platform                    |<img width="1666" height="867" alt="image" src="https://github.com/user-attachments/assets/4edd5449-65d6-4436-92ce-ff287071fdfc" />|
+| Cremation centers must submit business documents (permits, certificates, IDs) during registration |<img width="720" height="735" alt="image" src="https://github.com/user-attachments/assets/a7bd76ab-d320-41be-b4cf-52b0097eb454" />|
 
 **Who benefits:**
 
@@ -32,12 +32,13 @@
 
 | Feature                                                                                     | Screenshot          |
 | ------------------------------------------------------------------------------------------- | ------------------- |
-| Users who forget their password can request a reset link via email                          | [Insert Screenshot] |
-| System sends a secure, time-limited reset link to the registered email address              | [Insert Screenshot] |
-| Users click the link and create a new password                                              | [Insert Screenshot] |
-| Reset links expire after a certain time for security purposes                               | [Insert Screenshot] |
-| Password strength requirements ensure account security (minimum length, special characters) | [Insert Screenshot] |
-| Old password becomes invalid once a new one is set                                          | [Insert Screenshot] |
+| Users who forget their password can request a reset link via email                          |<img width="527" height="606" alt="image" src="https://github.com/user-attachments/assets/d9f14118-ee0f-4e53-b7db-2e1374c3f8bf" />|
+| System sends a secure, time-limited reset link to the registered email address              |<img width="688" height="495" alt="image" src="https://github.com/user-attachments/assets/de6b68ee-6e82-46ff-9f36-a9371cd05ae0" />|
+| Users click the link and create a new password                                              |<img width="499" height="810" alt="image" src="https://github.com/user-attachments/assets/0f7c8483-fe2b-4fbe-bdad-c64cacaa6a90" />|
+| Reset links expire after a certain time for security purposes                               |<img width="547" height="595" alt="image" src="https://github.com/user-attachments/assets/d8f407c1-5960-475a-a571-bae94c08ee67" />|
+| Password strength requirements ensure account security (minimum length, special characters) |<img width="367" height="260" alt="image" src="https://github.com/user-attachments/assets/062684b5-afbc-4474-a5bd-39b7e9d15562" />|
+
+Old password becomes invalid once a new one is set                                          
 
 **Who benefits:**
 
@@ -53,11 +54,12 @@
 
 | Feature                                                                    | Screenshot          |
 | -------------------------------------------------------------------------- | ------------------- |
-| Administrators review all cremation center applications before approval    | [Insert Screenshot] |
-| Admins can view submitted business documents and verify their authenticity | [Insert Screenshot] |
-| Admins can approve, decline, or restrict user accounts based on compliance | [Insert Screenshot] |
-| The system tracks all admin actions for security and accountability        | [Insert Screenshot] |
-| Users can appeal if their account is restricted                            | [Insert Screenshot] |
+| Administrators review all cremation center applications before approval    |<img width="1919" height="915" alt="image" src="https://github.com/user-attachments/assets/e23b6b83-b35c-4d89-bd2f-2fab881ed533" />|
+| Admins can view submitted business documents and verify their authenticity |<img width="1919" height="913" alt="image" src="https://github.com/user-attachments/assets/904dcdbb-c518-4ceb-88ce-bb6fa20e0f73" />|
+| Admins can approve, decline, or ask to re-submit the documents to user accounts based on compliance |<img width="466" height="355" alt="image" src="https://github.com/user-attachments/assets/65a90277-baaf-4b3c-82d8-1f7f59f5eddf" /><img width="508" height="253" alt="image" src="https://github.com/user-attachments/assets/b859b24f-355c-4a25-b856-ec1d9f00b5f7" /><img width="459" height="624" alt="image" src="https://github.com/user-attachments/assets/9f6fac4e-c091-4feb-bb0d-71c4c39da8ed" />|
+| The system tracks all admin actions for security and accountability        |<img width="1919" height="911" alt="image" src="https://github.com/user-attachments/assets/8f1770b0-e57e-4a11-a59c-0b301c774445" />|
+| Admin can restrict accounts of fur parents and cremation                   |<img width="1919" height="910" alt="image" src="https://github.com/user-attachments/assets/b98ebe54-bc91-4e23-be96-2f6322fe9dcf" />|
+| Users can appeal if their account is restricted                            |<img width="869" height="910" alt="image" src="https://github.com/user-attachments/assets/ca8b68cd-4d8c-4335-9fdd-2cbb223c0fd2" />|
 
 **Who benefits:**
 
@@ -73,11 +75,8 @@
 
 | Feature                                                                       | Screenshot          |
 | ----------------------------------------------------------------------------- | ------------------- |
-| Both fur parents and cremation centers can cancel bookings when needed        | [Insert Screenshot] |
-| The system automatically processes refunds for online payments (GCash, cards) | [Insert Screenshot] |
-| For cash or QR code payments, cremation centers upload refund receipts        | [Insert Screenshot] |
-| Fur parents receive notifications about refund status via email and SMS       | [Insert Screenshot] |
-| All cancellations require a reason to maintain transparency                   | [Insert Screenshot] |
+| Both fur parents and cremation centers can cancel bookings when needed All cancellations require a reason to maintain transparency |<img width="460" height="625" alt="image" src="https://github.com/user-attachments/assets/0a82df8a-6d91-494c-bb76-efc1227440cc" />|
+| Fur parents receive notifications about refund status via email and SMS |<img width="422" height="140" alt="image" src="https://github.com/user-attachments/assets/91af72c0-7806-42a0-9220-c69940287ead" />
 
 **Who benefits:**
 
@@ -93,11 +92,11 @@
 
 | Feature                                                                            | Screenshot          |
 | ---------------------------------------------------------------------------------- | ------------------- |
-| Fur parents can rate cremation services from 1 to 5 stars after service completion | [Insert Screenshot] |
-| Users can write detailed comments about their experience                           | [Insert Screenshot] |
-| Reviews can include up to 5 photos to show the service quality                     | [Insert Screenshot] |
-| Cremation centers receive notifications when new reviews are posted                | [Insert Screenshot] |
-| Administrators can moderate reviews if inappropriate content is reported           | [Insert Screenshot] |
+| Fur parents can rate cremation services from 1 to 5 stars after service completion |<img width="491" height="83" alt="image" src="https://github.com/user-attachments/assets/d2982e20-22d6-473b-b82e-08e756eab0cc" />|
+| Users can write detailed comments about their experience                           |<img width="560" height="669" alt="image" src="https://github.com/user-attachments/assets/211a35bb-bfb8-4ded-a546-2d07a31cbc33" />|
+| Reviews can include up to 5 photos to show the service quality                     |<img width="538" height="757" alt="image" src="https://github.com/user-attachments/assets/9f839e9e-7784-49cd-8254-8263c25cdd69" />|
+| Cremation centers receive notifications when new reviews are posted                |<img width="387" height="129" alt="image" src="https://github.com/user-attachments/assets/de8d8185-d1a1-4389-b3a9-db825c9a8f46" />|
+| Administrators can moderate reviews if inappropriate content is reported           |<img width="696" height="631" alt="image" src="https://github.com/user-attachments/assets/fa7bc16f-776e-42d4-9498-9d4f9800e064" />|
 
 **Who benefits:**
 
@@ -113,17 +112,15 @@
 
 | Feature                                                                              | Screenshot          |
 | ------------------------------------------------------------------------------------ | ------------------- |
-| Administrators see system-wide statistics (total users, revenue, applications)       | [Insert Screenshot] |
-| Cremation centers view their business performance (bookings, revenue, ratings)       | [Insert Screenshot] |
-| Interactive charts show trends over different time periods (weekly, monthly, yearly) | [Insert Screenshot] |
-| Reports include booking statistics, refund rates, and top-performing services        | [Insert Screenshot] |
-| All data updates in real-time as transactions occur                                  | [Insert Screenshot] |
+| Cremation centers view their business performance (bookings, revenue, refunds), Interactive charts show trends over different time periods (weekly, monthly, yearly)       |<img width="1919" height="913" alt="image" src="https://github.com/user-attachments/assets/92470426-2b54-4777-97fd-b4348776946b" />|
+| Reports include booking statistics, refund rates, and top-performing services        |<img width="1619" height="218" alt="image" src="https://github.com/user-attachments/assets/3eaef9a3-b4df-42af-a6e6-97a03c821fb5" />|
+
+All data updates in real-time as transactions occur                                  
 
 **Who benefits:**
 
-- Administrators can monitor platform health and growth
 - Cremation centers can track their business performance and make data-driven decisions
-- Both can identify trends and opportunities for improvement
+- Can identify trends and opportunities for improvement
 
 ---
 
@@ -133,11 +130,10 @@
 
 | Feature                                                            | Screenshot          |
 | ------------------------------------------------------------------ | ------------------- |
-| Displays all cremation centers on an interactive map               | [Insert Screenshot] |
-| Shows the distance from your location to each service provider     | [Insert Screenshot] |
-| Calculates delivery fees based on distance                         | [Insert Screenshot] |
-| Allows filtering providers by location, services, and availability | [Insert Screenshot] |
-| Users can click on map markers to view provider details            | [Insert Screenshot] |
+| Displays all cremation centers on an interactive map               |<img width="1918" height="914" alt="image" src="https://github.com/user-attachments/assets/137b08b8-7fe0-4023-babe-004c424fbcb2" />|
+| Shows the distance from your location to each service provider     |<img width="794" height="653" alt="image" src="https://github.com/user-attachments/assets/a547ad81-63a3-4c4e-aebc-0d1f6012b2c0" />|
+| Allows filtering providers by location, services, and availability |<img width="1220" height="466" alt="image" src="https://github.com/user-attachments/assets/b31023db-1ca0-4ad4-82a3-4bd0f62af04b" />|
+| Users can click on map markers to view provider details            |<img width="1238" height="633" alt="image" src="https://github.com/user-attachments/assets/7cdc221a-4273-482a-ad4e-54850d251a37" />|
 
 **Who benefits:**
 
@@ -151,13 +147,13 @@
 
 **What it does:**
 
-| Feature                                                                          | Screenshot          |
-| -------------------------------------------------------------------------------- | ------------------- |
-| Sends automatic notifications for important events (bookings, payments, reviews) | [Insert Screenshot] |
-| Delivers messages through multiple channels: email, SMS text, and in-app alerts  | [Insert Screenshot] |
-| Users can view notification history and mark messages as read                    | [Insert Screenshot] |
-| Notifications include direct links to relevant pages for quick action            | [Insert Screenshot] |
-| System prioritizes urgent notifications (payment failures, cancellations)        | [Insert Screenshot] |
+
+
+- Sends automatic notifications for important events (bookings, payments, reviews)
+- Delivers messages through multiple channels: email, SMS text, and in-app alerts  
+- Users can view notification history and mark messages as read                   
+- Notifications include direct links to relevant pages for quick action          
+- System prioritizes urgent notifications (payment failures, cancellations)        
 
 **Who benefits:**
 
@@ -173,11 +169,9 @@
 
 | Feature                                                                                   | Screenshot          |
 | ----------------------------------------------------------------------------------------- | ------------------- |
-| Supports multiple payment methods: GCash, PayMaya, credit/debit cards, cash, and QR codes | [Insert Screenshot] |
-| Processes payments securely through trusted payment providers                             | [Insert Screenshot] |
-| Generates digital receipts for all transactions                                           | [Insert Screenshot] |
-| Tracks payment status from pending to completed                                           | [Insert Screenshot] |
-| Handles payment failures with clear error messages and retry options                      | [Insert Screenshot] |
+| Supports QR codes payment |<img width="826" height="668" alt="image" src="https://github.com/user-attachments/assets/c1ca2547-befd-4a3f-ac3c-f0c2df8de0ba" />|
+| Generates digital receipts                                          |<img width="482" height="923" alt="image" src="https://github.com/user-attachments/assets/941bca10-9caf-405a-9021-46377d65a717" />|
+| Tracks payment status from pending to completed                                           |<img width="1916" height="916" alt="image" src="https://github.com/user-attachments/assets/7f2979ff-51a5-4872-9690-b6847d019174" />|
 
 **Who benefits:**
 
@@ -187,7 +181,7 @@
 
 ---
 
-### J. Pet Information and Booking Details
+### J. Checkout
 
 **What it does:**
 
