@@ -4,9 +4,9 @@
 
 ---
 
-## System Features (Alphabetical)
+## System Features (Chronological Order)
 
-### A. Account Registration and Email Verification
+### 1. Account Registration and Email Verification
 
 **What it does:**
 
@@ -26,7 +26,7 @@
 
 ---
 
-### B. Password Recovery and Reset
+### 2. Password Recovery and Reset
 
 **What it does:**
 
@@ -48,7 +48,7 @@ Old password becomes invalid once a new one is set
 
 ---
 
-### C. Approval and Account Management
+### 3. Admin Approval and Account Management
 
 **What it does:**
 
@@ -69,7 +69,7 @@ Old password becomes invalid once a new one is set
 
 ---
 
-### D. Booking Cancellation and Refund Processing
+### 4. User Profile and Account Settings
 
 **What it does:**
 
@@ -86,7 +86,7 @@ Old password becomes invalid once a new one is set
 
 ---
 
-### E. Customer Reviews and Ratings
+### 5. Interactive Map and Location Services
 
 **What it does:**
 
@@ -106,25 +106,26 @@ Old password becomes invalid once a new one is set
 
 ---
 
-### F. Dashboard and Performance Analytics
+### 6. Service Booking and Appointment Scheduling
 
 **What it does:**
 
-| Feature                                                                                                                                                              | Screenshot                                                                                                                          |
-| -------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
-| Cremation centers view their business performance (bookings, revenue, refunds), Interactive charts show trends over different time periods (weekly, monthly, yearly) | <img width="1919" height="913" alt="image" src="https://github.com/user-attachments/assets/92470426-2b54-4777-97fd-b4348776946b" /> |
-| Reports include booking statistics, refund rates, and top-performing services                                                                                        | <img width="1619" height="218" alt="image" src="https://github.com/user-attachments/assets/3eaef9a3-b4df-42af-a6e6-97a03c821fb5" /> |
-
-All data updates in real-time as transactions occur
+- Fur parents can browse available cremation services with detailed information
+- Select preferred date and time based on provider availability
+- Provide pet details and special requests during booking
+- Choose between pickup or delivery options
+- View total cost including all fees before confirming
+- Receive booking confirmation with appointment details
 
 **Who benefits:**
 
-- Cremation centers can track their business performance and make data-driven decisions
-- Can identify trends and opportunities for improvement
+- Fur parents can book services at their convenience, 24/7
+- Cremation centers manage their schedule efficiently
+- Both parties have clear records of appointments and agreements
 
 ---
 
-### G. Interactive Map and Location Services
+### 7. Payment Processing and Transaction Management
 
 **What it does:**
 
@@ -143,7 +144,7 @@ All data updates in real-time as transactions occur
 
 ---
 
-### H. Notification System (Email, SMS, and In-App)
+### 8. Notification System (Email, SMS, and In-App)
 
 **What it does:**
 
@@ -161,7 +162,7 @@ All data updates in real-time as transactions occur
 
 ---
 
-### I. Payment Processing and Transaction Management
+### 9. Booking Cancellation and Refund Processing
 
 **What it does:**
 
@@ -176,6 +177,44 @@ All data updates in real-time as transactions occur
 - Fur parents can pay using their preferred method
 - Cremation centers receive payments quickly and securely
 - All transactions are recorded for accounting and dispute resolution
+
+---
+
+### 10. Customer Reviews and Ratings
+
+**What it does:**
+
+| Feature                                                                            | Screenshot                                                                                                                         |
+| ---------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| Fur parents can rate cremation services from 1 to 5 stars after service completion | <img width="491" height="83" alt="image" src="https://github.com/user-attachments/assets/d2982e20-22d6-473b-b82e-08e756eab0cc" />  |
+| Users can write detailed comments about their experience                           | <img width="560" height="669" alt="image" src="https://github.com/user-attachments/assets/211a35bb-bfb8-4ded-a546-2d07a31cbc33" /> |
+| Reviews can include up to 5 photos to show the service quality                     | <img width="538" height="757" alt="image" src="https://github.com/user-attachments/assets/9f839e9e-7784-49cd-8254-8263c25cdd69" /> |
+| Cremation centers receive notifications when new reviews are posted                | <img width="387" height="129" alt="image" src="https://github.com/user-attachments/assets/de8d8185-d1a1-4389-b3a9-db825c9a8f46" /> |
+| Administrators can moderate reviews if inappropriate content is reported           | <img width="696" height="631" alt="image" src="https://github.com/user-attachments/assets/fa7bc16f-776e-42d4-9498-9d4f9800e064" /> |
+
+**Who benefits:**
+
+- Fur parents can make informed decisions based on other customers' experiences
+- Cremation centers receive valuable feedback to improve their services
+- High-quality providers gain visibility through positive reviews
+
+---
+
+### 11. Dashboard and Performance Analytics
+
+**What it does:**
+
+| Feature                                                                                                                                                              | Screenshot                                                                                                                          |
+| -------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| Cremation centers view their business performance (bookings, revenue, refunds), Interactive charts show trends over different time periods (weekly, monthly, yearly) | <img width="1919" height="913" alt="image" src="https://github.com/user-attachments/assets/92470426-2b54-4777-97fd-b4348776946b" /> |
+| Reports include booking statistics, refund rates, and top-performing services                                                                                        | <img width="1619" height="218" alt="image" src="https://github.com/user-attachments/assets/3eaef9a3-b4df-42af-a6e6-97a03c821fb5" /> |
+
+All data updates in real-time as transactions occur
+
+**Who benefits:**
+
+- Cremation centers can track their business performance and make data-driven decisions
+- Can identify trends and opportunities for improvement
 
 ---
 
