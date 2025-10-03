@@ -210,35 +210,54 @@ export async function POST(request: NextRequest) {
       console.error('Error creating reviews table:', error);
     }
 
-    // Handle image uploads
+    // Handle image uploads with Vercel Blob storage
     let imageUrls: string[] = [];
     if (imageFiles.length > 0) {
-      const fs = await import('fs/promises');
-      const path = await import('path');
-      
-      // Create uploads directory if it doesn't exist
-      const uploadsDir = path.join(process.cwd(), 'public', 'uploads', 'reviews');
-      try {
-        await fs.mkdir(uploadsDir, { recursive: true });
-      } catch (error) {
-        console.error('Error creating uploads directory:', error);
+      const blobToken = process.env.BLOB_READ_WRITE_TOKEN;
+      const useBlob = typeof blobToken === 'string' && blobToken.length > 0;
+      let putFn: any = null;
+
+      if (useBlob) {
+        try {
+          const blob = await import('@vercel/blob');
+          putFn = (blob as any)?.put;
+        } catch (error) {
+          console.warn('Failed to import @vercel/blob:', error);
+        }
       }
 
-      // Save each image
+      // Upload images to Vercel Blob or fallback to base64
       for (let i = 0; i < imageFiles.length; i++) {
         const file = imageFiles[i];
-        const timestamp = Date.now();
-        const randomStr = Math.random().toString(36).substring(7);
-        const ext = file.name.split('.').pop();
-        const filename = `review_${booking_id}_${timestamp}_${randomStr}.${ext}`;
-        const filepath = path.join(uploadsDir, filename);
         
         try {
-          const buffer = Buffer.from(await file.arrayBuffer());
-          await fs.writeFile(filepath, buffer);
-          imageUrls.push(`/uploads/reviews/${filename}`);
+          const arrayBuffer = await file.arrayBuffer();
+          const mime = file.type || 'image/jpeg';
+          const ext = mime.split('/')[1] || 'jpg';
+          
+          if (putFn && useBlob) {
+            // Upload to Vercel Blob storage
+            const key = `uploads/reviews/${booking_id}/image_${Date.now()}_${i}.${ext}`;
+            const result = await putFn(key, Buffer.from(arrayBuffer), {
+              access: 'public',
+              contentType: mime,
+              token: blobToken,
+            });
+            
+            if (result?.url) {
+              imageUrls.push(result.url);
+              console.log('Image uploaded to Vercel Blob:', result.url);
+            }
+          } else {
+            // Fallback: store as base64 data URL
+            const base64 = Buffer.from(arrayBuffer).toString('base64');
+            const dataUrl = `data:${mime};base64,${base64}`;
+            imageUrls.push(dataUrl);
+            console.log('Image stored as base64 data URL (length:', dataUrl.length, ')');
+          }
         } catch (error) {
-          console.error('Error saving image:', error);
+          console.error('Error uploading image:', error);
+          // Continue with other images
         }
       }
     }
@@ -398,7 +417,15 @@ export async function POST(request: NextRequest) {
           : 'A customer';
 
         // Create notification for all admins (function handles broadcasting to all)
-        await createAdminNotification({
+        console.log('Creating admin notification for new review:', {
+          reviewId: result.insertId,
+          reviewerName,
+          providerName,
+          rating,
+          imageCount: imageUrls.length
+        });
+
+        const adminNotifResult = await createAdminNotification({
           type: 'new_review',
           title: 'New Review Submitted',
           message: `${reviewerName} left a ${rating}-star review for ${providerName}${imageUrls.length > 0 ? ` with ${imageUrls.length} image(s)` : ''}.`,
@@ -406,6 +433,8 @@ export async function POST(request: NextRequest) {
           entityId: result.insertId,
           shouldSendEmail: false // Don't spam admins with emails for every review
         });
+
+        console.log('Admin notification result:', adminNotifResult);
       } catch (adminNotificationError) {
         console.error('Error creating admin notification:', adminNotificationError);
       }

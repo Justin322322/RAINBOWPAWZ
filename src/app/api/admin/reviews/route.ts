@@ -63,10 +63,27 @@ export async function GET(request: NextRequest) {
     `) as any[];
 
     // Parse images JSON for each review
-    const reviewsWithImages = reviews.map(review => ({
-      ...review,
-      images: review.images ? JSON.parse(review.images) : null
-    }));
+    const reviewsWithImages = reviews.map(review => {
+      let parsedImages = null;
+      if (review.images) {
+        try {
+          // If it's already an array, use it directly
+          if (Array.isArray(review.images)) {
+            parsedImages = review.images;
+          } else if (typeof review.images === 'string') {
+            // If it's a string, parse it
+            parsedImages = JSON.parse(review.images);
+          }
+        } catch (error) {
+          console.error('Error parsing images for review', review.id, error);
+          parsedImages = null;
+        }
+      }
+      return {
+        ...review,
+        images: parsedImages
+      };
+    });
 
     return NextResponse.json({
       success: true,
