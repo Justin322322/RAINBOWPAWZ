@@ -276,9 +276,14 @@ All data updates in real-time as transactions occur
 
 ## Accessibility
 
+<img width="1039" height="520" alt="image" src="https://github.com/user-attachments/assets/b08cbcc2-09b2-4701-95e9-e3b8607da00b" />
+
+
 - Works on computers, tablets, and smartphones
 - Simple, intuitive interface for all age groups
 - Available 24/7 from anywhere with internet connection
 - Clear instructions and helpful error messages
+
+
 
 ---
