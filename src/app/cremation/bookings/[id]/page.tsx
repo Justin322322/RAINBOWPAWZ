@@ -25,6 +25,7 @@ import BookingTimeline from '@/components/booking/BookingTimeline';
 import CremationCertificate from '@/components/certificates/CremationCertificate';
 import Image from 'next/image';
 import { SkeletonCard } from '@/components/ui/SkeletonLoader';
+import BusinessCancellationModal from '@/components/booking/BusinessCancellationModal';
 
 interface BookingDetailsProps {
   userData?: any;
@@ -77,6 +78,8 @@ function BookingDetailsPage({ userData }: BookingDetailsProps) {
   const [receiptData, setReceiptData] = useState<{ receipt_path: string; status: string; notes?: string | null } | null>(null);
   const [receiptLoading, setReceiptLoading] = useState(false);
   const [receiptActionLoading, setReceiptActionLoading] = useState(false);
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [isCancelling, setIsCancelling] = useState(false);
 
   // Flag to prevent re-fetching after successful updates
   const hasInitiallyLoaded = useRef(false);
@@ -237,6 +240,51 @@ function BookingDetailsPage({ userData }: BookingDetailsProps) {
       }
     };
   }, []);
+
+  // Handle booking cancellation
+  const handleCancelBooking = async (reason: string) => {
+    if (!booking || isCancelling) return;
+
+    setIsCancelling(true);
+
+    try {
+      const response = await fetch(`/api/cremation/bookings/${booking.id}/cancel`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          reason: reason,
+          notes: 'Cancelled by business'
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to cancel booking');
+      }
+
+      const data = await response.json();
+      showToast(data.message, 'success');
+
+      // Update booking status locally
+      setBooking(prev => prev ? { ...prev, status: 'cancelled' } : null);
+
+      // Close modal
+      setShowCancelModal(false);
+
+      // Redirect to refunds page after a short delay
+      setTimeout(() => {
+        router.push('/cremation/refunds');
+      }, 1500);
+
+    } catch (error) {
+      console.error('Error cancelling booking:', error);
+      showToast(error instanceof Error ? error.message : 'Failed to cancel booking', 'error');
+    } finally {
+      setIsCancelling(false);
+    }
+  };
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -505,28 +553,13 @@ function BookingDetailsPage({ userData }: BookingDetailsProps) {
                   {booking.status === 'pending' && (
                     <>
                       <motion.button
-                        onClick={() => updateBookingStatus('cancelled')}
-                        className={`px-4 py-2 border border-red-300 text-red-700 rounded-md text-sm font-medium hover:bg-red-50 flex items-center justify-center transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed w-full sm:w-auto ${
-                          updateSuccess ? 'bg-green-50 border-green-300 text-green-700' : ''
-                        }`}
-                        disabled={updating || updateSuccess}
-                        whileHover={{ scale: updating || updateSuccess ? 1 : 1.02 }}
-                        whileTap={{ scale: updating || updateSuccess ? 1 : 0.98 }}
+                        onClick={() => setShowCancelModal(true)}
+                        className="px-4 py-2 border border-red-300 text-red-700 rounded-md text-sm font-medium hover:bg-red-50 flex items-center justify-center transition-all duration-200 w-full sm:w-auto"
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
                       >
-                        {updating ? (
-                          <ArrowPathIcon
-                            className="h-4 w-4 mr-2 animate-spin"
-                            style={{
-                              animation: 'spin 1s linear infinite',
-                              transformOrigin: 'center'
-                            }}
-                          />
-                        ) : updateSuccess ? (
-                          <CheckCircleIcon className="h-4 w-4 mr-2" />
-                        ) : (
-                          <XCircleIcon className="h-4 w-4 mr-2" />
-                        )}
-                        {updating ? 'Cancelling...' : updateSuccess ? 'Success!' : 'Cancel Booking'}
+                        <XCircleIcon className="h-4 w-4 mr-2" />
+                        Cancel Booking
                       </motion.button>
                       <motion.button
                         onClick={() => updateBookingStatus('confirmed')}
@@ -843,6 +876,18 @@ function BookingDetailsPage({ userData }: BookingDetailsProps) {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Business Cancellation Modal */}
+      {booking && (
+        <BusinessCancellationModal
+          isOpen={showCancelModal}
+          onClose={() => setShowCancelModal(false)}
+          onConfirm={handleCancelBooking}
+          bookingId={booking.id}
+          petName={booking.pet_name}
+          isCancelling={isCancelling}
+        />
       )}
     </CremationDashboardLayout>
   );

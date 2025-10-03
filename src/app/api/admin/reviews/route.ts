@@ -46,6 +46,7 @@ export async function GET(request: NextRequest) {
         r.booking_id,
         r.rating,
         r.comment,
+        r.images,
         r.created_at,
         r.updated_at,
         r.report_reason,
@@ -61,9 +62,15 @@ export async function GET(request: NextRequest) {
       ORDER BY r.created_at DESC
     `) as any[];
 
+    // Parse images JSON for each review
+    const reviewsWithImages = reviews.map(review => ({
+      ...review,
+      images: review.images ? JSON.parse(review.images) : null
+    }));
+
     return NextResponse.json({
       success: true,
-      reviews: reviews || []
+      reviews: reviewsWithImages || []
     });
   } catch (error) {
     console.error('Error fetching reviews:', error);
