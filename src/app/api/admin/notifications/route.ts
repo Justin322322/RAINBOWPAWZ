@@ -53,6 +53,7 @@ export async function GET(request: NextRequest) {
         data,
         status,
         priority,
+        link,
         created_at,
         read_at
       FROM notifications_unified
