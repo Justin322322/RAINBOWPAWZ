@@ -10,13 +10,13 @@
 
 **What it does:**
 
-| Feature                                                                                           | Screenshot          |
-| ------------------------------------------------------------------------------------------------- | ------------------- |
-| Pet owners (fur parents) can create personal accounts with their email and password               |<img width="689" height="721" alt="image" src="https://github.com/user-attachments/assets/74a588b5-3f15-4651-a4b6-47142c4df088" />|
-| Cremation centers can register business accounts with company information                         |<img width="675" height="717" alt="image" src="https://github.com/user-attachments/assets/d3966c96-fe52-4219-8873-dbee421c8d37" />|
-| The system sends a verification code to your email to confirm your identity                       |<img width="617" height="657" alt="image" src="https://github.com/user-attachments/assets/2f5c7b88-f7fe-43cf-9151-cfbd91beed6d" />|
-| You must enter this code to activate your account and start using the platform                    |<img width="1666" height="867" alt="image" src="https://github.com/user-attachments/assets/4edd5449-65d6-4436-92ce-ff287071fdfc" />|
-| Cremation centers must submit business documents (permits, certificates, IDs) during registration |<img width="720" height="735" alt="image" src="https://github.com/user-attachments/assets/a7bd76ab-d320-41be-b4cf-52b0097eb454" />|
+| Feature                                                                                           | Screenshot                                                                                                                          |
+| ------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| Pet owners (fur parents) can create personal accounts with their email and password               | <img width="689" height="721" alt="image" src="https://github.com/user-attachments/assets/74a588b5-3f15-4651-a4b6-47142c4df088" />  |
+| Cremation centers can register business accounts with company information                         | <img width="675" height="717" alt="image" src="https://github.com/user-attachments/assets/d3966c96-fe52-4219-8873-dbee421c8d37" />  |
+| The system sends a verification code to your email to confirm your identity                       | <img width="617" height="657" alt="image" src="https://github.com/user-attachments/assets/2f5c7b88-f7fe-43cf-9151-cfbd91beed6d" />  |
+| You must enter this code to activate your account and start using the platform                    | <img width="1666" height="867" alt="image" src="https://github.com/user-attachments/assets/4edd5449-65d6-4436-92ce-ff287071fdfc" /> |
+| Cremation centers must submit business documents (permits, certificates, IDs) during registration | <img width="720" height="735" alt="image" src="https://github.com/user-attachments/assets/a7bd76ab-d320-41be-b4cf-52b0097eb454" />  |
 
 **Who benefits:**
 
@@ -30,15 +30,15 @@
 
 **What it does:**
 
-| Feature                                                                                     | Screenshot          |
-| ------------------------------------------------------------------------------------------- | ------------------- |
-| Users who forget their password can request a reset link via email                          |<img width="527" height="606" alt="image" src="https://github.com/user-attachments/assets/d9f14118-ee0f-4e53-b7db-2e1374c3f8bf" />|
-| System sends a secure, time-limited reset link to the registered email address              |<img width="688" height="495" alt="image" src="https://github.com/user-attachments/assets/de6b68ee-6e82-46ff-9f36-a9371cd05ae0" />|
-| Users click the link and create a new password                                              |<img width="499" height="810" alt="image" src="https://github.com/user-attachments/assets/0f7c8483-fe2b-4fbe-bdad-c64cacaa6a90" />|
-| Reset links expire after a certain time for security purposes                               |<img width="547" height="595" alt="image" src="https://github.com/user-attachments/assets/d8f407c1-5960-475a-a571-bae94c08ee67" />|
-| Password strength requirements ensure account security (minimum length, special characters) |<img width="367" height="260" alt="image" src="https://github.com/user-attachments/assets/062684b5-afbc-4474-a5bd-39b7e9d15562" />|
+| Feature                                                                                     | Screenshot                                                                                                                         |
+| ------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| Users who forget their password can request a reset link via email                          | <img width="527" height="606" alt="image" src="https://github.com/user-attachments/assets/d9f14118-ee0f-4e53-b7db-2e1374c3f8bf" /> |
+| System sends a secure, time-limited reset link to the registered email address              | <img width="688" height="495" alt="image" src="https://github.com/user-attachments/assets/de6b68ee-6e82-46ff-9f36-a9371cd05ae0" /> |
+| Users click the link and create a new password                                              | <img width="499" height="810" alt="image" src="https://github.com/user-attachments/assets/0f7c8483-fe2b-4fbe-bdad-c64cacaa6a90" /> |
+| Reset links expire after a certain time for security purposes                               | <img width="547" height="595" alt="image" src="https://github.com/user-attachments/assets/d8f407c1-5960-475a-a571-bae94c08ee67" /> |
+| Password strength requirements ensure account security (minimum length, special characters) | <img width="367" height="260" alt="image" src="https://github.com/user-attachments/assets/062684b5-afbc-4474-a5bd-39b7e9d15562" /> |
 
-Old password becomes invalid once a new one is set                                          
+Old password becomes invalid once a new one is set
 
 **Who benefits:**
 
@@ -52,14 +52,14 @@ Old password becomes invalid once a new one is set
 
 **What it does:**
 
-| Feature                                                                    | Screenshot          |
-| -------------------------------------------------------------------------- | ------------------- |
-| Administrators review all cremation center applications before approval    |<img width="1919" height="915" alt="image" src="https://github.com/user-attachments/assets/e23b6b83-b35c-4d89-bd2f-2fab881ed533" />|
-| Admins can view submitted business documents and verify their authenticity |<img width="1919" height="913" alt="image" src="https://github.com/user-attachments/assets/904dcdbb-c518-4ceb-88ce-bb6fa20e0f73" />|
-| Admins can approve, decline, or ask to re-submit the documents to user accounts based on compliance |<img width="466" height="355" alt="image" src="https://github.com/user-attachments/assets/65a90277-baaf-4b3c-82d8-1f7f59f5eddf" /><img width="508" height="253" alt="image" src="https://github.com/user-attachments/assets/b859b24f-355c-4a25-b856-ec1d9f00b5f7" /><img width="459" height="624" alt="image" src="https://github.com/user-attachments/assets/9f6fac4e-c091-4feb-bb0d-71c4c39da8ed" />|
-| The system tracks all admin actions for security and accountability        |<img width="1919" height="911" alt="image" src="https://github.com/user-attachments/assets/8f1770b0-e57e-4a11-a59c-0b301c774445" />|
-| Admin can restrict accounts of fur parents and cremation                   |<img width="1919" height="910" alt="image" src="https://github.com/user-attachments/assets/b98ebe54-bc91-4e23-be96-2f6322fe9dcf" />|
-| Users can appeal if their account is restricted                            |<img width="869" height="910" alt="image" src="https://github.com/user-attachments/assets/ca8b68cd-4d8c-4335-9fdd-2cbb223c0fd2" />|
+| Feature                                                                                             | Screenshot                                                                                                                                                                                                                                                                                                                                                                                             |
+| --------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Administrators review all cremation center applications before approval                             | <img width="1919" height="915" alt="image" src="https://github.com/user-attachments/assets/e23b6b83-b35c-4d89-bd2f-2fab881ed533" />                                                                                                                                                                                                                                                                    |
+| Admins can view submitted business documents and verify their authenticity                          | <img width="1919" height="913" alt="image" src="https://github.com/user-attachments/assets/904dcdbb-c518-4ceb-88ce-bb6fa20e0f73" />                                                                                                                                                                                                                                                                    |
+| Admins can approve, decline, or ask to re-submit the documents to user accounts based on compliance | <img width="466" height="355" alt="image" src="https://github.com/user-attachments/assets/65a90277-baaf-4b3c-82d8-1f7f59f5eddf" /><img width="508" height="253" alt="image" src="https://github.com/user-attachments/assets/b859b24f-355c-4a25-b856-ec1d9f00b5f7" /><img width="459" height="624" alt="image" src="https://github.com/user-attachments/assets/9f6fac4e-c091-4feb-bb0d-71c4c39da8ed" /> |
+| The system tracks all admin actions for security and accountability                                 | <img width="1919" height="911" alt="image" src="https://github.com/user-attachments/assets/8f1770b0-e57e-4a11-a59c-0b301c774445" />                                                                                                                                                                                                                                                                    |
+| Admin can restrict accounts of fur parents and cremation                                            | <img width="1919" height="910" alt="image" src="https://github.com/user-attachments/assets/b98ebe54-bc91-4e23-be96-2f6322fe9dcf" />                                                                                                                                                                                                                                                                    |
+| Users can appeal if their account is restricted                                                     | <img width="869" height="910" alt="image" src="https://github.com/user-attachments/assets/ca8b68cd-4d8c-4335-9fdd-2cbb223c0fd2" />                                                                                                                                                                                                                                                                     |
 
 **Who benefits:**
 
@@ -73,10 +73,10 @@ Old password becomes invalid once a new one is set
 
 **What it does:**
 
-| Feature                                                                       | Screenshot          |
-| ----------------------------------------------------------------------------- | ------------------- |
-| Both fur parents and cremation centers can cancel bookings when needed All cancellations require a reason to maintain transparency |<img width="460" height="625" alt="image" src="https://github.com/user-attachments/assets/0a82df8a-6d91-494c-bb76-efc1227440cc" />|
-| Fur parents receive notifications about refund status via email and SMS |<img width="422" height="140" alt="image" src="https://github.com/user-attachments/assets/91af72c0-7806-42a0-9220-c69940287ead" />
+| Feature                                                                                                                            | Screenshot                                                                                                                         |
+| ---------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| Both fur parents and cremation centers can cancel bookings when needed All cancellations require a reason to maintain transparency | <img width="460" height="625" alt="image" src="https://github.com/user-attachments/assets/0a82df8a-6d91-494c-bb76-efc1227440cc" /> |
+| Fur parents receive notifications about refund status via email and SMS                                                            | <img width="422" height="140" alt="image" src="https://github.com/user-attachments/assets/91af72c0-7806-42a0-9220-c69940287ead" /> |
 
 **Who benefits:**
 
@@ -90,13 +90,13 @@ Old password becomes invalid once a new one is set
 
 **What it does:**
 
-| Feature                                                                            | Screenshot          |
-| ---------------------------------------------------------------------------------- | ------------------- |
-| Fur parents can rate cremation services from 1 to 5 stars after service completion |<img width="491" height="83" alt="image" src="https://github.com/user-attachments/assets/d2982e20-22d6-473b-b82e-08e756eab0cc" />|
-| Users can write detailed comments about their experience                           |<img width="560" height="669" alt="image" src="https://github.com/user-attachments/assets/211a35bb-bfb8-4ded-a546-2d07a31cbc33" />|
-| Reviews can include up to 5 photos to show the service quality                     |<img width="538" height="757" alt="image" src="https://github.com/user-attachments/assets/9f839e9e-7784-49cd-8254-8263c25cdd69" />|
-| Cremation centers receive notifications when new reviews are posted                |<img width="387" height="129" alt="image" src="https://github.com/user-attachments/assets/de8d8185-d1a1-4389-b3a9-db825c9a8f46" />|
-| Administrators can moderate reviews if inappropriate content is reported           |<img width="696" height="631" alt="image" src="https://github.com/user-attachments/assets/fa7bc16f-776e-42d4-9498-9d4f9800e064" />|
+| Feature                                                                            | Screenshot                                                                                                                         |
+| ---------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| Fur parents can rate cremation services from 1 to 5 stars after service completion | <img width="491" height="83" alt="image" src="https://github.com/user-attachments/assets/d2982e20-22d6-473b-b82e-08e756eab0cc" />  |
+| Users can write detailed comments about their experience                           | <img width="560" height="669" alt="image" src="https://github.com/user-attachments/assets/211a35bb-bfb8-4ded-a546-2d07a31cbc33" /> |
+| Reviews can include up to 5 photos to show the service quality                     | <img width="538" height="757" alt="image" src="https://github.com/user-attachments/assets/9f839e9e-7784-49cd-8254-8263c25cdd69" /> |
+| Cremation centers receive notifications when new reviews are posted                | <img width="387" height="129" alt="image" src="https://github.com/user-attachments/assets/de8d8185-d1a1-4389-b3a9-db825c9a8f46" /> |
+| Administrators can moderate reviews if inappropriate content is reported           | <img width="696" height="631" alt="image" src="https://github.com/user-attachments/assets/fa7bc16f-776e-42d4-9498-9d4f9800e064" /> |
 
 **Who benefits:**
 
@@ -110,12 +110,12 @@ Old password becomes invalid once a new one is set
 
 **What it does:**
 
-| Feature                                                                              | Screenshot          |
-| ------------------------------------------------------------------------------------ | ------------------- |
-| Cremation centers view their business performance (bookings, revenue, refunds), Interactive charts show trends over different time periods (weekly, monthly, yearly)       |<img width="1919" height="913" alt="image" src="https://github.com/user-attachments/assets/92470426-2b54-4777-97fd-b4348776946b" />|
-| Reports include booking statistics, refund rates, and top-performing services        |<img width="1619" height="218" alt="image" src="https://github.com/user-attachments/assets/3eaef9a3-b4df-42af-a6e6-97a03c821fb5" />|
+| Feature                                                                                                                                                              | Screenshot                                                                                                                          |
+| -------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| Cremation centers view their business performance (bookings, revenue, refunds), Interactive charts show trends over different time periods (weekly, monthly, yearly) | <img width="1919" height="913" alt="image" src="https://github.com/user-attachments/assets/92470426-2b54-4777-97fd-b4348776946b" /> |
+| Reports include booking statistics, refund rates, and top-performing services                                                                                        | <img width="1619" height="218" alt="image" src="https://github.com/user-attachments/assets/3eaef9a3-b4df-42af-a6e6-97a03c821fb5" /> |
 
-All data updates in real-time as transactions occur                                  
+All data updates in real-time as transactions occur
 
 **Who benefits:**
 
@@ -128,12 +128,12 @@ All data updates in real-time as transactions occur
 
 **What it does:**
 
-| Feature                                                            | Screenshot          |
-| ------------------------------------------------------------------ | ------------------- |
-| Displays all cremation centers on an interactive map               |<img width="1918" height="914" alt="image" src="https://github.com/user-attachments/assets/137b08b8-7fe0-4023-babe-004c424fbcb2" />|
-| Shows the distance from your location to each service provider     |<img width="794" height="653" alt="image" src="https://github.com/user-attachments/assets/a547ad81-63a3-4c4e-aebc-0d1f6012b2c0" />|
-| Allows filtering providers by location, services, and availability |<img width="1220" height="466" alt="image" src="https://github.com/user-attachments/assets/b31023db-1ca0-4ad4-82a3-4bd0f62af04b" />|
-| Users can click on map markers to view provider details            |<img width="1238" height="633" alt="image" src="https://github.com/user-attachments/assets/7cdc221a-4273-482a-ad4e-54850d251a37" />|
+| Feature                                                            | Screenshot                                                                                                                          |
+| ------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------- |
+| Displays all cremation centers on an interactive map               | <img width="1918" height="914" alt="image" src="https://github.com/user-attachments/assets/137b08b8-7fe0-4023-babe-004c424fbcb2" /> |
+| Shows the distance from your location to each service provider     | <img width="794" height="653" alt="image" src="https://github.com/user-attachments/assets/a547ad81-63a3-4c4e-aebc-0d1f6012b2c0" />  |
+| Allows filtering providers by location, services, and availability | <img width="1220" height="466" alt="image" src="https://github.com/user-attachments/assets/b31023db-1ca0-4ad4-82a3-4bd0f62af04b" /> |
+| Users can click on map markers to view provider details            | <img width="1238" height="633" alt="image" src="https://github.com/user-attachments/assets/7cdc221a-4273-482a-ad4e-54850d251a37" /> |
 
 **Who benefits:**
 
@@ -147,13 +147,11 @@ All data updates in real-time as transactions occur
 
 **What it does:**
 
-
-
 - Sends automatic notifications for important events (bookings, payments, reviews)
-- Delivers messages through multiple channels: email, SMS text, and in-app alerts  
-- Users can view notification history and mark messages as read                   
-- Notifications include direct links to relevant pages for quick action          
-- System prioritizes urgent notifications (payment failures, cancellations)        
+- Delivers messages through multiple channels: email, SMS text, and in-app alerts
+- Users can view notification history and mark messages as read
+- Notifications include direct links to relevant pages for quick action
+- System prioritizes urgent notifications (payment failures, cancellations)
 
 **Who benefits:**
 
@@ -167,102 +165,17 @@ All data updates in real-time as transactions occur
 
 **What it does:**
 
-| Feature                                                                                   | Screenshot          |
-| ----------------------------------------------------------------------------------------- | ------------------- |
-| Supports QR codes payment |<img width="826" height="668" alt="image" src="https://github.com/user-attachments/assets/c1ca2547-befd-4a3f-ac3c-f0c2df8de0ba" />|
-| Generates digital receipts                                          |<img width="482" height="923" alt="image" src="https://github.com/user-attachments/assets/941bca10-9caf-405a-9021-46377d65a717" />|
-| Tracks payment status from pending to completed                                           |<img width="1916" height="916" alt="image" src="https://github.com/user-attachments/assets/7f2979ff-51a5-4872-9690-b6847d019174" />|
+| Feature                                         | Screenshot                                                                                                                          |
+| ----------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| Supports QR codes payment                       | <img width="826" height="668" alt="image" src="https://github.com/user-attachments/assets/c1ca2547-befd-4a3f-ac3c-f0c2df8de0ba" />  |
+| Generates digital receipts                      | <img width="482" height="923" alt="image" src="https://github.com/user-attachments/assets/941bca10-9caf-405a-9021-46377d65a717" />  |
+| Tracks payment status from pending to completed | <img width="1916" height="916" alt="image" src="https://github.com/user-attachments/assets/7f2979ff-51a5-4872-9690-b6847d019174" /> |
 
 **Who benefits:**
 
 - Fur parents can pay using their preferred method
 - Cremation centers receive payments quickly and securely
 - All transactions are recorded for accounting and dispute resolution
-
----
-
-### J. Checkout
-
-**What it does:**
-
-| Feature                                                                 | Screenshot          |
-| ----------------------------------------------------------------------- | ------------------- |
-| Fur parents provide pet information during the booking checkout process | [Insert Screenshot] |
-| Enter pet details: name, type, breed, age, weight, and upload photos    | [Insert Screenshot] |
-| Add special notes about the pet's personality or preferences            | [Insert Screenshot] |
-| Include cause of death information for proper handling                  | [Insert Screenshot] |
-| All pet information is captured as part of the booking record           | [Insert Screenshot] |
-
-**Who benefits:**
-
-- Fur parents can honor their pets' memory with complete information
-- Cremation centers receive all necessary pet details for proper service
-- Streamlined booking process with all information in one place
-
----
-
-### K. Service Booking and Appointment Scheduling
-
-**What it does:**
-
-| Feature                                                                       | Screenshot          |
-| ----------------------------------------------------------------------------- | ------------------- |
-| Fur parents can browse available cremation services with detailed information | [Insert Screenshot] |
-| Select preferred date and time based on provider availability                 | [Insert Screenshot] |
-| Provide pet details and special requests during booking                       | [Insert Screenshot] |
-| Choose between pickup or delivery options                                     | [Insert Screenshot] |
-| View total cost including all fees before confirming                          | [Insert Screenshot] |
-| Receive booking confirmation with appointment details                         | [Insert Screenshot] |
-
-**Who benefits:**
-
-- Fur parents can book services at their convenience, 24/7
-- Cremation centers manage their schedule efficiently
-- Both parties have clear records of appointments and agreements
-
----
-
-### L. Service Package Creation and Management
-
-**What it does:**
-
-| Feature                                                                           | Screenshot          |
-| --------------------------------------------------------------------------------- | ------------------- |
-| Cremation centers can create different service packages (Private, Communal, etc.) | [Insert Screenshot] |
-| Set pricing based on fixed rates or pet size/weight                               | [Insert Screenshot] |
-| Add service inclusions (urns, memorial items, keepsakes)                          | [Insert Screenshot] |
-| Offer optional add-ons with additional costs                                      | [Insert Screenshot] |
-| Upload photos of packages and facilities                                          | [Insert Screenshot] |
-| Activate or deactivate packages as needed                                         | [Insert Screenshot] |
-| Cremation certificates are automatically generated after booking completion       | [Insert Screenshot] |
-
-**Who benefits:**
-
-- Cremation centers can showcase their full range of services
-- Fur parents can compare packages and choose what fits their needs and budget
-- Clear pricing prevents misunderstandings and disputes
-- Automatic certificate generation ensures proper documentation
-
----
-
-### M. User Profile and Account Settings
-
-**What it does:**
-
-| Feature                                                             | Screenshot          |
-| ------------------------------------------------------------------- | ------------------- |
-| Users can update personal information (name, phone, address, email) | [Insert Screenshot] |
-| Upload and change profile pictures                                  | [Insert Screenshot] |
-| Manage password and security settings                               | [Insert Screenshot] |
-| View account activity and login history                             | [Insert Screenshot] |
-| Update notification preferences                                     | [Insert Screenshot] |
-| Access booking history and saved information                        | [Insert Screenshot] |
-
-**Who benefits:**
-
-- Users maintain accurate contact information for communications
-- Enhanced security through password management
-- Personalized experience with profile customization
 
 ---
 

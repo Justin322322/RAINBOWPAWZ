@@ -45,46 +45,6 @@ export async function POST(request: Request) {
       const expiresAt = new Date();
       expiresAt.setHours(expiresAt.getHours() + 1);
 
-      // Ensure table exists without performing DDL in production
-      // In production, DDL is disabled unless ALLOW_DDL=true; table should be created via CLI script
-      try {
-        const tableExists = await query(
-          `SELECT COUNT(*) as count FROM information_schema.tables
-           WHERE table_schema = DATABASE() AND table_name = 'password_reset_tokens'`
-        ) as any[];
-
-        if (tableExists[0].count === 0) {
-          if (process.env.ALLOW_DDL === 'true') {
-            await query(`
-              CREATE TABLE IF NOT EXISTS password_reset_tokens (
-                id INT AUTO_INCREMENT PRIMARY KEY,
-                user_id INT NOT NULL,
-                token VARCHAR(100) NOT NULL,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                expires_at DATETIME NOT NULL,
-                is_used TINYINT(1) DEFAULT 0,
-                UNIQUE KEY unique_token (token),
-                INDEX idx_user_id (user_id),
-                INDEX idx_token (token),
-                INDEX idx_expires_at (expires_at),
-                INDEX idx_is_used (is_used),
-                FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
-              ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
-            `);
-          } else {
-            console.error('password_reset_tokens table missing and DDL disabled');
-            return NextResponse.json({
-              error: 'Server configuration error. Please try again later.'
-            }, { status: 500 });
-          }
-        }
-      } catch (tableError) {
-        console.error('Error checking/creating password reset table:', tableError);
-        return NextResponse.json({
-          error: 'Server configuration error. Please try again later.'
-        }, { status: 500 });
-      }
-
       // Mark any existing tokens for this user as used instead of deleting them
       try {
         await query(
@@ -112,24 +72,45 @@ export async function POST(request: Request) {
       // Send the password reset email using the simple email service
       try {
         console.log(`Attempting to send password reset email to: ${email}`);
+        console.log('SMTP Configuration:', {
+          host: process.env.SMTP_HOST,
+          port: process.env.SMTP_PORT,
+          user: process.env.SMTP_USER,
+          from: process.env.SMTP_FROM,
+          hasPassword: !!process.env.SMTP_PASS
+        });
+        
         // Send email using simple email service
         const emailResult = await sendPasswordResetEmail(email, resetToken);
 
         if (!emailResult.success) {
-          console.error('Email service returned error:', emailResult.error);
+          console.error('Email service returned error:', {
+            error: emailResult.error,
+            code: emailResult.code,
+            recipient: email
+          });
           throw new Error(emailResult.error || 'Failed to send email');
         }
 
-        console.log(`Password reset email sent successfully to: ${email}`);
+        console.log(`Password reset email sent successfully to: ${email}`, {
+          messageId: emailResult.messageId
+        });
+        
         return NextResponse.json({
           success: true,
           message: 'Password reset instructions have been sent to your email.'
         });
       } catch (emailError) {
-        console.error('Failed to send password reset email:', emailError);
+        console.error('Failed to send password reset email:', {
+          error: emailError instanceof Error ? emailError.message : 'Unknown error',
+          stack: emailError instanceof Error ? emailError.stack : undefined,
+          recipient: email
+        });
+        
         // For production, be honest about the error
         return NextResponse.json({
-          error: 'Failed to send password reset email. Please try again later.'
+          error: 'Failed to send password reset email. Please try again later.',
+          details: process.env.NODE_ENV === 'development' ? (emailError instanceof Error ? emailError.message : 'Unknown error') : undefined
         }, { status: 500 });
       }
     } catch (dbError) {
