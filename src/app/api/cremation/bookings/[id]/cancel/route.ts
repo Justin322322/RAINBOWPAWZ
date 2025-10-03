@@ -8,6 +8,7 @@ import { verifySecureAuth } from '@/lib/secureAuth';
 import { query } from '@/lib/db/query';
 import { cancelBookingWithRefund } from '@/services/bookingCancellationService';
 import { createBookingNotification } from '@/utils/comprehensiveNotificationService';
+import { ensureCancellationReasonColumn } from '@/lib/db/migrations';
 
 export async function POST(
   request: NextRequest,
@@ -32,6 +33,9 @@ export async function POST(
     if (!bookingId) {
       return NextResponse.json({ error: 'Booking ID is required' }, { status: 400 });
     }
+
+    // Ensure cancellation_reason column exists (auto-migration)
+    await ensureCancellationReasonColumn();
 
     // Get the business provider ID
     const providerQuery = `
@@ -94,6 +98,12 @@ export async function POST(
         error: 'Cancellation reason is required'
       }, { status: 400 });
     }
+
+    // Store cancellation reason in the database
+    await query(
+      `UPDATE bookings SET cancellation_reason = ? WHERE id = ?`,
+      [reason, bookingId]
+    );
 
     // Get client IP for audit trail
     const clientIp = request.headers.get('x-forwarded-for') || 

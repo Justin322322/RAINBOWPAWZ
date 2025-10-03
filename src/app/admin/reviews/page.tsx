@@ -35,6 +35,7 @@ interface Review {
   report_status?: 'none' | 'pending' | 'reviewed' | 'dismissed';
   reported_by?: number;
   reported_at?: string;
+  images?: string[];
 }
 
 interface BookingDetails {
@@ -448,6 +449,21 @@ function AdminReviewsPage() {
                 {review.comment && (
                   <div className="bg-gray-50 p-4 rounded-lg">
                     <p className="text-gray-700">{review.comment}</p>
+                  </div>
+                )}
+                {review.images && review.images.length > 0 && (
+                  <div className="mt-3 grid grid-cols-4 gap-2">
+                    {review.images.map((imageUrl, index) => (
+                      <div key={index} className="relative w-full h-24">
+                        <Image
+                          src={imageUrl}
+                          alt={`Review image ${index + 1}`}
+                          fill
+                          className="object-cover rounded-lg border border-gray-200 cursor-pointer hover:opacity-90 transition-opacity"
+                          onClick={() => window.open(imageUrl, '_blank')}
+                        />
+                      </div>
+                    ))}
                   </div>
                 )}
                 <div className="mt-3 text-sm">

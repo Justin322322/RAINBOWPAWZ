@@ -19,6 +19,7 @@ import {
   ExclamationTriangleIcon
 } from '@heroicons/react/24/outline';
 import { LoadingSpinner } from '@/app/cremation/components/LoadingComponents';
+import BusinessCancellationModal from '@/components/booking/BusinessCancellationModal';
 
 function CremationBookingsPage({ userData }: { userData: any }) {
   const [searchTerm, setSearchTerm] = useState('');
@@ -28,8 +29,7 @@ function CremationBookingsPage({ userData }: { userData: any }) {
   const [selectedBookingForPayment, setSelectedBookingForPayment] = useState<any>(null);
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [selectedBookingForCancel, setSelectedBookingForCancel] = useState<any>(null);
-  const [cancelReason, setCancelReason] = useState('');
-  const [cancelNotes, setCancelNotes] = useState('');
+  const [isCancelling, setIsCancelling] = useState(false);
   const [loading, setLoading] = useState(true);
   const [bookings, setBookings] = useState<any[]>([]);
   const [_stats, setStats] = useState({
@@ -191,8 +191,6 @@ function CremationBookingsPage({ userData }: { userData: any }) {
 
   const handleCancelBooking = (booking: any) => {
     setSelectedBookingForCancel(booking);
-    setCancelReason('');
-    setCancelNotes('');
     setShowCancelModal(true);
   };
 
@@ -252,8 +250,10 @@ function CremationBookingsPage({ userData }: { userData: any }) {
     }
   };
 
-  const handleCancelBookingAction = async () => {
-    if (!selectedBookingForCancel || !cancelReason.trim()) return;
+  const handleCancelBookingAction = async (reason: string) => {
+    if (!selectedBookingForCancel || !reason.trim()) return;
+
+    setIsCancelling(true);
 
     try {
       const response = await fetch(`/api/cremation/bookings/${selectedBookingForCancel.id}/cancel`, {
@@ -262,8 +262,8 @@ function CremationBookingsPage({ userData }: { userData: any }) {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          reason: cancelReason,
-          notes: cancelNotes
+          reason: reason,
+          notes: 'Cancelled by business'
         })
       });
 
@@ -278,8 +278,6 @@ function CremationBookingsPage({ userData }: { userData: any }) {
       // Close modal and refresh bookings
       setShowCancelModal(false);
       setSelectedBookingForCancel(null);
-      setCancelReason('');
-      setCancelNotes('');
 
       // Refresh the bookings data
       await fetchBookings();
@@ -287,6 +285,8 @@ function CremationBookingsPage({ userData }: { userData: any }) {
     } catch (error) {
       console.error('Error cancelling booking:', error);
       showToast(error instanceof Error ? error.message : 'Failed to cancel booking', 'error');
+    } finally {
+      setIsCancelling(false);
     }
   };
 
@@ -496,8 +496,16 @@ function CremationBookingsPage({ userData }: { userData: any }) {
                       <div className="text-sm text-gray-900">{booking.scheduledDate}</div>
                       <div className="text-sm text-gray-500">{booking.scheduledTime}</div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      {getStatusBadge(booking.status)}
+                    <td className="px-6 py-4">
+                      <div className="flex flex-col space-y-1">
+                        {getStatusBadge(booking.status)}
+                        {booking.status === 'cancelled' && booking.cancellationReason && (
+                          <span className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-red-50 text-red-700 border border-red-200 max-w-xs">
+                            <ExclamationTriangleIcon className="h-3 w-3 mr-1 flex-shrink-0" />
+                            {booking.cancellationReason}
+                          </span>
+                        )}
+                      </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       {getPaymentStatusBadge(booking.paymentStatus)}
@@ -654,98 +662,15 @@ function CremationBookingsPage({ userData }: { userData: any }) {
       )}
 
       {/* Cancel Booking Modal */}
-      {showCancelModal && selectedBookingForCancel && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto">
-            {/* Header */}
-            <div className="bg-red-600 text-white px-6 py-4 rounded-t-2xl">
-              <div className="flex justify-between items-center">
-                <div>
-                  <h1 className="text-lg font-medium text-white">Cancel Booking</h1>
-                  <p className="text-sm text-white/80 mt-1">
-                    Booking #{selectedBookingForCancel.id} • {selectedBookingForCancel.petName}
-                  </p>
-                </div>
-                <button
-                  onClick={() => setShowCancelModal(false)}
-                  className="text-white hover:text-white/80 transition-colors duration-200 p-2 rounded-lg hover:bg-white/10"
-                >
-                  <XMarkIcon className="w-5 h-5" />
-                </button>
-              </div>
-            </div>
-
-            <div className="p-6 space-y-4">
-              {/* Warning */}
-              <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-                <div className="flex items-center">
-                  <ExclamationTriangleIcon className="w-5 h-5 text-red-600 mr-3" />
-                  <div>
-                    <h3 className="text-sm font-medium text-red-800">Important Notice</h3>
-                    <p className="text-sm text-red-700 mt-1">
-                      Cancelling this booking will automatically initiate a refund process. The customer will be notified.
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Cancellation Reason */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Cancellation Reason <span className="text-red-500">*</span>
-                </label>
-                <select
-                  value={cancelReason}
-                  onChange={(e) => setCancelReason(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                  required
-                >
-                  <option value="">Select a reason</option>
-                  <option value="Service not available">Service not available</option>
-                  <option value="Customer request">Customer request</option>
-                  <option value="Emergency situation">Emergency situation</option>
-                  <option value="Equipment issue">Equipment issue</option>
-                  <option value="Weather conditions">Weather conditions</option>
-                  <option value="Other">Other</option>
-                </select>
-              </div>
-
-              {/* Additional Notes */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Additional Notes
-                </label>
-                <textarea
-                  value={cancelNotes}
-                  onChange={(e) => setCancelNotes(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                  rows={3}
-                  placeholder="Add any additional details about this cancellation..."
-                />
-              </div>
-            </div>
-
-            {/* Footer */}
-            <div className="border-t border-gray-200 bg-gray-50 px-6 py-4 rounded-b-2xl">
-              <div className="flex justify-end space-x-3">
-                <button
-                  onClick={() => setShowCancelModal(false)}
-                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleCancelBookingAction}
-                  disabled={!cancelReason.trim()}
-                  className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  <XMarkIcon className="h-4 w-4 mr-2" />
-                  Cancel Booking & Initiate Refund
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
+      {selectedBookingForCancel && (
+        <BusinessCancellationModal
+          isOpen={showCancelModal}
+          onClose={() => setShowCancelModal(false)}
+          onConfirm={handleCancelBookingAction}
+          bookingId={selectedBookingForCancel.id}
+          petName={selectedBookingForCancel.petName}
+          isCancelling={isCancelling}
+        />
       )}
     </CremationDashboardLayout>
   );

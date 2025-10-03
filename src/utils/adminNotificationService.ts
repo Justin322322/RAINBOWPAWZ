@@ -71,6 +71,14 @@ export async function createAdminNotification({
       if (entityId) {
         link += `?reviewId=${entityId}`;
       }
+    } else if (type === 'new_review') {
+      // Link to the reviews page for new reviews
+      link = '/admin/reviews';
+
+      // If we have a specific review ID, add it as a parameter
+      if (entityId) {
+        link += `?reviewId=${entityId}`;
+      }
     }
 
     // Get all admin users to create individual notifications

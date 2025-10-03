@@ -37,6 +37,7 @@ interface Review {
   user_email?: string;
   report_reason?: string;
   report_status?: 'none' | 'pending' | 'reviewed' | 'dismissed';
+  images?: string[];
 }
 
 function ReviewsPage({ userData }: ReviewsPageProps) {
@@ -439,6 +440,21 @@ function ReviewsPage({ userData }: ReviewsPageProps) {
                 {review.comment && (
                   <div className="bg-gray-50 p-4 rounded-md">
                     <p className="text-gray-700">{review.comment}</p>
+                  </div>
+                )}
+                {review.images && review.images.length > 0 && (
+                  <div className="mt-3 grid grid-cols-4 gap-2">
+                    {review.images.map((imageUrl, index) => (
+                      <div key={index} className="relative w-full h-24">
+                        <Image
+                          src={imageUrl}
+                          alt={`Review image ${index + 1}`}
+                          fill
+                          className="object-cover rounded-lg border border-gray-200 cursor-pointer hover:opacity-90 transition-opacity"
+                          onClick={() => window.open(imageUrl, '_blank')}
+                        />
+                      </div>
+                    ))}
                   </div>
                 )}
                 {review.booking_id && (

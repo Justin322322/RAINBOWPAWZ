@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAuthTokenFromRequest } from '@/utils/auth';
 import { query } from '@/lib/db';
 import { cancelBookingWithRefund } from '@/services/bookingCancellationService';
+import { ensureCancellationReasonColumn } from '@/lib/db/migrations';
 
 // Import the email templates
 import { createBookingStatusUpdateEmail } from '@/lib/emailTemplates';
@@ -48,6 +49,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Booking ID is required' }, { status: 400 });
     }
 
+    // Ensure cancellation_reason column exists (auto-migration)
+    await ensureCancellationReasonColumn();
+
+    // Get cancellation reason from request body
+    const body = await request.json().catch(() => ({}));
+    const cancellationReason = body.reason || 'Customer requested cancellation';
+
 
 
     // First, validate that the booking exists and belongs to the user
@@ -90,10 +98,16 @@ export async function POST(request: NextRequest) {
                      request.headers.get('x-real-ip') || 
                      'unknown';
 
+    // Store cancellation reason in the database
+    await query(
+      `UPDATE bookings SET cancellation_reason = ? WHERE id = ?`,
+      [cancellationReason, bookingId]
+    );
+
     // Use the new booking cancellation service with refund processing
     const cancellationResult = await cancelBookingWithRefund({
       bookingId: parseInt(bookingId),
-      reason: 'Customer requested cancellation',
+      reason: cancellationReason,
       cancelledBy: parseInt(userId),
       cancelledByType: 'customer',
       notes: 'Self-service cancellation via web portal',
@@ -110,7 +124,7 @@ export async function POST(request: NextRequest) {
     // Send booking cancellation notifications_unified (fallback if not sent by cancellation service)
     try {
       await createBookingNotification(parseInt(bookingId), 'booking_cancelled', {
-        reason: 'Customer requested cancellation',
+        reason: cancellationReason,
         refund_initiated: cancellationResult.refundInitiated,
         refund_type: cancellationResult.refundType,
         refund_id: cancellationResult.refundId
@@ -118,6 +132,35 @@ export async function POST(request: NextRequest) {
     } catch (notificationError) {
       console.error('Error sending cancellation notifications_unified:', notificationError);
       // Continue with the process even if notifications_unified fail
+    }
+
+    // Notify business about cancellation with reason
+    try {
+      const bookingInfo = await query(
+        'SELECT provider_id FROM bookings WHERE id = ?',
+        [bookingId]
+      ) as any[];
+
+      if (bookingInfo && bookingInfo.length > 0 && bookingInfo[0].provider_id) {
+        const providerData = await query(
+          'SELECT user_id FROM service_providers WHERE provider_id = ?',
+          [bookingInfo[0].provider_id]
+        ) as any[];
+
+        if (providerData && providerData.length > 0) {
+          const { createBusinessNotification } = await import('@/utils/businessNotificationService');
+          await createBusinessNotification({
+            userId: providerData[0].user_id,
+            title: 'Booking Cancelled',
+            message: `Booking #${bookingId} for ${bookingData.pet_name} has been cancelled. Reason: ${cancellationReason}`,
+            type: 'warning',
+            link: `/cremation/dashboard`,
+            shouldSendEmail: true
+          });
+        }
+      }
+    } catch (notificationError) {
+      console.error('Error notifying business:', notificationError);
     }
 
     // Send booking cancellation email

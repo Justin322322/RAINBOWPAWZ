@@ -30,6 +30,7 @@ import CremationCertificate from '@/components/certificates/CremationCertificate
 import BookingTimeline from '@/components/booking/BookingTimeline';
 import RefundRequest from '@/components/payment/RefundRequest';
 import RefundStatus from '@/components/payment/RefundStatus';
+import CancellationModal from '@/components/booking/CancellationModal';
 
 interface RefundData {
   id: number;
@@ -76,6 +77,7 @@ interface BookingData {
   delivery_fee?: number;
   first_name?: string;
   last_name?: string;
+  cancellation_reason?: string;
 }
 
 interface BookingsPageProps {
@@ -173,7 +175,6 @@ const BookingsPage: React.FC<BookingsPageProps> = ({ userData }) => {
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [showCertificateModal, setShowCertificateModal] = useState(false);
   const [isCancelling, setIsCancelling] = useState(false);
-  const [cancelSuccess, setCancelSuccess] = useState(false);
   const [cancelledBookingIds, setCancelledBookingIds] = useState<number[]>([]);
   const [reviewedBookingIds, setReviewedBookingIds] = useState<number[]>([]);
   const [refreshCounter, _setRefreshCounter] = useState(0);
@@ -367,17 +368,14 @@ const BookingsPage: React.FC<BookingsPageProps> = ({ userData }) => {
   // Handle initiating booking cancellation
   const handleCancelBooking = (booking: BookingData) => {
     setSelectedBooking(booking);
-    // Reset cancel success state when opening the modal
-    setCancelSuccess(false);
     setShowCancelModal(true);
   };
 
   // Handle confirming booking cancellation
-  const confirmCancelBooking = async () => {
+  const confirmCancelBooking = async (reason: string) => {
     if (!selectedBooking) return;
 
     setIsCancelling(true);
-    setCancelSuccess(false);
 
     try {
       // Make API call to cancel the booking with credentials to ensure cookies are sent
@@ -386,7 +384,8 @@ const BookingsPage: React.FC<BookingsPageProps> = ({ userData }) => {
         headers: {
           'Content-Type': 'application/json'
         },
-        credentials: 'include' // This ensures cookies (including auth_token) are sent with the request
+        credentials: 'include', // This ensures cookies (including auth_token) are sent with the request
+        body: JSON.stringify({ reason })
       });
 
       if (!response.ok) {
@@ -410,7 +409,8 @@ const BookingsPage: React.FC<BookingsPageProps> = ({ userData }) => {
           ? {
               ...booking,
               status: 'cancelled' as BookingData['status'],
-              payment_status: booking.payment_status
+              payment_status: booking.payment_status,
+              cancellation_reason: reason
             }
           : booking
       );
@@ -423,9 +423,6 @@ const BookingsPage: React.FC<BookingsPageProps> = ({ userData }) => {
       } else {
         setBookings(updatedBookings);
       }
-
-      // Mark this booking as successfully cancelled
-      setCancelSuccess(true);
 
       // Add this booking ID to the list of cancelled bookings
       if (selectedBooking.id) {
@@ -790,6 +787,14 @@ const BookingsPage: React.FC<BookingsPageProps> = ({ userData }) => {
                           </span>
                         </div>
                         <p className="text-sm text-gray-600 mt-1">{booking.service_name || 'Service'}</p>
+                        {booking.status === 'cancelled' && booking.cancellation_reason && (
+                          <div className="mt-2 flex items-start">
+                            <span className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-red-50 text-red-700 border border-red-200">
+                              <ExclamationTriangleIcon className="h-3 w-3 mr-1 flex-shrink-0" />
+                              Reason: {booking.cancellation_reason}
+                            </span>
+                          </div>
+                        )}
 
                         {/* Mini Progress Bar */}
                         <div className="mt-2">
@@ -1041,6 +1046,16 @@ const BookingsPage: React.FC<BookingsPageProps> = ({ userData }) => {
                                 <div className="mb-4">
                                   <h2 className="text-xl sm:text-2xl font-semibold text-gray-900 mb-1">{selectedBooking.pet_name}</h2>
                                   <p className="text-sm sm:text-base text-gray-600">{selectedBooking.pet_type || 'Pet'}</p>
+                                  {selectedBooking.status === 'cancelled' && selectedBooking.cancellation_reason && (
+                                    <div className="mt-3 inline-flex items-start px-3 py-2 rounded-lg text-xs font-medium bg-red-50 text-red-700 border border-red-200">
+                                      <ExclamationTriangleIcon className="h-4 w-4 mr-2 flex-shrink-0 mt-0.5" />
+                                      <div>
+                                        <span className="font-semibold">Cancellation Reason:</span>
+                                        <br />
+                                        {selectedBooking.cancellation_reason}
+                                      </div>
+                                    </div>
+                                  )}
                                 </div>
 
                                 <div className="space-y-3">
@@ -1314,92 +1329,16 @@ const BookingsPage: React.FC<BookingsPageProps> = ({ userData }) => {
         </Dialog>
       </Transition>
 
-      {/* Cancel Booking Confirmation Modal */}
-      <Transition appear show={showCancelModal} as={Fragment}>
-        <Dialog as="div" className="relative z-50" onClose={() => !isCancelling && setShowCancelModal(false)}>
-          <Transition.Child
-            as={Fragment}
-            enter="ease-out duration-300"
-            enterFrom="opacity-0"
-            enterTo="opacity-100"
-            leave="ease-in duration-200"
-            leaveFrom="opacity-100"
-            leaveTo="opacity-0"
-          >
-            <div className="fixed inset-0 bg-black bg-opacity-25" />
-          </Transition.Child>
-
-          <div className="fixed inset-0 overflow-y-auto">
-            <div className="flex min-h-full items-center justify-center p-4 text-center">
-              <Transition.Child
-                as={Fragment}
-                enter="ease-out duration-300"
-                enterFrom="opacity-0 scale-95"
-                enterTo="opacity-100 scale-100"
-                leave="ease-in duration-200"
-                leaveFrom="opacity-100 scale-100"
-                leaveTo="opacity-0 scale-95"
-              >
-                <Dialog.Panel className="w-full max-w-md transform overflow-hidden rounded-2xl bg-white p-6 text-left align-middle shadow-xl transition-all">
-                  {selectedBooking && cancelSuccess ? (
-                    <div className="text-center py-4">
-                      <CheckCircleIcon className="mx-auto h-12 w-12 text-green-500 mb-4" />
-                      <Dialog.Title as="h3" className="text-lg font-medium leading-6 text-gray-900">
-                        Booking Cancelled
-                      </Dialog.Title>
-                      <p className="mt-2 text-sm text-gray-500">
-                        Your booking has been successfully cancelled.
-                      </p>
-                    </div>
-                  ) : (
-                    <>
-                      <div className="flex items-center justify-center mb-4">
-                        <div className="flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-red-100">
-                          <ExclamationTriangleIcon className="h-6 w-6 text-red-600" aria-hidden="true" />
-                        </div>
-                      </div>
-                      <Dialog.Title as="h3" className="text-center text-lg font-medium leading-6 text-gray-900">
-                        Cancel Booking
-                      </Dialog.Title>
-                      <div className="mt-3">
-                        <p className="text-sm text-gray-500 text-center">
-                          Are you sure you want to cancel this booking? This action cannot be undone.
-                        </p>
-                      </div>
-
-                      <div className="mt-6 flex justify-center space-x-3">
-                        <button
-                          type="button"
-                          className="inline-flex justify-center rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none"
-                          onClick={() => setShowCancelModal(false)}
-                          disabled={isCancelling}
-                        >
-                          No, Keep It
-                        </button>
-                        <button
-                          type="button"
-                          className="inline-flex justify-center rounded-md border border-transparent bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 focus:outline-none disabled:opacity-50"
-                          onClick={confirmCancelBooking}
-                          disabled={isCancelling}
-                        >
-                          {isCancelling ? (
-                            <>
-                              <div className="spinner-sm mr-2"></div>
-                              Cancelling...
-                            </>
-                          ) : (
-                            'Yes, Cancel'
-                          )}
-                        </button>
-                      </div>
-                    </>
-                  )}
-                </Dialog.Panel>
-              </Transition.Child>
-            </div>
-          </div>
-        </Dialog>
-      </Transition>
+      {/* Cancel Booking Modal */}
+      {selectedBooking && (
+        <CancellationModal
+          isOpen={showCancelModal}
+          onClose={() => setShowCancelModal(false)}
+          onConfirm={confirmCancelBooking}
+          petName={selectedBooking.pet_name}
+          isCancelling={isCancelling}
+        />
+      )}
 
       {/* Review Modal */}
       {selectedBooking && currentUserData && (currentUserData.id || currentUserData.user_id) && (

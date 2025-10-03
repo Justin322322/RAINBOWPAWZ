@@ -25,6 +25,8 @@ const ReviewForm: React.FC<ReviewFormProps> = ({
 }) => {
   const [rating, setRating] = useState(0);
   const [comment, setComment] = useState('');
+  const [images, setImages] = useState<File[]>([]);
+  const [imagePreviews, setImagePreviews] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [isSuccess, setIsSuccess] = useState(false);
@@ -36,6 +38,50 @@ const ReviewForm: React.FC<ReviewFormProps> = ({
 
   const handleCommentChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setComment(e.target.value);
+  };
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    
+    // Limit to 5 images
+    if (images.length + files.length > 5) {
+      setError('You can upload a maximum of 5 images');
+      return;
+    }
+
+    // Validate file types and sizes
+    const validFiles = files.filter(file => {
+      const isValidType = file.type.startsWith('image/');
+      const isValidSize = file.size <= 5 * 1024 * 1024; // 5MB max
+      
+      if (!isValidType) {
+        showToast(`${file.name} is not a valid image file`, 'error');
+        return false;
+      }
+      if (!isValidSize) {
+        showToast(`${file.name} is too large (max 5MB)`, 'error');
+        return false;
+      }
+      return true;
+    });
+
+    if (validFiles.length > 0) {
+      setImages(prev => [...prev, ...validFiles]);
+      
+      // Create previews
+      validFiles.forEach(file => {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          setImagePreviews(prev => [...prev, reader.result as string]);
+        };
+        reader.readAsDataURL(file);
+      });
+    }
+  };
+
+  const removeImage = (index: number) => {
+    setImages(prev => prev.filter((_, i) => i !== index));
+    setImagePreviews(prev => prev.filter((_, i) => i !== index));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -64,21 +110,27 @@ const ReviewForm: React.FC<ReviewFormProps> = ({
         service_provider_id: providerId,
         rating,
         comment: comment.substring(0, 500), // Limit comment length
+        images: images.length
       });
+
+      // Create FormData to handle file uploads
+      const formData = new FormData();
+      formData.append('booking_id', bookingId.toString());
+      formData.append('user_id', userId.toString());
+      formData.append('service_provider_id', providerId.toString());
+      formData.append('rating', rating.toString());
+      formData.append('comment', comment.substring(0, 500));
+      
+      // Append images
+      images.forEach((image, index) => {
+        formData.append(`image_${index}`, image);
+      });
+      formData.append('image_count', images.length.toString());
 
       const response = await fetch('/api/reviews', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
         credentials: 'include',
-        body: JSON.stringify({
-          booking_id: bookingId,
-          user_id: userId,
-          service_provider_id: providerId,
-          rating,
-          comment: comment.substring(0, 500), // Limit comment length
-        }),
+        body: formData,
       });
 
       const responseData = await response.json();
@@ -205,6 +257,62 @@ const ReviewForm: React.FC<ReviewFormProps> = ({
             <p className="mt-2 text-xs text-gray-500">
               Note: Once submitted, reviews cannot be edited. Reviews will expire 5 days after booking completion.
             </p>
+          </div>
+
+          {/* Image Upload Section */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Add Photos (optional)
+            </label>
+            <div className="space-y-3">
+              {/* Image Previews */}
+              {imagePreviews.length > 0 && (
+                <div className="grid grid-cols-3 gap-3">
+                  {imagePreviews.map((preview, index) => (
+                    <div key={index} className="relative group">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={preview}
+                        alt={`Preview ${index + 1}`}
+                        className="w-full h-24 object-cover rounded-lg border border-gray-300"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => removeImage(index)}
+                        className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Upload Button */}
+              {images.length < 5 && (
+                <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100 transition-colors">
+                  <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                    <svg className="w-8 h-8 mb-2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                    </svg>
+                    <p className="mb-1 text-sm text-gray-500">
+                      <span className="font-semibold">Click to upload</span> or drag and drop
+                    </p>
+                    <p className="text-xs text-gray-500">PNG, JPG, GIF up to 5MB (max 5 images)</p>
+                  </div>
+                  <input
+                    type="file"
+                    className="hidden"
+                    accept="image/*"
+                    multiple
+                    onChange={handleImageChange}
+                    disabled={isSubmitting}
+                  />
+                </label>
+              )}
+            </div>
           </div>
 
           <div className="flex justify-end space-x-3">
