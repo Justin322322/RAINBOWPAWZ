@@ -154,7 +154,7 @@ export async function POST(request: NextRequest) {
             title: 'Booking Cancelled',
             message: `Booking #${bookingId} for ${bookingData.pet_name} has been cancelled. Reason: ${cancellationReason}`,
             type: 'warning',
-            link: `/cremation/dashboard`,
+            link: `/cremation/refunds`,
             shouldSendEmail: true
           });
         }
