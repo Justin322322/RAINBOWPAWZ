@@ -1,4 +1,4 @@
-<img width="794" height="653" alt="image" src="https://github.com/user-attachments/assets/b4207c58-86d7-42e8-9a9c-ac2a8c8f0a83" /># Rainbow Paws System Capabilities
+# Rainbow Paws System Capabilities
 
 ## A Pet Memorial Services Platform
 
