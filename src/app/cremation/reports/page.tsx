@@ -226,7 +226,10 @@ ${reportData.topServices.map((service: any, index: number) =>
                   <StatsCardSkeleton count={1} />
                 ) : (
                   <BookingsBarChart
-                    data={(reportData.monthlyData as any) || []}
+                    data={reportData.monthlyData.map((item: any) => ({
+                      label: item.month,
+                      value: item.revenue
+                    }))}
                     height={300}
                   />
                 )}
@@ -274,7 +277,13 @@ ${reportData.topServices.map((service: any, index: number) =>
                 )}
                 {!loading && (
                   <div className="mt-6">
-                    <RefundsLineChart data={(reportData.monthlyData as any) || []} height={220} />
+                    <RefundsLineChart 
+                      data={reportData.monthlyData.map((item: any) => ({
+                        label: item.month,
+                        value: item.refunds
+                      }))} 
+                      height={220} 
+                    />
                   </div>
                 )}
               </div>
