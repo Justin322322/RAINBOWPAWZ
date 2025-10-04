@@ -307,7 +307,7 @@ const AdminCremationCentersPage = React.memo(function AdminCremationCentersPage(
     return () => {
       isMounted = false;
     };
-  }, [showToast]);
+  }, []);
 
   // Handle appeal notification from URL parameters
   useEffect(() => {
@@ -406,7 +406,7 @@ const AdminCremationCentersPage = React.memo(function AdminCremationCentersPage(
     }, 100);
     
     return appeals;
-  }, [loadCenterAppeals]);
+  }, []);
 
   // Move the useEffect here after handleViewDetails is defined
   useEffect(() => {
@@ -481,15 +481,10 @@ const AdminCremationCentersPage = React.memo(function AdminCremationCentersPage(
     setCenterToAction(center);
     setRestrictReason('');
     
-    // Close all other modals first
-    setShowDetailsModal(false);
+    // Keep details modal open, just close other modals and open restrict modal on top
     setShowAppealModal(false);
     setShowRestoreModal(false);
-    
-    // Small delay to ensure modals are closed before opening new one
-    setTimeout(() => {
-      setShowRestrictModal(true);
-    }, 100);
+    setShowRestrictModal(true);
   };
 
   // Function to open the unrestrict modal
@@ -499,15 +494,10 @@ const AdminCremationCentersPage = React.memo(function AdminCremationCentersPage(
     
     setCenterToAction(center);
     
-    // Close all other modals first
-    setShowDetailsModal(false);
+    // Keep details modal open, just close other modals and open unrestrict modal on top
     setShowAppealModal(false);
     setShowRestrictModal(false);
-    
-    // Small delay to ensure modals are closed before opening new one
-    setTimeout(() => {
-      setShowRestoreModal(true);
-    }, 100);
+    setShowRestoreModal(true);
   };
 
 
@@ -587,13 +577,10 @@ const AdminCremationCentersPage = React.memo(function AdminCremationCentersPage(
         setSuccessCenterName('');
       }, 3000);
 
-      // Close the modal
+      // Close both modals
       setShowRestrictModal(false);
+      setShowDetailsModal(false);
 
-      // Reopen the details modal to show updated status
-      setTimeout(() => {
-        setShowDetailsModal(true);
-      }, 200);
     } catch (err) {
       showToast(err instanceof Error ? err.message : 'Failed to restrict cremation center', 'error');
     } finally {
@@ -742,13 +729,10 @@ const AdminCremationCentersPage = React.memo(function AdminCremationCentersPage(
       setSuccessCenterName('');
     }, 3000);
 
-    // Close the modal
+    // Close both modals
     setShowRestoreModal(false);
+    setShowDetailsModal(false);
 
-    // Reopen the details modal to show updated status
-    setTimeout(() => {
-      setShowDetailsModal(true);
-    }, 200);
   };
   // Helper function to get status badge based on status
   const getStatusBadge = (status: string, verified: boolean, centerObj?: CremationCenter) => {

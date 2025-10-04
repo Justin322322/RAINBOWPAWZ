@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifySecureAuth } from '@/lib/secureAuth';
 import { query } from '@/lib/db';
-import { processRefund } from '@/services/refundService';
 import { createNotification } from '@/utils/notificationService';
 import { sendEmail } from '@/lib/consolidatedEmailService';
 import { sendSMSAsync } from '@/lib/httpSmsService';
+import { cancelBookingWithRefund } from '@/services/bookingCancellationService';
 
 async function ensureReceiptTable(): Promise<void> {
   await query(`
@@ -97,31 +97,43 @@ export async function POST(request: NextRequest) {
       }
       return NextResponse.json({ success: true });
     } else {
-      // Capture current booking info before changing status
-      let bookingInfo: any | null = null;
+      // Use the same comprehensive refund processing as cancel booking
+      console.log('🔄 [confirm] Processing receipt rejection with comprehensive refund handling');
+      
       try {
-        const rows = await query(
-          `SELECT id, user_id, COALESCE(total_price, base_price, 0) AS amount, 
-                  COALESCE(payment_method, 'cash') AS payment_method,
-                  COALESCE(payment_status, 'not_paid') AS payment_status
-           FROM bookings WHERE id = ? LIMIT 1`,
-          [bookingId]
-        ) as any[];
-        bookingInfo = rows && rows.length > 0 ? rows[0] : null;
-      } catch {}
+        // Update receipt status first
+        if (tableExists) {
+          console.log('❌ [confirm] Rejecting receipt in payment_receipts table');
+          await query(
+            'UPDATE payment_receipts SET status = \"rejected\", confirmed_by = ?, confirmed_at = NOW(), rejection_reason = ? WHERE booking_id = ?',
+            [parseInt(user.userId), reason, bookingId]
+          );
+        }
 
-      if (tableExists) {
-        console.log('❌ [confirm] Rejecting receipt in payment_receipts table');
-        await query(
-          'UPDATE payment_receipts SET status = \"rejected\", confirmed_by = ?, confirmed_at = NOW(), rejection_reason = ? WHERE booking_id = ?',
-          [parseInt(user.userId), reason, bookingId]
-        );
-      }
-      console.log('🔄 [confirm] Cancelling booking due to receipt rejection');
-      try {
-        await query('UPDATE bookings SET status = \"cancelled\", payment_status = \"awaiting_payment_confirmation\", cancellation_reason = ? WHERE id = ?', [reason, bookingId]);
-        console.log('✅ [confirm] Booking cancelled due to receipt rejection');
-        
+        // Use the same cancellation service with refund processing as cancel booking
+        const cancellationResult = await cancelBookingWithRefund({
+          bookingId: bookingId,
+          reason: `Receipt rejected: ${reason || 'Receipt rejected'}`,
+          cancelledBy: parseInt(user.userId),
+          cancelledByType: 'provider',
+          notes: `Receipt rejected by business staff. Reason: ${reason || 'Receipt rejected'}`,
+          ipAddress: request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown'
+        });
+
+        if (!cancellationResult.success) {
+          console.error('❌ [confirm] Failed to cancel booking with refund:', cancellationResult.message);
+          return NextResponse.json({
+            error: cancellationResult.message || 'Failed to process receipt rejection',
+            details: cancellationResult.error
+          }, { status: 400 });
+        }
+
+        console.log('✅ [confirm] Booking cancelled with refund processing:', {
+          refundInitiated: cancellationResult.refundInitiated,
+          refundType: cancellationResult.refundType,
+          refundId: cancellationResult.refundId
+        });
+
         // Send notification to user about receipt rejection
         try {
           await sendReceiptRejectionNotification(bookingId, reason || 'Receipt rejected');
@@ -129,29 +141,41 @@ export async function POST(request: NextRequest) {
           console.error('❌ [confirm] Failed to send receipt rejection notification:', notificationError);
           // Don't fail the main operation if notification fails
         }
-      } catch (updateError) {
-        console.error('❌ [confirm] Failed to UPDATE bookings:', updateError);
-        throw updateError;
-      }
-      // If this booking had been marked paid via QR/manual, create a manual refund record for review
-      try {
-        const wasPaid = (bookingInfo?.payment_status || '').toLowerCase() === 'paid';
-        const method = (bookingInfo?.payment_method || '').toLowerCase();
-        const isQR = method.includes('qr') || method.includes('scan') || method.includes('manual');
-        if (bookingInfo && wasPaid && isQR) {
-          await processRefund({
-            bookingId: bookingId,
-            amount: Number(bookingInfo.amount || 0),
-            reason: 'Receipt rejected - reversing QR payment',
-            initiatedBy: parseInt(user.userId),
-            initiatedByType: 'staff',
-            notes: reason || undefined,
+
+        return NextResponse.json({ 
+          success: true,
+          message: cancellationResult.message,
+          refund_initiated: cancellationResult.refundInitiated,
+          refund_id: cancellationResult.refundId,
+          refund_type: cancellationResult.refundType,
+          refund_instructions: cancellationResult.refundInstructions
+        });
+
+      } catch (cancellationError) {
+        console.error('❌ [confirm] Error in comprehensive cancellation process:', cancellationError);
+        
+        // Fallback to simple cancellation if comprehensive process fails
+        try {
+          await query('UPDATE bookings SET status = \"cancelled\", payment_status = \"awaiting_payment_confirmation\", cancellation_reason = ? WHERE id = ?', [reason, bookingId]);
+          console.log('✅ [confirm] Fallback: Booking cancelled without comprehensive refund processing');
+          
+          // Send notification
+          try {
+            await sendReceiptRejectionNotification(bookingId, reason || 'Receipt rejected');
+          } catch (notificationError) {
+            console.error('❌ [confirm] Failed to send receipt rejection notification:', notificationError);
+          }
+          
+          return NextResponse.json({ 
+            success: true,
+            message: 'Receipt rejected and booking cancelled (fallback mode)',
+            refund_initiated: false
           });
+        } catch (fallbackError) {
+          console.error('❌ [confirm] Fallback cancellation also failed:', fallbackError);
+          throw fallbackError;
         }
-      } catch (refundErr) {
-        console.warn('⚠️ [confirm] Failed to create refund after receipt rejection (non-fatal):', refundErr);
       }
-      return NextResponse.json({ success: true });
     }
   } catch (e) {
     console.error('❌ [confirm] Critical error in payment confirmation:', e);

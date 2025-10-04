@@ -335,35 +335,17 @@ const AdminFurParentsPage = React.memo(function AdminFurParentsPage() {
   const openRestrictModal = (user: User) => {
     setUserToAction(user);
     setRestrictReason('');
-    // Close details modal if it's open to avoid modal conflicts
-    if (showDetailsModal) {
-      setShowDetailsModal(false);
-      // Use setTimeout to ensure the details modal closes before opening restrict modal
-      setTimeout(() => {
-        setShowRestrictModal(true);
-        setOpenDropdownId(null);
-      }, 150);
-    } else {
-      setShowRestrictModal(true);
-      setOpenDropdownId(null);
-    }
+    // Keep details modal open, just open restrict modal on top
+    setShowRestrictModal(true);
+    setOpenDropdownId(null);
   };
 
   // Function to open the unrestrict modal
   const openUnrestrictModal = (user: User) => {
     setUserToAction(user);
-    // Close details modal if it's open to avoid modal conflicts
-    if (showDetailsModal) {
-      setShowDetailsModal(false);
-      // Use setTimeout to ensure the details modal closes before opening restore modal
-      setTimeout(() => {
-        setShowRestoreModal(true);
-        setOpenDropdownId(null);
-      }, 150);
-    } else {
-      setShowRestoreModal(true);
-      setOpenDropdownId(null);
-    }
+    // Keep details modal open, just open unrestrict modal on top
+    setShowRestoreModal(true);
+    setOpenDropdownId(null);
   };
 
   // Function to toggle dropdown
@@ -372,7 +354,7 @@ const AdminFurParentsPage = React.memo(function AdminFurParentsPage() {
   };
 
   // Handle restricting a user
-  const handleRestrictUser = async () => {
+  const handleRestrictUser = async (reason?: string) => {
     if (!userToAction || isProcessing) return;
 
     try {
@@ -385,7 +367,7 @@ const AdminFurParentsPage = React.memo(function AdminFurParentsPage() {
         },
         body: JSON.stringify({
           restricted: true,
-          reason: restrictReason || 'Restricted by admin'
+          reason: reason || restrictReason || 'Restricted by admin'
         }),
       });
 
@@ -408,7 +390,7 @@ const AdminFurParentsPage = React.memo(function AdminFurParentsPage() {
             ...u,
             status: 'restricted',
             restriction: data.user?.restriction || {
-              reason: restrictReason || 'Restricted by admin',
+              reason: reason || restrictReason || 'Restricted by admin',
               restriction_date: new Date().toISOString()
             }
           } : u
@@ -421,7 +403,7 @@ const AdminFurParentsPage = React.memo(function AdminFurParentsPage() {
           ...selectedUser,
           status: 'restricted',
           restriction: data.user?.restriction || {
-            reason: restrictReason || 'Restricted by admin',
+            reason: reason || restrictReason || 'Restricted by admin',
             restriction_date: new Date().toISOString()
           }
         });
@@ -432,14 +414,10 @@ const AdminFurParentsPage = React.memo(function AdminFurParentsPage() {
       setIsRestrictSuccess(true);
       setTimeout(() => setIsRestrictSuccess(false), 3000);
 
-      // Close the modal
+      // Close both modals
       setShowRestrictModal(false);
+      setShowDetailsModal(false);
       setRestrictReason('');
-
-      // Reopen the details modal to show updated status
-      setTimeout(() => {
-        setShowDetailsModal(true);
-      }, 200);
     } catch (error) {
       showToast(error instanceof Error ? error.message : 'Failed to restrict user', 'error');
     } finally {
@@ -501,13 +479,9 @@ const AdminFurParentsPage = React.memo(function AdminFurParentsPage() {
       setIsRestoreSuccess(true);
       setTimeout(() => setIsRestoreSuccess(false), 3000);
 
-      // Close the modal
+      // Close both modals
       setShowRestoreModal(false);
-
-      // Reopen the details modal to show updated status
-      setTimeout(() => {
-        setShowDetailsModal(true);
-      }, 200);
+      setShowDetailsModal(false);
     } catch (error) {
       showToast(error instanceof Error ? error.message : 'Failed to unrestrict user', 'error');
     } finally {
@@ -1185,7 +1159,7 @@ const AdminFurParentsPage = React.memo(function AdminFurParentsPage() {
         onClose={() => setShowRestrictModal(false)}
         userToAction={userToAction}
         initialReason={restrictReason}
-        onConfirm={(reason) => { setRestrictReason(reason); handleRestrictUser(); }}
+        onConfirm={(reason) => { handleRestrictUser(reason); }}
         customZIndex="z-[99999]"
       />
 

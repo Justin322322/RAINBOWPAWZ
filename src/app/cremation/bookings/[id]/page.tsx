@@ -425,12 +425,33 @@ function BookingDetailsPage({ userData }: BookingDetailsProps) {
       const j = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(j.error || 'Failed to update receipt');
       setShowReceiptModal(false);
-      showToastRef.current?.(action === 'confirm' ? 'Payment confirmed.' : 'Receipt rejected and booking cancelled.', 'success');
-      setBooking(prev => prev ? { 
-        ...prev, 
-        payment_status: action === 'confirm' ? 'paid' : 'awaiting_payment_confirmation',
-        status: action === 'reject' ? 'cancelled' : prev.status
-      } : prev);
+      
+      if (action === 'confirm') {
+        showToastRef.current?.('Payment confirmed.', 'success');
+        setBooking(prev => prev ? { 
+          ...prev, 
+          payment_status: 'paid'
+        } : prev);
+      } else {
+        // Handle reject with refund information
+        const refundMessage = j.refund_initiated 
+          ? `Receipt rejected and booking cancelled. Refund ${j.refund_type || 'processing'} initiated.`
+          : 'Receipt rejected and booking cancelled.';
+        
+        showToastRef.current?.(refundMessage, 'success');
+        setBooking(prev => prev ? { 
+          ...prev, 
+          payment_status: 'awaiting_payment_confirmation',
+          status: 'cancelled'
+        } : prev);
+        
+        // If refund was initiated, show additional info
+        if (j.refund_initiated && j.refund_instructions) {
+          setTimeout(() => {
+            showToastRef.current?.(j.refund_instructions, 'info');
+          }, 2000);
+        }
+      }
     } catch (err) {
       showToastRef.current?.(err instanceof Error ? err.message : 'Failed to process action', 'error');
     } finally {

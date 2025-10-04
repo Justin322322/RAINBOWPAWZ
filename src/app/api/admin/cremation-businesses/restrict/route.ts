@@ -181,26 +181,34 @@ export async function POST(request: NextRequest) {
           `, [action === 'restrict' ? 'restricted' : 'active', userId]);
 
 
-          // Handle users table if it exists
-          const restrictionsTableResult = await query(`
-            SHOW TABLES LIKE 'users'
-          `) as any[];
+          // Update user restriction data
+          if (action === 'restrict') {
+            // Store restriction data in the restrictions_data JSON field
+            const restrictionData = {
+              reason: body.reason || 'Restricted by admin',
+              duration: body.duration || 'indefinite',
+              restricted_at: new Date().toISOString(),
+              restricted_by: user.user_id
+            };
 
-          if (restrictionsTableResult && restrictionsTableResult.length > 0) {
-            if (action === 'restrict') {
-              // Add a new restriction record
-              await query(`
-                INSERT INTO users (user_id, reason, duration)
-                VALUES (?, ?, ?)
-              `, [userId, body.reason || 'Restricted by admin', body.duration || 'indefinite']);
-            } else {
-              // Mark existing restrictions as inactive
-              await query(`
-                UPDATE users
-                SET is_active = 0
-                WHERE user_id = ? AND is_active = 1
-              `, [userId]);
-            }
+            await query(`
+              UPDATE users
+              SET 
+                restriction_status = 'restricted',
+                restrictions_data = ?,
+                updated_at = NOW()
+              WHERE user_id = ?
+            `, [JSON.stringify(restrictionData), userId]);
+          } else {
+            // Clear restriction data when restoring
+            await query(`
+              UPDATE users
+              SET 
+                restriction_status = 'none',
+                restrictions_data = NULL,
+                updated_at = NOW()
+              WHERE user_id = ?
+            `, [userId]);
           }
         }
       } catch {

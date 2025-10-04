@@ -309,13 +309,71 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // Get appeals for all businesses in one query for better performance
+    // Get appeals and restrictions for all businesses in one query for better performance
     let businessAppeals: { [key: string]: any[] } = {};
+    let businessRestrictions: { [key: string]: any } = {};
     try {
       const businessIds = businesses.map(b => b.id).filter(id => id);
-      console.log('Fetching appeals for business IDs:', businessIds);
+      console.log('Fetching appeals and restrictions for business IDs:', businessIds);
 
       if (businessIds.length > 0) {
+        // Get user IDs for each business to fetch restrictions
+        const userResult = await query(`
+          SELECT provider_id, user_id 
+          FROM service_providers 
+          WHERE provider_id IN (${businessIds.map(() => '?').join(',')})
+        `, businessIds) as any[];
+
+        const userIdToBusinessId: { [key: number]: number } = {};
+        userResult.forEach((row: any) => {
+          userIdToBusinessId[row.user_id] = row.provider_id;
+        });
+
+        const userIds = userResult.map((row: any) => row.user_id);
+
+        // Fetch restrictions for all users
+        if (userIds.length > 0) {
+          try {
+            const restrictionsQuery = `
+              SELECT 
+                user_id,
+                restriction_status,
+                restrictions_data,
+                updated_at
+              FROM users 
+              WHERE user_id IN (${userIds.map(() => '?').join(',')}) 
+              AND restriction_status = 'restricted'
+              AND restrictions_data IS NOT NULL
+              ORDER BY updated_at DESC
+            `;
+            const restrictions = await query(restrictionsQuery, userIds) as any[];
+            
+            // Group restrictions by business ID
+            restrictions.forEach(restriction => {
+              const businessId = userIdToBusinessId[restriction.user_id];
+              if (businessId && restriction.restrictions_data) {
+                try {
+                  const restrictionData = JSON.parse(restriction.restrictions_data);
+                  businessRestrictions[businessId] = {
+                    reason: restrictionData.reason || 'Restricted by admin',
+                    restriction_date: restrictionData.restricted_at || restriction.updated_at
+                  };
+                } catch (parseError) {
+                  console.error('Error parsing restriction data:', parseError);
+                  // Fallback to default values
+                  businessRestrictions[businessId] = {
+                    reason: 'Restricted by admin',
+                    restriction_date: restriction.updated_at
+                  };
+                }
+              }
+            });
+          } catch (restrictionError) {
+            console.error('Error fetching restrictions:', restrictionError);
+            // Continue without restrictions data
+          }
+        }
+
         // Consolidated schema: appeals table may not exist; handle gracefully
         // Attempt to select from appeals if present, otherwise skip without error
         let appeals: any[] = [];
@@ -350,10 +408,11 @@ export async function GET(request: NextRequest) {
         });
 
         console.log('Grouped business appeals:', businessAppeals);
+        console.log('Grouped business restrictions:', businessRestrictions);
       }
     } catch (error) {
-      console.error('Error fetching business appeals:', error);
-      // Continue without appeals data
+      console.error('Error fetching business appeals and restrictions:', error);
+      // Continue without appeals and restrictions data
     }
 
     // Format the results
@@ -441,7 +500,8 @@ export async function GET(request: NextRequest) {
           taxIdNumber: business.tax_id_number || '',
           documentPath: business.document_path || '',
           profile_picture: business.profile_picture || null,
-          appeals: businessAppeals[business.id] || []
+          appeals: businessAppeals[business.id] || [],
+          restriction: businessRestrictions[business.id] || null
         };
       } catch {
         // Return a simplified record if formatting fails
@@ -460,7 +520,8 @@ export async function GET(request: NextRequest) {
           description: 'Error formatting description',
           verified: false,
           profile_picture: business.profile_picture || null,
-          appeals: businessAppeals[business.id] || []
+          appeals: businessAppeals[business.id] || [],
+          restriction: businessRestrictions[business.id] || null
         };
       }
     });

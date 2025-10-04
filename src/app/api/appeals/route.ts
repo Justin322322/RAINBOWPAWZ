@@ -51,7 +51,6 @@ async function ensureAppealsTable() {
         appeal_type ENUM('restriction', 'suspension', 'ban') NOT NULL DEFAULT 'restriction',
         subject VARCHAR(255) NOT NULL,
         message TEXT NOT NULL,
-        evidence_files JSON NULL,
         status ENUM('pending', 'under_review', 'approved', 'rejected') NOT NULL DEFAULT 'pending',
         admin_response TEXT NULL,
         admin_id INT NULL,
@@ -80,6 +79,15 @@ async function ensureAppealsTable() {
         INDEX idx_changed_at (changed_at)
       )
     `);
+
+    // Drop evidence_files column if it exists (for existing tables)
+    try {
+      await query(`ALTER TABLE appeals DROP COLUMN evidence_files`);
+      console.log('🔍 [Appeals Table] Dropped evidence_files column');
+    } catch {
+      // Column might not exist, which is fine
+      console.log('🔍 [Appeals Table] evidence_files column not found or already dropped');
+    }
   } catch (error) {
     console.error('Error creating appeals tables:', error);
     throw error;
@@ -96,7 +104,7 @@ export async function POST(request: NextRequest) {
 
     console.log('🔍 [Appeals POST] User:', { userId: user.userId, accountType: user.accountType, userIdType: typeof user.userId });
 
-    const { subject, message, appeal_type = 'restriction', evidence_files = [], business_id = null } = await request.json();
+    const { subject, message, appeal_type = 'restriction', business_id = null } = await request.json();
 
     if (!subject || !message) {
       return NextResponse.json({ error: 'Subject and message are required' }, { status: 400 });
@@ -163,9 +171,9 @@ export async function POST(request: NextRequest) {
     console.log('🔍 [Appeals POST] Creating appeal:', { user_id: parsedUserId, user_type, actual_business_id, appeal_type, subject, isNaN: isNaN(parsedUserId) });
     const result = await withTransaction(async (transaction) => {
       const insertResult = await transaction.query(`
-        INSERT INTO appeals (user_id, user_type, business_id, appeal_type, subject, message, evidence_files)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
-      `, [parsedUserId, user_type, actual_business_id, appeal_type, subject, message, JSON.stringify(evidence_files)]) as any;
+        INSERT INTO appeals (user_id, user_type, business_id, appeal_type, subject, message)
+        VALUES (?, ?, ?, ?, ?, ?)
+      `, [parsedUserId, user_type, actual_business_id, appeal_type, subject, message]) as any;
       console.log('🔍 [Appeals POST] Appeal created with ID:', insertResult.insertId);
       return insertResult.insertId;
     });
@@ -307,7 +315,6 @@ export async function GET(request: NextRequest) {
       success: true,
       appeals: appeals.map(appeal => ({
         ...appeal,
-        evidence_files: appeal.evidence_files ? JSON.parse(appeal.evidence_files) : []
       })),
       pagination: {
         total,
