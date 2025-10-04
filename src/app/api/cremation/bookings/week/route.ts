@@ -36,14 +36,14 @@ export async function GET(request: NextRequest) {
     // Count all active and pending bookings (exclude only cancelled)
     const bookings = await query(
       `SELECT 
-        DATE(booking_date) as date,
-        COUNT(*) as count
+        DATE(booking_date) AS date,
+        COUNT(*) AS count
       FROM bookings
       WHERE provider_id = ?
         AND booking_date BETWEEN ? AND ?
         AND status IN ('pending', 'confirmed', 'in_progress', 'completed')
       GROUP BY DATE(booking_date)
-      ORDER BY booking_date`,
+      ORDER BY DATE(booking_date)`,
       [providerId, startDate, endDate]
     ) as any[];
 
