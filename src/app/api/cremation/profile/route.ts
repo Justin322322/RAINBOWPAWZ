@@ -132,6 +132,7 @@ export async function GET(request: NextRequest) {
       provider_id: row.provider_id || null,
       business_name: row.business_name || null,
       business_type: row.provider_type || null,
+      provider_type: row.provider_type || null,
       business_entity_type: row.business_entity_type || null,
       business_phone: row.business_phone || row.phone,
       business_address: row.business_address || row.address,
@@ -152,6 +153,7 @@ export async function GET(request: NextRequest) {
     });
     console.log('🔍 [Business Profile GET] Profile data being returned:', {
       business_type: profileData.business_type,
+      provider_type: profileData.provider_type,
       business_entity_type: profileData.business_entity_type
     });
 

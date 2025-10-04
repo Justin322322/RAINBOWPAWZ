@@ -17,6 +17,7 @@ interface ConfirmationModalProps {
   variant?: 'default' | 'danger' | 'warning' | 'success' | 'info';
   icon?: React.ReactNode;
   successMessage?: string;
+  customZIndex?: string;
 }
 
 export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
@@ -30,6 +31,7 @@ export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
   variant = 'default',
   icon,
   successMessage = 'Action completed successfully!',
+  customZIndex,
 }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
@@ -69,6 +71,7 @@ export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
       title={title}
       size="small"
       variant={variant}
+      customZIndex={customZIndex}
     >
       <div className="flex items-start mb-4">
         {icon && (

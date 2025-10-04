@@ -1189,6 +1189,7 @@ const AdminFurParentsPage = React.memo(function AdminFurParentsPage() {
         confirmText="Unrestrict Access"
         variant="success"
         icon={<CheckCircleIcon className="h-6 w-6 text-green-600" />}
+        customZIndex="z-[99999]"
       />
 
       {/* Fur Parent Details Modal */}
@@ -1199,6 +1200,7 @@ const AdminFurParentsPage = React.memo(function AdminFurParentsPage() {
         size="large"
         className="max-w-2xl mx-4 sm:mx-auto"
         contentClassName="max-h-[85vh] overflow-y-auto"
+        customZIndex="z-[99999]"
       >
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm mt-20">
           {/* Header with overlapping avatar */}
@@ -1411,6 +1413,7 @@ const AdminFurParentsPage = React.memo(function AdminFurParentsPage() {
         }}
         title="Review Appeal"
         size="large"
+        customZIndex="z-[99999]"
       >
         {selectedAppeal && (
           <div className="space-y-6">

@@ -181,11 +181,11 @@ function ServicesPage({ userData }: ServicesPageProps) {
       const queryString = params.toString();
       const cacheKey = queryString;
 
-      // Check cache first (10 minute cache)
+      // Check cache first (2 minute cache for more frequent updates)
       if (!forceRefresh) {
         const cachedData = cache.get(cacheKey);
         const now = Date.now();
-        const CACHE_DURATION = 10 * 60 * 1000; // 10 minutes
+        const CACHE_DURATION = 2 * 60 * 1000; // 2 minutes
 
         if (cachedData && (now - cachedData.timestamp) < CACHE_DURATION) {
           setServiceProviders(cachedData.data.providers || []);
@@ -246,10 +246,16 @@ function ServicesPage({ userData }: ServicesPageProps) {
   // Initial fetch and refetch when location changes
   useEffect(() => {
     if (!isLoadingLocation && userLocation) {
-      fetchServiceProviders(1);
+      // Force refresh on initial load to get latest data
+      fetchServiceProviders(1, true);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userLocation?.address, isLoadingLocation]);
+
+  // Clear cache when component mounts to ensure fresh data
+  useEffect(() => {
+    setCache(new Map());
+  }, []);
 
 
 
