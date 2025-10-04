@@ -655,7 +655,8 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
         isAvailable,
         timeSlots,
         hasBookings: Boolean((availabilityInfo as any)?.hasBookings),
-        hasCancelled: Boolean((availabilityInfo as any)?.cancelledTimes && (availabilityInfo as any)?.cancelledTimes.length > 0),
+        // Red if either the day-level flag is set or there are cancelled times recorded
+        hasCancelled: Boolean((availabilityInfo as any)?.hasCancelled) || Boolean((availabilityInfo as any)?.cancelledTimes && (availabilityInfo as any)?.cancelledTimes.length > 0),
       });
     }
 
