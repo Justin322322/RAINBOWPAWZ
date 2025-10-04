@@ -585,29 +585,45 @@ export async function GET(request: Request) {
                 return;
               }
               
-              // Use the same geocoding API that the frontend uses for consistency
-              const geocodeResponse = await fetch(`${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/api/geocoding?address=${encodeURIComponent(provider.address)}`);
+              // Use the same geocoding API that the frontend uses for consistency with timeout
               let providerCoordinates = null;
-              if (geocodeResponse.ok) {
-                const results = await geocodeResponse.json();
-                if (results && results.length > 0) {
-                  const bestResult = results[0];
-                  providerCoordinates = { lat: bestResult.lat, lng: bestResult.lon };
+              try {
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 3000);
+                
+                const geocodeResponse = await fetch(`${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/api/geocoding?address=${encodeURIComponent(provider.address)}`, {
+                  signal: controller.signal
+                });
+                
+                clearTimeout(timeoutId);
+                
+                if (geocodeResponse.ok) {
+                  const results = await geocodeResponse.json();
+                  if (results && results.length > 0) {
+                    const bestResult = results[0];
+                    providerCoordinates = { lat: bestResult.lat, lng: bestResult.lon };
+                  }
                 }
+              } catch (geocodeError) {
+                console.warn(`Geocoding API failed for provider ${provider.id}:`, geocodeError);
               }
               
               // Fallback to server-side geocoding if API fails
               if (!providerCoordinates) {
-                providerCoordinates = await geocodeAddress(provider.address);
+                try {
+                  providerCoordinates = await geocodeAddress(provider.address);
+                } catch (fallbackError) {
+                  console.warn(`Fallback geocoding failed for provider ${provider.id}:`, fallbackError);
+                }
               }
               
               if (providerCoordinates) {
-                // Try routing service first (same as directions button)
+                // Try routing service first (same as directions button) with shorter timeout for Vercel
                 try {
                   const routeResult = await routingService.getRoute(
                     [userCoordinates.lat, userCoordinates.lng],
                     [providerCoordinates.lat, providerCoordinates.lng],
-                    { timeout: 5000, trafficAware: true }
+                    { timeout: 3000, trafficAware: true }
                   );
                   
                   if (routeResult?.distance) {

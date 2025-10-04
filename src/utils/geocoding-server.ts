@@ -111,25 +111,32 @@ async function geocodeWithPhoton(address: string): Promise<any[]> {
 
   const url = `${GEOCODING_PROVIDERS.photon.baseUrl}?${params.toString()}`;
   
-  const response = await fetch(url, {
-    headers: {
-      'User-Agent': 'RainbowPaws/1.0 (contact@rainbowpaws.com)',
-      'Accept': 'application/json'
-    }
-  });
-
-  if (!response.ok) {
-    throw new Error(`Photon API error: ${response.status}`);
-  }
-
-  const data = await response.json();
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 3000); // 3 second timeout
   
-  if (!data.features || data.features.length === 0) {
-    return [];
-  }
+  try {
+    const response = await fetch(url, {
+      headers: {
+        'User-Agent': 'RainbowPaws/1.0 (contact@rainbowpaws.com)',
+        'Accept': 'application/json'
+      },
+      signal: controller.signal
+    });
+    
+    clearTimeout(timeoutId);
 
-  // Filter and enhance results for Philippines
-  return data.features
+    if (!response.ok) {
+      throw new Error(`Photon API error: ${response.status}`);
+    }
+
+    const data = await response.json();
+    
+    if (!data.features || data.features.length === 0) {
+      return [];
+    }
+
+    // Filter and enhance results for Philippines
+    return data.features
     .filter((feature: any) => {
       const country = feature.properties?.country;
       return country === 'Philippines' || country === 'PH';
@@ -144,6 +151,13 @@ async function geocodeWithPhoton(address: string): Promise<any[]> {
       confidence: calculatePhotonConfidence(feature)
     }))
     .sort((a: any, b: any) => b.confidence - a.confidence);
+  } catch (error) {
+    clearTimeout(timeoutId);
+    if (error instanceof Error && error.name === 'AbortError') {
+      throw new Error('Photon geocoding timeout');
+    }
+    throw error;
+  }
 }
 
 // Geocode with Pelias (OpenStreetMap-based, high accuracy)
