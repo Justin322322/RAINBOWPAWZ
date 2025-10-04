@@ -435,6 +435,11 @@ const AdminFurParentsPage = React.memo(function AdminFurParentsPage() {
       // Close the modal
       setShowRestrictModal(false);
       setRestrictReason('');
+
+      // Reopen the details modal to show updated status
+      setTimeout(() => {
+        setShowDetailsModal(true);
+      }, 200);
     } catch (error) {
       showToast(error instanceof Error ? error.message : 'Failed to restrict user', 'error');
     } finally {
@@ -498,6 +503,11 @@ const AdminFurParentsPage = React.memo(function AdminFurParentsPage() {
 
       // Close the modal
       setShowRestoreModal(false);
+
+      // Reopen the details modal to show updated status
+      setTimeout(() => {
+        setShowDetailsModal(true);
+      }, 200);
     } catch (error) {
       showToast(error instanceof Error ? error.message : 'Failed to unrestrict user', 'error');
     } finally {
@@ -1200,7 +1210,7 @@ const AdminFurParentsPage = React.memo(function AdminFurParentsPage() {
         size="large"
         className="max-w-2xl mx-4 sm:mx-auto"
         contentClassName="max-h-[85vh] overflow-y-auto"
-        customZIndex="z-[99999]"
+        customZIndex="z-[50000]"
       >
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm mt-20">
           {/* Header with overlapping avatar */}

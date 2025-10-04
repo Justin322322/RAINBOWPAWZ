@@ -99,15 +99,15 @@ export default function Toast({
             ease: "easeOut",
             layout: { duration: 0.15 }
           }}
-          className={`toast-message w-full shadow-lg rounded-lg ${styles.bg} border ${styles.border} p-3 sm:p-4 mx-auto shadow-xl relative`}
+          className={`toast-message w-full shadow-lg rounded-lg ${styles.bg} border ${styles.border} p-4 sm:p-5 mx-auto shadow-xl relative backdrop-blur-sm`}
           style={{ zIndex: 999999 }}
         >
           <div className="flex items-start">
             <div className="flex-shrink-0">
               {styles.icon}
             </div>
-            <div className="ml-2 sm:ml-3 flex-grow">
-              <p className={`text-xs sm:text-sm ${styles.text} leading-tight sm:leading-normal`}>{message}</p>
+            <div className="ml-3 sm:ml-4 flex-grow">
+              <p className={`text-sm sm:text-base ${styles.text} leading-relaxed font-medium`}>{message}</p>
             </div>
             {onClose && (
               <div className="ml-2 sm:ml-4 flex-shrink-0 flex">

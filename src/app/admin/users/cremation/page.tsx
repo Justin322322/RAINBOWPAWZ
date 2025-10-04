@@ -574,6 +574,11 @@ const AdminCremationCentersPage = React.memo(function AdminCremationCentersPage(
 
       // Close the modal
       setShowRestrictModal(false);
+
+      // Reopen the details modal to show updated status
+      setTimeout(() => {
+        setShowDetailsModal(true);
+      }, 200);
     } catch (err) {
       showToast(err instanceof Error ? err.message : 'Failed to restrict cremation center', 'error');
     } finally {
@@ -724,6 +729,11 @@ const AdminCremationCentersPage = React.memo(function AdminCremationCentersPage(
 
     // Close the modal
     setShowRestoreModal(false);
+
+    // Reopen the details modal to show updated status
+    setTimeout(() => {
+      setShowDetailsModal(true);
+    }, 200);
   };
   // Helper function to get status badge based on status
   const getStatusBadge = (status: string, verified: boolean, centerObj?: CremationCenter) => {
@@ -1251,6 +1261,7 @@ const AdminCremationCentersPage = React.memo(function AdminCremationCentersPage(
         confirmText="Unrestrict Access"
         variant="success"
         icon={<CheckCircleIcon className="h-6 w-6 text-green-600" />}
+        customZIndex="z-[99999]"
       />
 
 
@@ -1263,6 +1274,7 @@ const AdminCremationCentersPage = React.memo(function AdminCremationCentersPage(
         size="large"
         className="max-w-2xl mx-4 sm:mx-auto"
         contentClassName="max-h-[85vh] overflow-y-auto"
+        customZIndex="z-[50000]"
       >
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm mt-20">
           {/* Header with overlapping avatar */}
