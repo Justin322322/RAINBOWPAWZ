@@ -945,7 +945,6 @@ const PackageModal: React.FC<PackageModalProps> = ({
             <form onSubmit={handleSubmit} className="p-6 max-w-4xl mx-auto">
                 {/* Package Images */}
                 <ImageUploader
-                  key={`images-${formData.images.length}-${formData.images.join(',')}`}
                   images={formData.images}
                   uploadingImages={uploadingImages}
                   fileInputRef={fileInputRef}

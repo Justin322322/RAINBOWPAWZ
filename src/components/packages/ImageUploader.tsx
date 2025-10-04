@@ -26,8 +26,9 @@ const ImageUploaderComponent: React.FC<ImageUploaderProps> = ({
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
         {images.map((img, i) => {
           console.log(`Image ${i + 1} URL:`, img);
-          // Create a stable key using the image URL and index
-          const imageKey = `${img}-${i}`;
+          // Create a stable key using just the base URL without cache-busting params
+          const baseUrl = img.split(/[?&][tv]=/)[0];
+          const imageKey = `img-${i}-${baseUrl}`;
           return (
             <div key={imageKey} className="aspect-square bg-gray-100 rounded-md relative overflow-hidden">
               <ProductionSafeImage
