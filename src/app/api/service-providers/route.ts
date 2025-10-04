@@ -215,14 +215,26 @@ export async function GET(request: Request) {
           sp.provider_id as id,
           CASE
             WHEN sp.name LIKE '%Cremation%' OR sp.name LIKE '%Memorial%' OR sp.name LIKE '%Pet%' OR sp.name LIKE '%Service%' OR sp.name LIKE '%Center%' OR sp.name LIKE '%Care%' THEN sp.name
-            WHEN sp.name IS NOT NULL AND TRIM(sp.name) != '' THEN CONCAT(TRIM(sp.name), ' Pet Cremation Services')
+            WHEN sp.name IS NOT NULL AND TRIM(sp.name) != '' THEN CONCAT(TRIM(sp.name), ' ', 
+              CASE 
+                WHEN sp.provider_type = 'memorial' THEN 'Pet Memorial Services'
+                WHEN sp.provider_type = 'veterinary' THEN 'Veterinary Services'
+                WHEN sp.provider_type = 'burial' THEN 'Pet Burial Services'
+                ELSE 'Pet Services'
+              END
+            )
             ELSE CONCAT(
               CASE 
                 WHEN TRIM(CONCAT_WS(' ', COALESCE(u.first_name, ''), COALESCE(u.last_name, ''))) = '' 
                 THEN 'Our' 
                 ELSE TRIM(CONCAT_WS(' ', COALESCE(u.first_name, ''), COALESCE(u.last_name, '')))
-              END, 
-              ' Pet Cremation Services'
+              END, ' ',
+              CASE 
+                WHEN sp.provider_type = 'memorial' THEN 'Pet Memorial Services'
+                WHEN sp.provider_type = 'veterinary' THEN 'Veterinary Services'
+                WHEN sp.provider_type = 'burial' THEN 'Pet Burial Services'
+                ELSE 'Pet Services'
+              END
             )
           END as name,
           COALESCE(sp.address, u.address) as address,

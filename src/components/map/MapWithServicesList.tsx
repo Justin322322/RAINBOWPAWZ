@@ -168,7 +168,7 @@ const MapWithServicesList = React.memo(function MapWithServicesList({
     // Service type filter
     if (filters.serviceType) {
       filtered = filtered.filter(provider =>
-        (provider.type || 'cremation').toLowerCase().includes(filters.serviceType.toLowerCase())
+        (provider.type || 'service').toLowerCase().includes(filters.serviceType.toLowerCase())
       );
     }
 
@@ -206,7 +206,7 @@ const MapWithServicesList = React.memo(function MapWithServicesList({
       id: provider.id,
       name: provider.name,
       address: provider.address,
-      type: provider.type || 'cremation',
+      type: provider.type || 'service',
       distance: provider.distance || '',
       distanceValue: provider.distanceValue || 0,
       packages: provider.packages || 0,
