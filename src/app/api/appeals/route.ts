@@ -123,14 +123,22 @@ export async function POST(request: NextRequest) {
       }, { status: 503 });
     }
 
-    // Check for existing pending appeal
+    // Check for existing pending appeal - handle both string and integer user IDs
     const parsedUserId = parseInt(user.userId);
-    console.log('🔍 [Appeals POST] Checking for existing appeals:', { user_id: parsedUserId, isNaN: isNaN(parsedUserId) });
+    const originalUserId = user.userId;
+    console.log('🔍 [Appeals POST] Checking for existing appeals:', { 
+      original_user_id: originalUserId, 
+      parsed_user_id: parsedUserId, 
+      isNaN: isNaN(parsedUserId),
+      user_id_type: typeof originalUserId 
+    });
+    
+    // Try both string and integer user ID formats to ensure we catch all cases
     const existingAppeal = await query(`
       SELECT appeal_id FROM appeals
-      WHERE user_id = ? AND status IN ('pending', 'under_review')
+      WHERE (user_id = ? OR user_id = ?) AND status IN ('pending', 'under_review')
       ORDER BY submitted_at DESC LIMIT 1
-    `, [parsedUserId]) as any[];
+    `, [parsedUserId, originalUserId]) as any[];
     console.log('🔍 [Appeals POST] Existing appeals found:', existingAppeal.length);
 
     if (existingAppeal?.length > 0) {
@@ -144,9 +152,10 @@ export async function POST(request: NextRequest) {
     let actual_business_id = business_id;
 
     if (user_type === 'business' && !actual_business_id) {
+      // Try both string and integer user ID formats for business lookup
       const businessResult = await query(`
-        SELECT provider_id FROM service_providers WHERE user_id = ?
-      `, [parsedUserId]) as any[];
+        SELECT provider_id FROM service_providers WHERE (user_id = ? OR user_id = ?)
+      `, [parsedUserId, originalUserId]) as any[];
       actual_business_id = businessResult?.[0]?.provider_id;
     }
 
@@ -188,8 +197,11 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const status = searchParams.get('status');
     const user_id = searchParams.get('user_id');
+    const business_id = searchParams.get('business_id');
     const limit = parseInt(searchParams.get('limit') || '50');
     const offset = parseInt(searchParams.get('offset') || '0');
+    
+    console.log('🔍 [Appeals API] Query params:', { status, user_id, business_id, limit, offset });
 
     try {
       await ensureAppealsTable();
@@ -214,7 +226,17 @@ export async function GET(request: NextRequest) {
       const allAppealsCheck = await query(`SELECT COUNT(*) as total FROM appeals`) as any[];
       console.log('🔍 [Appeals API] Total appeals in database:', allAppealsCheck[0]?.total || 0);
       
-      const userAppealsCheck = await query(`SELECT COUNT(*) as total FROM appeals WHERE user_id = ?`, [parseInt(user.userId)]) as any[];
+      const parsedUserId = parseInt(user.userId);
+      const originalUserId = user.userId;
+      console.log('🔍 [Appeals API] User ID debug:', { 
+        original_user_id: originalUserId, 
+        parsed_user_id: parsedUserId, 
+        isNaN: isNaN(parsedUserId),
+        user_id_type: typeof originalUserId 
+      });
+      
+      // Check with both string and integer user ID formats
+      const userAppealsCheck = await query(`SELECT COUNT(*) as total FROM appeals WHERE (user_id = ? OR user_id = ?)`, [parsedUserId, originalUserId]) as any[];
       console.log('🔍 [Appeals API] Appeals for this user:', userAppealsCheck[0]?.total || 0);
     } catch (error) {
       console.error('🔍 [Appeals API] Error checking appeals count:', error);
@@ -233,11 +255,16 @@ export async function GET(request: NextRequest) {
         whereClause += whereClause ? ' AND a.user_id = ?' : 'WHERE a.user_id = ?';
         queryParams.push(user_id);
       }
+      if (business_id) {
+        whereClause += whereClause ? ' AND a.business_id = ?' : 'WHERE a.business_id = ?';
+        queryParams.push(business_id);
+      }
     } else {
       const parsedUserId = parseInt(user.userId);
-      console.log('🔍 [Appeals API] Parsed user ID:', { original: user.userId, parsed: parsedUserId, isNaN: isNaN(parsedUserId) });
-      whereClause = 'WHERE a.user_id = ?';
-      queryParams.push(parsedUserId);
+      const originalUserId = user.userId;
+      console.log('🔍 [Appeals API] Parsed user ID:', { original: originalUserId, parsed: parsedUserId, isNaN: isNaN(parsedUserId) });
+      whereClause = 'WHERE (a.user_id = ? OR a.user_id = ?)';
+      queryParams.push(parsedUserId, originalUserId);
       if (status) {
         whereClause += ' AND a.status = ?';
         queryParams.push(status);
@@ -268,7 +295,7 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // Get total count
+    // Get total count - use the same whereClause and queryParams as the main query
     const countResult = await query(`
       SELECT COUNT(*) as total FROM appeals a ${whereClause}
     `, queryParams) as any[];

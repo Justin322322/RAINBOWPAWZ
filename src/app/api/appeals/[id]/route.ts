@@ -43,11 +43,11 @@ const STATUS_CONFIG = {
     bgColor: '#eff6ff'
   },
   approved: {
-    subject: '🎉 Appeal Approved - Welcome Back!',
+    subject: '🎉 Appeal Approved - Account Unrestricted!',
     color: '#10B981',
     icon: '🎉',
     title: 'Appeal Approved',
-    message: 'Great news! Your appeal has been approved and your account restrictions have been lifted. You can now access all features of RainbowPaws.',
+    message: 'Great news! Your appeal has been approved and your account has been automatically unrestricted. You can now access all features of RainbowPaws.',
     bgColor: '#ecfdf5'
   },
   rejected: {
@@ -55,7 +55,7 @@ const STATUS_CONFIG = {
     color: '#EF4444',
     icon: '❌',
     title: 'Appeal Not Approved',
-    message: 'After careful review, we were unable to approve your appeal at this time.',
+    message: 'After careful review, we were unable to approve your appeal at this time. Please see the reason below.',
     bgColor: '#fef2f2'
   }
 };
@@ -76,9 +76,16 @@ function createStatusEmail(status: string, userName: string, adminResponse?: str
       Log In to Your Account
     </a>
   ` : status === 'rejected' ? `
+    ${adminResponse ? `
+      <div style="background-color: #fef2f2; border-left: 4px solid #EF4444; padding: 15px; margin: 20px 0; border-radius: 4px;">
+        <strong>Reason for Rejection:</strong><br>
+        ${adminResponse}
+      </div>
+    ` : ''}
     <p><strong>What can you do?</strong></p>
     <ul>
       <li>Review our terms of service and community guidelines</li>
+      ${adminResponse ? '<li>Address the specific concerns mentioned above</li>' : ''}
       <li>You may submit a new appeal after addressing the concerns</li>
     </ul>
   ` : `
@@ -214,7 +221,7 @@ export async function PUT(
     const appeal = appeals[0];
     const previousStatus = appeal.status;
 
-    // Update appeal status
+    // Update appeal status and automatically unrestrict user if approved
     await withTransaction(async (transaction) => {
       await transaction.query(`
         UPDATE appeals 
@@ -228,6 +235,59 @@ export async function PUT(
         INSERT INTO appeal_history (appeal_id, previous_status, new_status, admin_id, admin_response)
         VALUES (?, ?, ?, ?, ?)
       `, [appealId, previousStatus, status, user.userId, admin_response]);
+
+      // If appeal is approved, automatically unrestrict the user
+      if (status === 'approved') {
+        try {
+          if (appeal.user_type === 'personal') {
+            // Unrestrict personal user
+            await transaction.query(`
+              UPDATE users
+              SET status = 'active', updated_at = NOW()
+              WHERE user_id = ?
+            `, [appeal.user_id]);
+
+            // Deactivate any existing restrictions
+            await transaction.query(`
+              UPDATE restrictions
+              SET is_active = 0
+              WHERE subject_type = 'user' AND subject_id = ? AND is_active = 1
+            `, [appeal.user_id]);
+
+          } else if (appeal.user_type === 'business' && appeal.business_id) {
+            // Unrestrict business user (cremation center)
+            // Update service provider status
+            await transaction.query(`
+              UPDATE service_providers
+              SET application_status = 'approved',
+                  verification_status = 'verified',
+                  restriction_reason = NULL,
+                  restriction_date = NULL,
+                  restriction_duration = NULL,
+                  updated_at = NOW()
+              WHERE provider_id = ?
+            `, [appeal.business_id]);
+
+            // Update user status
+            await transaction.query(`
+              UPDATE users
+              SET status = 'active', updated_at = NOW()
+              WHERE user_id = ?
+            `, [appeal.user_id]);
+
+            // Deactivate any existing restrictions
+            await transaction.query(`
+              UPDATE restrictions
+              SET is_active = 0
+              WHERE subject_type = 'business' AND subject_id = ? AND is_active = 1
+            `, [appeal.business_id]);
+          }
+        } catch (unrestrictError) {
+          console.error('Failed to unrestrict user after appeal approval:', unrestrictError);
+          // Note: We don't throw here to avoid rolling back the appeal status update
+          // The admin can manually unrestrict if needed
+        }
+      }
     });
 
     // Send notifications_unified
@@ -247,7 +307,7 @@ export async function PUT(
     if (appeal.sms_notifications && appeal.phone) {
       try {
         const smsMessage = status === 'approved' 
-          ? `🎉 Your appeal has been approved! You can now log in to your RainbowPaws account.`
+          ? `🎉 Your appeal has been approved! Your account restrictions have been lifted and you can now access all features.`
           : status === 'rejected'
           ? `❌ Your appeal has been reviewed and unfortunately was not approved. ${admin_response ? 'Reason: ' + admin_response.substring(0, 80) + '...' : 'Please review the response and consider submitting a new appeal.'}`
           : `👀 Your appeal is now under review. We will notify you once a decision has been made.`;
@@ -264,9 +324,11 @@ export async function PUT(
         userId: appeal.user_id,
         title: `Appeal ${status.charAt(0).toUpperCase() + status.slice(1)}`,
         message: status === 'approved' 
-          ? 'Your appeal has been approved! Welcome back to RainbowPaws.'
+          ? 'Your appeal has been approved! Your account restrictions have been lifted and you can now access all features.'
           : status === 'rejected'
-          ? 'Your appeal has been reviewed. Please check your email for details.'
+          ? admin_response 
+            ? `Your appeal has been reviewed and unfortunately was not approved. Reason: ${admin_response}`
+            : 'Your appeal has been reviewed and unfortunately was not approved. Please check your email for details.'
           : 'Your appeal is now under review. We will notify you of the decision.',
         type: status === 'approved' ? 'success' : status === 'rejected' ? 'error' : 'info',
         link: '/appeals'

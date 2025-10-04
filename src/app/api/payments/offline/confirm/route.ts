@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { verifySecureAuth } from '@/lib/secureAuth';
 import { query } from '@/lib/db';
 import { processRefund } from '@/services/refundService';
+import { createNotification } from '@/utils/notificationService';
+import { sendEmail } from '@/lib/consolidatedEmailService';
+import { sendSMSAsync } from '@/lib/httpSmsService';
 
 async function ensureReceiptTable(): Promise<void> {
   await query(`
@@ -118,6 +121,14 @@ export async function POST(request: NextRequest) {
       try {
         await query('UPDATE bookings SET status = \"cancelled\", payment_status = \"awaiting_payment_confirmation\", cancellation_reason = ? WHERE id = ?', [reason, bookingId]);
         console.log('✅ [confirm] Booking cancelled due to receipt rejection');
+        
+        // Send notification to user about receipt rejection
+        try {
+          await sendReceiptRejectionNotification(bookingId, reason || 'Receipt rejected');
+        } catch (notificationError) {
+          console.error('❌ [confirm] Failed to send receipt rejection notification:', notificationError);
+          // Don't fail the main operation if notification fails
+        }
       } catch (updateError) {
         console.error('❌ [confirm] Failed to UPDATE bookings:', updateError);
         throw updateError;
@@ -164,6 +175,159 @@ export async function POST(request: NextRequest) {
       } : undefined
     }, { status: 500 });
   }
+}
+
+// Function to send receipt rejection notifications
+async function sendReceiptRejectionNotification(bookingId: number, rejectionReason: string) {
+  try {
+    // Get booking and user details
+    const bookingResult = await query(`
+      SELECT b.*, u.first_name, u.last_name, u.email, u.phone, u.sms_notifications,
+             p.name as pet_name, s.service_name
+      FROM bookings b
+      LEFT JOIN users u ON b.user_id = u.user_id
+      LEFT JOIN pets p ON b.pet_id = p.pet_id
+      LEFT JOIN service_packages s ON b.service_package_id = s.package_id
+      WHERE b.id = ?
+    `, [bookingId]) as any[];
+
+    if (!bookingResult || bookingResult.length === 0) {
+      console.error('Booking not found for receipt rejection notification:', bookingId);
+      return;
+    }
+
+    const booking = bookingResult[0];
+
+    // Create in-app notification
+    try {
+      await createNotification({
+        userId: booking.user_id,
+        title: 'Payment Receipt Rejected',
+        message: `Your payment receipt for ${booking.pet_name || 'your pet'}'s ${booking.service_name || 'service'} has been rejected. Reason: ${rejectionReason}. Please upload a clear receipt or contact support.`,
+        type: 'error',
+        link: '/user/furparent_dashboard/bookings'
+      });
+    } catch (notificationError) {
+      console.error('Failed to create in-app notification:', notificationError);
+    }
+
+    // Send email notification
+    try {
+      const emailTemplate = createReceiptRejectionEmail({
+        userName: `${booking.first_name} ${booking.last_name}`,
+        petName: booking.pet_name || 'your pet',
+        serviceName: booking.service_name || 'service',
+        rejectionReason,
+        bookingId
+      });
+
+      await sendEmail({
+        to: booking.email,
+        subject: emailTemplate.subject,
+        html: emailTemplate.html
+      });
+    } catch (emailError) {
+      console.error('Failed to send email notification:', emailError);
+    }
+
+    // Send SMS notification if enabled
+    if (booking.phone && (booking.sms_notifications === 1 || booking.sms_notifications === true)) {
+      try {
+        const smsMessage = `❌ Your payment receipt for ${booking.pet_name || 'your pet'}'s ${booking.service_name || 'service'} has been rejected. Reason: ${rejectionReason}. Please upload a clear receipt or contact support.`;
+        
+        sendSMSAsync({
+          to: booking.phone,
+          message: smsMessage
+        });
+      } catch (smsError) {
+        console.error('Failed to send SMS notification:', smsError);
+      }
+    }
+
+  } catch (error) {
+    console.error('Error sending receipt rejection notification:', error);
+  }
+}
+
+// Email template for receipt rejection
+function createReceiptRejectionEmail({
+  userName,
+  petName,
+  serviceName,
+  rejectionReason,
+  bookingId
+}: {
+  userName: string;
+  petName: string;
+  serviceName: string;
+  rejectionReason: string;
+  bookingId: number;
+}) {
+  const subject = '❌ Payment Receipt Rejected - Action Required';
+
+  const html = `
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>Payment Receipt Rejected</title>
+      <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background: linear-gradient(135deg, #EF4444, #DC2626); padding: 30px; text-align: center; border-radius: 8px 8px 0 0; }
+        .header h1 { color: white; margin: 0; font-size: 24px; }
+        .content { padding: 30px; background-color: #fff; border: 1px solid #e5e7eb; }
+        .alert-box { background-color: #fef2f2; border-left: 4px solid #EF4444; padding: 15px; margin: 20px 0; border-radius: 4px; }
+        .booking-info { background-color: #f9fafb; padding: 20px; border-radius: 8px; margin: 20px 0; }
+        .button { display: inline-block; background-color: #EF4444; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; margin: 20px 0; }
+        .footer { background-color: #f5f5f5; padding: 20px; text-align: center; font-size: 12px; color: #666; border-radius: 0 0 8px 8px; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="header">
+          <h1>❌ Payment Receipt Rejected</h1>
+        </div>
+        <div class="content">
+          <p>Dear ${userName},</p>
+          
+          <div class="alert-box">
+            <strong>⚠️ Action Required</strong><br>
+            Your payment receipt has been rejected and requires immediate attention.
+          </div>
+
+          <div class="booking-info">
+            <h3>Booking Details</h3>
+            <p><strong>Pet:</strong> ${petName}</p>
+            <p><strong>Service:</strong> ${serviceName}</p>
+            <p><strong>Booking ID:</strong> #${bookingId}</p>
+            <p><strong>Rejection Reason:</strong> ${rejectionReason}</p>
+          </div>
+
+          <h3>What you need to do:</h3>
+          <ul>
+            <li>Upload a new, clear receipt image</li>
+            <li>Ensure the receipt is not blurry or unclear</li>
+            <li>Make sure all text and numbers are clearly visible</li>
+            <li>Contact support if you need assistance</li>
+          </ul>
+
+          <a href="${process.env.NEXT_PUBLIC_BASE_URL}/user/furparent_dashboard/bookings" class="button">
+            Upload New Receipt
+          </a>
+
+          <p>If you have any questions or need assistance, please don't hesitate to contact our support team.</p>
+        </div>
+        <div class="footer">
+          <p>This is an automated message from RainbowPaws. Please do not reply to this email.</p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+
+  return { subject, html };
 }
 
 

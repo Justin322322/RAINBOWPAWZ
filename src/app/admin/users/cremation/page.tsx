@@ -391,11 +391,20 @@ const AdminCremationCentersPage = React.memo(function AdminCremationCentersPage(
   }, []);
 
   const handleViewDetails = useCallback(async (center: CremationCenter) => {
+    // Close any other modals first
+    setShowRestrictModal(false);
+    setShowRestoreModal(false);
+    setShowAppealModal(false);
+    
     // Load center appeals when viewing details
     const appeals = await loadCenterAppeals(center.id);
     setSelectedCenter({ ...center, appeals });
 
-    setShowDetailsModal(true);
+    // Small delay to ensure other modals are closed
+    setTimeout(() => {
+      setShowDetailsModal(true);
+    }, 100);
+    
     return appeals;
   }, [loadCenterAppeals]);
 
@@ -465,34 +474,40 @@ const AdminCremationCentersPage = React.memo(function AdminCremationCentersPage(
   };
 
   // Function to open the restrict modal
-  const openRestrictModal = (center: CremationCenter) => {
+  const openRestrictModal = (center: CremationCenter, event?: React.MouseEvent) => {
+    // Prevent event bubbling
+    event?.stopPropagation();
+    
     setCenterToAction(center);
     setRestrictReason('');
-    // Close details modal if it's open to avoid modal conflicts
-    if (showDetailsModal) {
-      setShowDetailsModal(false);
-      // Use setTimeout to ensure the details modal closes before opening restrict modal
-      setTimeout(() => {
-        setShowRestrictModal(true);
-      }, 150);
-    } else {
+    
+    // Close all other modals first
+    setShowDetailsModal(false);
+    setShowAppealModal(false);
+    setShowRestoreModal(false);
+    
+    // Small delay to ensure modals are closed before opening new one
+    setTimeout(() => {
       setShowRestrictModal(true);
-    }
+    }, 100);
   };
 
   // Function to open the unrestrict modal
-  const openUnrestrictModal = (center: CremationCenter) => {
+  const openUnrestrictModal = (center: CremationCenter, event?: React.MouseEvent) => {
+    // Prevent event bubbling
+    event?.stopPropagation();
+    
     setCenterToAction(center);
-    // Close details modal if it's open to avoid modal conflicts
-    if (showDetailsModal) {
-      setShowDetailsModal(false);
-      // Use setTimeout to ensure the details modal closes before opening restore modal
-      setTimeout(() => {
-        setShowRestoreModal(true);
-      }, 150);
-    } else {
+    
+    // Close all other modals first
+    setShowDetailsModal(false);
+    setShowAppealModal(false);
+    setShowRestrictModal(false);
+    
+    // Small delay to ensure modals are closed before opening new one
+    setTimeout(() => {
       setShowRestoreModal(true);
-    }
+    }, 100);
   };
 
 
@@ -1086,14 +1101,14 @@ const AdminCremationCentersPage = React.memo(function AdminCremationCentersPage(
                               </button>
                               {center.status === 'active' ? (
                                 <button
-                                  onClick={() => openRestrictModal(center)}
+                                  onClick={(e) => openRestrictModal(center, e)}
                                   className="px-3 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 text-sm font-medium min-w-[70px] text-center transition-colors"
                                 >
                                   Restrict
                                 </button>
                               ) : center.status === 'restricted' ? (
                                 <button
-                                  onClick={() => openUnrestrictModal(center)}
+                                  onClick={(e) => openUnrestrictModal(center, e)}
                                   className="px-3 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 text-sm font-medium min-w-[70px] text-center transition-colors"
                                 >
                                   Restore
@@ -1207,7 +1222,7 @@ const AdminCremationCentersPage = React.memo(function AdminCremationCentersPage(
                             center.verification_status !== 'restricted' &&
                             center.status !== 'restricted' ? (
                             <button
-                              onClick={() => openRestrictModal(center)}
+                              onClick={(e) => openRestrictModal(center, e)}
                               disabled={isProcessing}
                               className="text-red-600 hover:text-red-900 hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
                             >
@@ -1216,7 +1231,7 @@ const AdminCremationCentersPage = React.memo(function AdminCremationCentersPage(
                             </button>
                           ) : (
                             <button
-                              onClick={() => openUnrestrictModal(center)}
+                              onClick={(e) => openUnrestrictModal(center, e)}
                               disabled={isProcessing}
                               className="text-green-600 hover:text-green-900 hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
                             >
@@ -1244,7 +1259,11 @@ const AdminCremationCentersPage = React.memo(function AdminCremationCentersPage(
       {/* Restrict Confirmation Modal */}
       <RestrictModal
         isOpen={showRestrictModal}
-        onClose={() => setShowRestrictModal(false)}
+        onClose={() => {
+          setShowRestrictModal(false);
+          setCenterToAction(null);
+          setRestrictReason('');
+        }}
         centerToAction={centerToAction}
         initialReason={restrictReason}
         onConfirm={(reason) => { setRestrictReason(reason); centerToAction && handleRestrictCenter(centerToAction); }}
@@ -1254,7 +1273,10 @@ const AdminCremationCentersPage = React.memo(function AdminCremationCentersPage(
       {/* Unrestrict Confirmation Modal */}
       <ConfirmationModal
         isOpen={showRestoreModal}
-        onClose={() => setShowRestoreModal(false)}
+        onClose={() => {
+          setShowRestoreModal(false);
+          setCenterToAction(null);
+        }}
         onConfirm={() => centerToAction ? handleUnrestrictCenter(centerToAction) : Promise.resolve()}
         title="Unrestrict Cremation Center"
         message={`Are you sure you want to unrestrict "${centerToAction?.name}"? This will allow them to accept new bookings again.`}
@@ -1269,7 +1291,10 @@ const AdminCremationCentersPage = React.memo(function AdminCremationCentersPage(
       {/* Cremation Center Details Modal */}
       <Modal
         isOpen={showDetailsModal}
-        onClose={() => setShowDetailsModal(false)}
+        onClose={() => {
+          setShowDetailsModal(false);
+          setSelectedCenter(null);
+        }}
         title="Cremation Center Details"
         size="large"
         className="max-w-2xl mx-4 sm:mx-auto"
@@ -1460,10 +1485,9 @@ const AdminCremationCentersPage = React.memo(function AdminCremationCentersPage(
               <div className="flex gap-3">
                 {selectedCenter?.status !== 'restricted' ? (
                   <button
-                    onClick={() => {
-                      setCenterToAction(selectedCenter);
-                      setRestrictReason('');
-                      setShowRestrictModal(true);
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (selectedCenter) openRestrictModal(selectedCenter, e);
                     }}
                     className="px-4 py-2 bg-red-600 text-white text-sm rounded-lg hover:bg-red-700 transition-colors"
                   >
@@ -1471,9 +1495,9 @@ const AdminCremationCentersPage = React.memo(function AdminCremationCentersPage(
                   </button>
                 ) : (
                   <button
-                    onClick={() => {
-                      setCenterToAction(selectedCenter);
-                      setShowRestoreModal(true);
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (selectedCenter) openUnrestrictModal(selectedCenter, e);
                     }}
                     className="px-4 py-2 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 transition-colors"
                   >
@@ -1496,6 +1520,7 @@ const AdminCremationCentersPage = React.memo(function AdminCremationCentersPage(
         }}
         title="Review Appeal"
         size="large"
+        customZIndex="z-[60000]"
       >
         {selectedAppeal && (
           <div className="space-y-6">

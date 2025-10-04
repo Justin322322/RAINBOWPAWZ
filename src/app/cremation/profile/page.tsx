@@ -96,8 +96,7 @@ import {
 import {
   ProfileInput,
   ProfileTextArea,
-  ProfileButton,
-  ProfileAlert
+  ProfileButton
 } from '@/components/ui/ProfileFormComponents';
 
 function CremationProfilePage({ userData }: { userData: any }) {
@@ -106,7 +105,6 @@ function CremationProfilePage({ userData }: { userData: any }) {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [passwordError, setPasswordError] = useState('');
-  const [passwordSuccess, setPasswordSuccess] = useState('');
 
   // Contact info states
   const [contactInfo, setContactInfo] = useState({
@@ -122,7 +120,6 @@ function CremationProfilePage({ userData }: { userData: any }) {
     postalCode: ''
   });
   const [, startContactTransition] = useTransition();
-  const [contactSuccess, setContactSuccess] = useState('');
   const [isGettingLocation, setIsGettingLocation] = useState(false);
 
   // Business info states
@@ -134,7 +131,6 @@ function CremationProfilePage({ userData }: { userData: any }) {
     businessEntityType: 'sole_proprietorship'
   });
   const [, startBusinessTransition] = useTransition();
-  const [businessSuccess, setBusinessSuccess] = useState('');
 
   // Profile data state
   const [profileData, setProfileData] = useState<any>(null);
@@ -394,7 +390,6 @@ function CremationProfilePage({ userData }: { userData: any }) {
   const handlePasswordChange = async (e: React.FormEvent) => {
     e.preventDefault();
     setPasswordError('');
-    setPasswordSuccess('');
 
     if (!currentPassword || !newPassword || !confirmPassword) {
       showToast('All password fields are required', 'error');
@@ -427,11 +422,10 @@ function CremationProfilePage({ userData }: { userData: any }) {
       const data = await response.json();
 
       if (response.ok) {
-        setPasswordSuccess('Password changed successfully');
+        showToast('Password changed successfully!', 'success');
         setCurrentPassword('');
         setNewPassword('');
         setConfirmPassword('');
-        setTimeout(() => setPasswordSuccess(''), 3000);
       } else {
         showPasswordError(data.error || 'Failed to update password');
       }
@@ -442,7 +436,6 @@ function CremationProfilePage({ userData }: { userData: any }) {
 
   const handleContactUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
-    setContactSuccess('');
 
     console.log('🔍 DEBUG: Contact update started');
     console.log('🔍 DEBUG: Current contactInfo state:', contactInfo);
@@ -473,9 +466,8 @@ function CremationProfilePage({ userData }: { userData: any }) {
 
       if (response.ok) {
         console.log('✅ DEBUG: Contact update successful');
-        setContactSuccess('Contact information updated successfully!');
+        showToast('Contact information updated successfully!', 'success');
         await fetchProfileData(false);
-        setTimeout(() => setContactSuccess(''), 3000);
       } else {
         console.log('❌ DEBUG: Contact update failed:', data.error);
         showToast(data.error || 'Failed to update contact information', 'error');
@@ -539,7 +531,6 @@ function CremationProfilePage({ userData }: { userData: any }) {
 
   const handleBusinessUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
-    setBusinessSuccess('');
 
     try {
       const payload = {
@@ -564,9 +555,8 @@ function CremationProfilePage({ userData }: { userData: any }) {
       console.log('🔍 [Business Profile Frontend] Received response:', data);
 
       if (response.ok) {
-        setBusinessSuccess('Business information updated successfully!');
+        showToast('Business information updated successfully!', 'success');
         await fetchProfileData(false);
-        setTimeout(() => setBusinessSuccess(''), 3000);
       } else {
         showToast(data.error || 'Failed to update business information', 'error');
       }
@@ -825,7 +815,6 @@ function CremationProfilePage({ userData }: { userData: any }) {
             >
               <ProfileCard>
                 <form onSubmit={handleBusinessUpdate} className="space-y-6">
-                  {businessSuccess && <ProfileAlert type="success" message={businessSuccess} onClose={() => setBusinessSuccess('')} />}
                   <ProfileFormGroup title="Basic Information" subtitle="Essential business details">
                     <ProfileInput label="Business Name" value={businessInfo.businessName} onChange={(value) => startBusinessTransition(() => setBusinessInfo(prev => ({ ...prev, businessName: value })))} placeholder="Enter your business name" required icon={<BuildingStorefrontIcon className="h-5 w-5" />} />
                     <ProfileTextArea label="Business Description" value={businessInfo.description} onChange={(value) => startBusinessTransition(() => setBusinessInfo(prev => ({ ...prev, description: value })))} placeholder="Describe your cremation services..." rows={4} />
@@ -886,7 +875,6 @@ function CremationProfilePage({ userData }: { userData: any }) {
             >
               <ProfileCard>
                 <form onSubmit={handleContactUpdate} className="space-y-6">
-                  {contactSuccess && <ProfileAlert type="success" message={contactSuccess} onClose={() => setContactSuccess('')} />}
                   <ProfileFormGroup title="Personal & Location Details" subtitle="Your name and primary business address">
                     <ProfileGrid cols={2}>
                       <ProfileInput label="First Name" value={contactInfo.firstName} onChange={(value) => startContactTransition(() => setContactInfo(prev => ({ ...prev, firstName: value })))} required icon={<UserIcon className="h-5 w-5" />} />
@@ -979,8 +967,6 @@ function CremationProfilePage({ userData }: { userData: any }) {
             >
               <ProfileCard>
                 <form onSubmit={handlePasswordChange} className="space-y-6">
-                  {passwordSuccess && <ProfileAlert type="success" message={passwordSuccess} onClose={() => setPasswordSuccess('')} />}
-
                   <ProfileFormGroup title="Security" subtitle="Choose a strong, new password">
                     <ProfileInput label="Current Password" type="password" value={currentPassword} onChange={setCurrentPassword} required icon={<KeyIcon className="h-5 w-5" />} />
                     <ProfileInput label="New Password" type="password" value={newPassword} onChange={setNewPassword} required icon={<KeyIcon className="h-5 w-5" />} />
