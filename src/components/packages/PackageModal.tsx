@@ -591,10 +591,14 @@ const PackageModal: React.FC<PackageModalProps> = ({
 
   const handleTogglePetType = useCallback((petType: string) => {
     setFormData(prev => {
-      if (prev.supportedPetTypes.includes(petType)) {
+      const isCurrentlyChecked = prev.supportedPetTypes.includes(petType);
+      
+      if (isCurrentlyChecked) {
         // If unchecking "Other", remove all custom pet types
         if (petType === 'Other') {
           const updatedTypes = prev.supportedPetTypes.filter(type => type !== petType);
+          // Also clear custom pet types when unchecking "Other"
+          setCustomPetTypes([]);
           return {
             ...prev,
             supportedPetTypes: updatedTypes.filter(type => !customPetTypes.includes(type))
@@ -611,12 +615,7 @@ const PackageModal: React.FC<PackageModalProps> = ({
         };
       }
     });
-    
-    // If unchecking "Other", clear custom pet types
-    if (petType === 'Other' && formData.supportedPetTypes.includes(petType)) {
-      setCustomPetTypes([]);
-    }
-  }, [customPetTypes, formData.supportedPetTypes]);
+  }, [customPetTypes]);
 
   const handleAddCustomPetType = useCallback(() => {
     if (newCustomPetType.trim() && !customPetTypes.includes(newCustomPetType.trim())) {
