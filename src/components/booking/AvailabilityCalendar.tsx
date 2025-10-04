@@ -613,6 +613,7 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
         date,
         isAvailable,
         timeSlots,
+        hasBookings: Boolean((availabilityInfo as any)?.hasBookings),
       });
     }
 
