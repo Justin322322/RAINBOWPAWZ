@@ -241,16 +241,9 @@ export async function GET(request: NextRequest) {
 
       if (columnNames.includes('business_permit_path')) selectFields.push('sp.business_permit_path as document_path');
 
-      // Check if provider_type column exists
-      const hasProviderTypeColumn = columnNames.includes('provider_type');
-
-      // Use the appropriate column name for business type
-      // Match cremation businesses more broadly to catch all variations
-      let typeCondition = '1=1'; // Default to all records if provider_type doesn't exist
-      if (hasProviderTypeColumn) {
-        // Match 'cremation' or NULL (for businesses that haven't set a type yet)
-        typeCondition = "(sp.provider_type = 'cremation' OR sp.provider_type IS NULL OR sp.provider_type = '')";
-      }
+      // Show all business types (cremation, memorial, veterinary, etc.)
+      // Admin should see all businesses regardless of provider_type
+      const typeCondition = '1=1'; // Show all providers
 
       // Build user role condition based on available columns
       // IMPORTANT: Include NULL check for LEFT JOIN results
