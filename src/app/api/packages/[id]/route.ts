@@ -537,12 +537,6 @@ export async function PATCH(
           throw new Error('Package not found or no changes made');
         }
 
-        // Note: supportedPetTypes functionality is disabled due to service_types table schema mismatch
-        // The service_types table doesn't have provider_id column, so this feature needs to be redesigned
-        if (Array.isArray(body.supportedPetTypes)) {
-          console.warn('supportedPetTypes feature is disabled - service_types table schema needs to be updated');
-        }
-
         // Update inclusions as JSON
         const inclusionsData = body.inclusions && Array.isArray(body.inclusions)
           ? body.inclusions.filter((inc: any) => inc && inc.trim()).map((inc: any) => inc.trim())
@@ -557,11 +551,29 @@ export async function PATCH(
             }))
           : [];
 
-        // Update JSON columns
-        await transaction.query(
-          'UPDATE service_packages SET inclusions = ?, addons = ? WHERE package_id = ?',
-          [JSON.stringify(inclusionsData), JSON.stringify(addonsData), packageId]
-        );
+        // Update supported pet types as JSON
+        const supportedPetTypesData = body.supportedPetTypes && Array.isArray(body.supportedPetTypes)
+          ? body.supportedPetTypes.filter((type: any) => type && String(type).trim()).map((type: any) => String(type).trim())
+          : [];
+
+        // Update JSON columns (try with supported_pet_types, fallback if column doesn't exist)
+        try {
+          await transaction.query(
+            'UPDATE service_packages SET inclusions = ?, addons = ?, supported_pet_types = ? WHERE package_id = ?',
+            [JSON.stringify(inclusionsData), JSON.stringify(addonsData), JSON.stringify(supportedPetTypesData), packageId]
+          );
+        } catch (columnError: any) {
+          // If supported_pet_types column doesn't exist, fall back to updating without it
+          if (columnError.code === 'ER_BAD_FIELD_ERROR' && columnError.message.includes('supported_pet_types')) {
+            console.warn('supported_pet_types column not found, updating without it');
+            await transaction.query(
+              'UPDATE service_packages SET inclusions = ?, addons = ? WHERE package_id = ?',
+              [JSON.stringify(inclusionsData), JSON.stringify(addonsData), packageId]
+            );
+          } else {
+            throw columnError;
+          }
+        }
 
         // Handle image updates
         let filesToDelete: string[] = [];

@@ -207,6 +207,48 @@ export async function ensurePasswordResetTokensTable(): Promise<void> {
 }
 
 /**
+ * Ensure supported_pet_types column exists in service_packages table
+ */
+export async function ensureSupportedPetTypesColumn(): Promise<void> {
+  try {
+    const exists = await columnExists("service_packages", "supported_pet_types");
+
+    if (!exists) {
+      console.log("Creating supported_pet_types column in service_packages table...");
+
+      // Add the column
+      await query(`
+        ALTER TABLE service_packages 
+        ADD COLUMN supported_pet_types JSON NULL 
+        AFTER size_pricing
+      `);
+
+      console.log("✅ supported_pet_types column created successfully");
+
+      // Add index for better query performance (optional, for JSON columns)
+      const hasIndex = await indexExists("service_packages", "idx_packages_pet_types");
+      if (!hasIndex) {
+        try {
+          await query(`
+            CREATE INDEX idx_packages_pet_types 
+            ON service_packages((CAST(supported_pet_types AS CHAR(255))))
+          `);
+          console.log("✅ Index idx_packages_pet_types created successfully");
+        } catch (indexError) {
+          console.warn(
+            "Could not create index on JSON column (non-critical):",
+            indexError
+          );
+        }
+      }
+    }
+  } catch (error) {
+    console.error("Error ensuring supported_pet_types column:", error);
+    throw error;
+  }
+}
+
+/**
  * Run all migrations
  */
 export async function runAllMigrations(): Promise<void> {
@@ -216,6 +258,7 @@ export async function runAllMigrations(): Promise<void> {
     await ensureCancellationReasonColumn();
     await ensureReviewImagesColumn();
     await ensurePasswordResetTokensTable();
+    await ensureSupportedPetTypesColumn();
     console.log("✅ All database migrations completed successfully");
   } catch (error) {
     console.error("❌ Error running migrations:", error);

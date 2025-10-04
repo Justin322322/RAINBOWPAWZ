@@ -20,10 +20,10 @@ import {
   ProfileCard
 } from '@/components/ui/ProfileLayout';
 import {
-  ProfileButton,
-  ProfileAlert
+  ProfileButton
 } from '@/components/ui/ProfileFormComponents';
 import Image from 'next/image';
+import { useToast } from '@/context/ToastContext';
 
 interface CremationSettingsProps {
   userData: any;
@@ -35,6 +35,7 @@ interface NotificationSettings {
 }
 
 function CremationSettingsPage({ userData }: CremationSettingsProps) {
+  const { showToast } = useToast();
   const [settings, setSettings] = useState<NotificationSettings>({
     sms_notifications: true,
     email_notifications: true
@@ -42,10 +43,6 @@ function CremationSettingsPage({ userData }: CremationSettingsProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [showSkeleton, setShowSkeleton] = useState(false);
-  const [message, setMessage] = useState<{
-    type: 'success' | 'error' | 'warning';
-    text: string;
-  } | null>(null);
 
   // Payment QR
   const [qrPath, setQrPath] = useState<string | null>(null);
@@ -78,11 +75,11 @@ function CremationSettingsPage({ userData }: CremationSettingsProps) {
           const data = await response.json();
           setSettings(data.preferences);
         } else {
-          setMessage({ text: 'Failed to load notification settings', type: 'error' });
+          showToast('Failed to load notification settings', 'error');
         }
       } catch (error) {
         console.error('Failed to load notification settings:', error);
-        setMessage({ text: 'Failed to load notification settings', type: 'error' });
+        showToast('Failed to load notification settings', 'error');
       } finally {
         setIsLoading(false);
       }
@@ -150,7 +147,7 @@ function CremationSettingsPage({ userData }: CremationSettingsProps) {
 
       const result = await response.json();
       setQrPath(result.qrPath);
-      setMessage({ type: 'success', text: 'Payment QR code uploaded successfully!' });
+      showToast('Payment QR code uploaded successfully!', 'success');
 
     } catch (error) {
       console.error('Upload error:', error);
@@ -166,7 +163,7 @@ function CremationSettingsPage({ userData }: CremationSettingsProps) {
       }
 
       setQrError(errorMessage);
-      setMessage({ type: 'error', text: errorMessage });
+      showToast(errorMessage, 'error');
     } finally {
       setQrUploading(false);
       setQrProgress(0);
@@ -222,7 +219,6 @@ function CremationSettingsPage({ userData }: CremationSettingsProps) {
   // Save settings to database
   const handleSave = async () => {
     setIsSaving(true);
-    setMessage(null);
 
     try {
       const response = await fetch('/api/cremation/notification-preferences', {
@@ -234,13 +230,13 @@ function CremationSettingsPage({ userData }: CremationSettingsProps) {
       });
 
       if (response.ok) {
-        setMessage({ text: 'Settings saved successfully!', type: 'success' });
+        showToast('Settings saved successfully!', 'success');
       } else {
         const errorData = await response.json();
-        setMessage({ text: errorData.error || 'Failed to save settings', type: 'error' });
+        showToast(errorData.error || 'Failed to save settings', 'error');
       }
     } catch {
-      setMessage({ text: 'Failed to save settings. Please try again.', type: 'error' });
+      showToast('Failed to save settings. Please try again.', 'error');
     } finally {
       setIsSaving(false);
     }
@@ -255,14 +251,6 @@ function CremationSettingsPage({ userData }: CremationSettingsProps) {
         className="p-6"
         showSkeleton={showSkeleton || isLoading}
       >
-        {message && (
-          <ProfileAlert
-            type={message.type}
-            message={message.text}
-            className="mb-6"
-          />
-        )}
-
         {/* Payment QR Section - Compact modern design */}
         <ProfileSection
           title="Payment QR Code"
