@@ -51,6 +51,7 @@ export async function GET(request: NextRequest) {
          sp.provider_id,
          sp.name AS business_name,
          sp.provider_type,
+         sp.business_entity_type,
          sp.phone AS business_phone,
          sp.address AS business_address,
          sp.description,
@@ -189,7 +190,9 @@ export async function PUT(request: NextRequest) {
       business_phone,
       business_address,
       description,
-      hours
+      hours,
+      provider_type,
+      business_entity_type
     } = body;
 
     // Conditionally update user table only if personal fields are provided
@@ -209,14 +212,14 @@ export async function PUT(request: NextRequest) {
     if (providerResult && providerResult.length > 0) {
       // Update existing service provider
       await query(
-        'UPDATE service_providers SET name = COALESCE(?, name), phone = COALESCE(?, phone), address = COALESCE(?, address), description = COALESCE(?, description), hours = COALESCE(?, hours), updated_at = NOW() WHERE user_id = ?',
-        [business_name || null, (business_phone || phone) || null, (business_address || address) || null, description || null, hours || null, user.userId]
+        'UPDATE service_providers SET name = COALESCE(?, name), phone = COALESCE(?, phone), address = COALESCE(?, address), description = COALESCE(?, description), hours = COALESCE(?, hours), provider_type = COALESCE(?, provider_type), business_entity_type = COALESCE(?, business_entity_type), updated_at = NOW() WHERE user_id = ?',
+        [business_name || null, (business_phone || phone) || null, (business_address || address) || null, description || null, hours || null, provider_type || null, business_entity_type || null, user.userId]
       );
     } else if (business_name) {
       // Create new service provider record if business name is provided
       await query(
-        'INSERT INTO service_providers (user_id, name, phone, address, description, hours, provider_type, application_status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())',
-        [user.userId, business_name, business_phone || phone, business_address || address, description || null, hours || null, 'cremation', 'pending']
+        'INSERT INTO service_providers (user_id, name, phone, address, description, hours, provider_type, business_entity_type, application_status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())',
+        [user.userId, business_name, business_phone || phone, business_address || address, description || null, hours || null, provider_type || 'cremation', business_entity_type || 'sole_proprietorship', 'pending']
       );
     }
 

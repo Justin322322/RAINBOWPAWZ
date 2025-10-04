@@ -23,6 +23,7 @@ import {
 import { getImagePath } from '@/utils/imageUtils';
 import PhilippinePhoneInput from '@/components/ui/PhilippinePhoneInput';
 import { Input } from '@/components/ui/Input';
+import { SelectInput } from '@/components/ui/SelectInput';
 
 // Error Modal Component
 interface ErrorModalProps {
@@ -128,7 +129,9 @@ function CremationProfilePage({ userData }: { userData: any }) {
   const [businessInfo, setBusinessInfo] = useState({
     businessName: '',
     description: '',
-    hours: ''
+    hours: '',
+    businessType: 'cremation',
+    businessEntityType: 'sole_proprietorship'
   });
   const [, startBusinessTransition] = useTransition();
   const [businessSuccess, setBusinessSuccess] = useState('');
@@ -315,7 +318,9 @@ function CremationProfilePage({ userData }: { userData: any }) {
         setBusinessInfo({
           businessName: data.profile.business_name || '',
           description: data.profile.description || '',
-          hours: data.profile.hours || ''
+          hours: data.profile.hours || '',
+          businessType: data.profile.provider_type || 'cremation',
+          businessEntityType: data.profile.business_entity_type || 'sole_proprietorship'
         });
       }
       setError(null);
@@ -537,6 +542,8 @@ function CremationProfilePage({ userData }: { userData: any }) {
           business_name: businessInfo.businessName,
           description: businessInfo.description,
           hours: businessInfo.hours,
+          provider_type: businessInfo.businessType,
+          business_entity_type: businessInfo.businessEntityType,
         }),
         credentials: 'include'
       });
@@ -809,6 +816,45 @@ function CremationProfilePage({ userData }: { userData: any }) {
                     <ProfileInput label="Business Name" value={businessInfo.businessName} onChange={(value) => startBusinessTransition(() => setBusinessInfo(prev => ({ ...prev, businessName: value })))} placeholder="Enter your business name" required icon={<BuildingStorefrontIcon className="h-5 w-5" />} />
                     <ProfileTextArea label="Business Description" value={businessInfo.description} onChange={(value) => startBusinessTransition(() => setBusinessInfo(prev => ({ ...prev, description: value })))} placeholder="Describe your cremation services..." rows={4} />
                     <ProfileInput label="Business Hours" value={businessInfo.hours} onChange={(value) => startBusinessTransition(() => setBusinessInfo(prev => ({ ...prev, hours: value })))} placeholder="e.g., Monday-Friday: 9AM-6PM" />
+                  </ProfileFormGroup>
+                  
+                  <ProfileFormGroup title="Business Classification" subtitle="Define your business type and legal structure">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div>
+                        <SelectInput
+                          label="Business Type"
+                          id="businessType"
+                          name="businessType"
+                          value={businessInfo.businessType}
+                          onChange={(value: string) => startBusinessTransition(() => setBusinessInfo(prev => ({ ...prev, businessType: value })))}
+                          required
+                          size="lg"
+                          options={[
+                            { value: "cremation", label: "Pet Cremation Services" },
+                            { value: "memorial", label: "Pet Memorial Services" },
+                            { value: "veterinary", label: "Veterinary Services" },
+                            { value: "burial", label: "Pet Burial Services" }
+                          ]}
+                        />
+                      </div>
+                      <div>
+                        <SelectInput
+                          label="Business Entity Type"
+                          id="businessEntityType"
+                          name="businessEntityType"
+                          value={businessInfo.businessEntityType}
+                          onChange={(value: string) => startBusinessTransition(() => setBusinessInfo(prev => ({ ...prev, businessEntityType: value })))}
+                          required
+                          size="lg"
+                          options={[
+                            { value: "sole_proprietorship", label: "Sole Proprietorship" },
+                            { value: "partnership", label: "Partnership" },
+                            { value: "corporation", label: "Corporation" },
+                            { value: "cooperative", label: "Cooperative" }
+                          ]}
+                        />
+                      </div>
+                    </div>
                   </ProfileFormGroup>
                   <div className="flex justify-end pt-4 border-t border-gray-100">
                     <ProfileButton type="submit" variant="primary" icon={<CheckCircleIcon className="h-5 w-5" />}>
