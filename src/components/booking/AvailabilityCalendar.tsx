@@ -649,6 +649,7 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
         isAvailable,
         timeSlots,
         hasBookings: Boolean((availabilityInfo as any)?.hasBookings),
+        hasCancelled: Boolean((availabilityInfo as any)?.cancelledTimes && (availabilityInfo as any)?.cancelledTimes.length > 0),
       });
     }
 

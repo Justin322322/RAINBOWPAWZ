@@ -37,6 +37,7 @@ function MonthGrid({ days, selectedDate, formatDateToString, onDayClick, compact
                   const hasBookedSlots = day.timeSlots.some((slot) => slot.isBooked);
                   // Some providers remove slots after booking; fall back to hasBookings flag if present
                   const isBookedDay = hasBookedSlots || (typeof (day as any).hasBookings === 'boolean' && (day as any).hasBookings);
+                  const hasCancelled = Boolean((day as any).hasCancelled);
                   return (
                     <button
                       type="button"
@@ -46,11 +47,13 @@ function MonthGrid({ days, selectedDate, formatDateToString, onDayClick, compact
                         h-full w-full flex flex-col items-center justify-center rounded-md p-0.5 sm:p-1 transition-colors text-xs sm:text-sm
                         ${isPastDay 
                           ? 'bg-gray-100 text-gray-400 cursor-not-allowed' 
-                          : isBookedDay
-                            ? 'bg-blue-100 hover:bg-blue-200 text-blue-800 border border-blue-300'
-                            : day.timeSlots.length > 0 
-                              ? 'bg-green-100 hover:bg-green-200 text-green-800 border border-green-300' 
-                              : 'bg-gray-50 hover:bg-gray-100 text-gray-800'}
+                          : hasCancelled
+                            ? 'bg-red-50 hover:bg-red-100 text-red-800 border border-red-300'
+                            : isBookedDay
+                              ? 'bg-blue-100 hover:bg-blue-200 text-blue-800 border border-blue-300'
+                              : day.timeSlots.length > 0 
+                                ? 'bg-green-100 hover:bg-green-200 text-green-800 border border-green-300' 
+                                : 'bg-gray-50 hover:bg-gray-100 text-gray-800'}
                         ${isSelected ? 'ring-2 ring-[var(--primary-green)]' : ''}
                       `}
                     >

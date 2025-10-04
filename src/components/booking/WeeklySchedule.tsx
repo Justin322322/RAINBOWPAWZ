@@ -285,11 +285,13 @@ export default function WeeklySchedule({ providerId, onDayClick }: WeeklySchedul
               relative rounded-lg border-2 p-3 transition-all cursor-pointer
               ${day.isToday 
                 ? 'border-[var(--primary-green)] bg-green-50' 
-                : day.hasBookings && !day.isPast
-                  ? 'border-blue-300 bg-blue-50'
-                  : day.isPast 
-                    ? 'border-gray-200 bg-gray-50 opacity-60' 
-                    : 'border-gray-200 bg-white hover:border-[var(--primary-green)] hover:shadow-md'
+                : (day.cancelledTimes && day.cancelledTimes.length > 0) && !day.isPast
+                  ? 'border-red-300 bg-red-50'
+                  : day.hasBookings && !day.isPast
+                    ? 'border-blue-300 bg-blue-50'
+                    : day.isPast 
+                      ? 'border-gray-200 bg-gray-50 opacity-60' 
+                      : 'border-gray-200 bg-white hover:border-[var(--primary-green)] hover:shadow-md'
               }
             `}
           >
@@ -321,6 +323,16 @@ export default function WeeklySchedule({ providerId, onDayClick }: WeeklySchedul
                       <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                     </svg>
                     {day.bookingCount} {day.bookingCount === 1 ? 'booking' : 'bookings'}
+                  </span>
+                </div>
+              )}
+              {(day.cancelledTimes && day.cancelledTimes.length > 0 && !day.isPast) && (
+                <div className="mt-1">
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-semibold bg-red-100 text-red-800 rounded-full">
+                    <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                    </svg>
+                    Cancelled
                   </span>
                 </div>
               )}
@@ -371,9 +383,9 @@ export default function WeeklySchedule({ providerId, onDayClick }: WeeklySchedul
               <div className="absolute top-2 right-2">
                 <div
                   className={`w-2 h-2 rounded-full ${
-                    day.hasBookings ? 'bg-blue-500' : day.isAvailable ? 'bg-green-500' : 'bg-gray-300'
+                    (day.cancelledTimes && day.cancelledTimes.length > 0) ? 'bg-red-500' : day.hasBookings ? 'bg-blue-500' : day.isAvailable ? 'bg-green-500' : 'bg-gray-300'
                   }`}
-                  title={day.hasBookings ? 'Has Bookings' : day.isAvailable ? 'Available' : 'Unavailable'}
+                  title={(day.cancelledTimes && day.cancelledTimes.length > 0) ? 'Has Cancellations' : (day.hasBookings ? 'Has Bookings' : day.isAvailable ? 'Available' : 'Unavailable')}
                 />
               </div>
             )}
