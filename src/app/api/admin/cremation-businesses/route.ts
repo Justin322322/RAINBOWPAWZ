@@ -197,6 +197,10 @@ export async function GET(request: NextRequest) {
       const userColumns = await query('SHOW COLUMNS FROM users');
       const userColumnNames = userColumns.map((col: any) => col.Field);
 
+      // Check if user_type column exists
+      const hasUserType = userColumnNames.includes('user_type');
+      const hasRole = userColumnNames.includes('role');
+
       // Build a dynamic query based on available columns
       let selectFields = [
         'sp.provider_id as id',
@@ -241,31 +245,52 @@ export async function GET(request: NextRequest) {
       const hasProviderTypeColumn = columnNames.includes('provider_type');
 
       // Use the appropriate column name for business type
+      // Match cremation businesses more broadly to catch all variations
       let typeCondition = '1=1'; // Default to all records if provider_type doesn't exist
       if (hasProviderTypeColumn) {
-        typeCondition = "sp.provider_type = 'cremation'";
+        // Match 'cremation' or NULL (for businesses that haven't set a type yet)
+        typeCondition = "(sp.provider_type = 'cremation' OR sp.provider_type IS NULL OR sp.provider_type = '')";
+      }
+
+      // Build user role condition based on available columns
+      // IMPORTANT: Include NULL check for LEFT JOIN results
+      let userRoleCondition = '1=1'; // Default if no role columns exist
+      if (hasRole && hasUserType) {
+        userRoleCondition = "(u.role = 'business' OR u.user_type = 'business' OR u.role IS NULL)";
+      } else if (hasRole) {
+        userRoleCondition = "(u.role = 'business' OR u.role IS NULL)";
+      } else if (hasUserType) {
+        userRoleCondition = "(u.user_type = 'business' OR u.user_type IS NULL)";
       }
 
       // SECURITY FIX: Build safe query with validated table names
+      // Use LEFT JOIN instead of INNER JOIN to include businesses even if user data is missing
       const selectFieldsStr = selectFields.join(',\n          ');
       const safeQueryString = `
         SELECT
           ${selectFieldsStr}
         FROM service_providers sp
-        JOIN users u ON sp.user_id = u.user_id
-        WHERE ${typeCondition}
+        LEFT JOIN users u ON sp.user_id = u.user_id
+        WHERE ${typeCondition} AND ${userRoleCondition}
         ORDER BY sp.provider_id DESC
         LIMIT 100
       `;
 
+      console.log('[Cremation Businesses] Executing main query:', safeQueryString);
       businesses = await query(safeQueryString);
-    } catch {
+      console.log(`[Cremation Businesses] Main query returned ${businesses?.length || 0} businesses`);
+    } catch (error) {
+      console.error('[Cremation Businesses] Main query failed:', error);
 
       // Try a more basic query if the first one fails
       try {
 
         const userColumns = await query('SHOW COLUMNS FROM users');
         const userColumnNames = userColumns.map((col: any) => col.Field);
+
+        // Check if user_type and role columns exist
+        const hasUserType = userColumnNames.includes('user_type');
+        const hasRole = userColumnNames.includes('role');
 
         // Build a minimal owner field based on available columns in users table
         let ownerField = "'Unknown Owner' as owner";
@@ -275,7 +300,19 @@ export async function GET(request: NextRequest) {
           ownerField = "CONCAT(u.first_name, ' ', u.last_name) as owner";
         }
 
+        // Build user role condition based on available columns
+        // IMPORTANT: Include NULL check for LEFT JOIN results
+        let userRoleCondition = '1=1';
+        if (hasRole && hasUserType) {
+          userRoleCondition = "(u.role = 'business' OR u.user_type = 'business' OR u.role IS NULL)";
+        } else if (hasRole) {
+          userRoleCondition = "(u.role = 'business' OR u.role IS NULL)";
+        } else if (hasUserType) {
+          userRoleCondition = "(u.user_type = 'business' OR u.user_type IS NULL)";
+        }
+
         // SECURITY FIX: Use a minimal query with validated table name
+        // Use LEFT JOIN and broader WHERE condition to catch all business users
         const safeFallbackQuery = `
           SELECT
             sp.provider_id as id,
@@ -283,15 +320,19 @@ export async function GET(request: NextRequest) {
             ${ownerField},
             u.email
           FROM service_providers sp
-          JOIN users u ON sp.user_id = u.user_id
-          WHERE sp.provider_type = 'cremation'
+          LEFT JOIN users u ON sp.user_id = u.user_id
+          WHERE (sp.provider_type = 'cremation' OR sp.provider_type IS NULL OR sp.provider_type = '')
+            AND ${userRoleCondition}
           ORDER BY sp.provider_id DESC
           LIMIT 100
         `;
 
+        console.log('[Cremation Businesses] Executing fallback query:', safeFallbackQuery);
         businesses = await query(safeFallbackQuery);
+        console.log(`[Cremation Businesses] Fallback query returned ${businesses?.length || 0} businesses`);
 
-      } catch {
+      } catch (fallbackError) {
+        console.error('[Cremation Businesses] Fallback query also failed:', fallbackError);
 
         // Return empty data instead of error
         return NextResponse.json({

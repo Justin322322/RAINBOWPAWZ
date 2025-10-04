@@ -42,7 +42,10 @@ export async function GET(request: NextRequest) {
       AND table_name IN ('service_packages', 'service_providers')
     `) as any[];
 
-    const tableNames = tablesResult.map((row: any) => row.table_name);
+    // Handle both uppercase and lowercase column names
+    const tableNames = tablesResult.map((row: any) => 
+      (row.table_name || row.TABLE_NAME || '').toLowerCase()
+    );
 
     const hasServicePackages = tableNames.includes('service_packages');
     const hasServiceProviders = tableNames.includes('service_providers');
@@ -116,10 +119,18 @@ export async function GET(request: NextRequest) {
     });
 
   } catch (error) {
+    console.error('[Admin Services API] Error fetching services:', error);
+    console.error('[Admin Services API] Error details:', {
+      message: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined,
+      code: (error as any)?.code,
+      sql: (error as any)?.sql
+    });
 
     return NextResponse.json({
       error: 'Failed to fetch services',
       details: error instanceof Error ? error.message : 'Unknown error',
+      code: (error as any)?.code || 'UNKNOWN_ERROR',
       success: false
     }, { status: 500 });
   }

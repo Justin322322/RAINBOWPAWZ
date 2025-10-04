@@ -67,6 +67,34 @@ export async function GET(request: NextRequest) {
       // Check for profile_picture column
       const hasProfilePicture = columns.includes('profile_picture');
 
+      // DEBUG: Log column availability
+      console.log('[Users API DEBUG] Column availability:', {
+        hasUserType,
+        hasRole,
+        hasLastLogin,
+        hasProfilePicture
+      });
+
+      // DEBUG: Show all users in database before filtering
+      try {
+        const allUsersDebug = await query('SELECT user_id, role, user_type, email FROM users ORDER BY user_id') as any[];
+        console.log(`[Users API DEBUG] Total users in database: ${allUsersDebug.length}`);
+        console.log('[Users API DEBUG] All users in DB:');
+        allUsersDebug.forEach((u: any) => {
+          console.log(`  - User ID ${u.user_id}: role="${u.role || 'NULL'}", user_type="${u.user_type || 'NULL'}", email="${u.email}"`);
+        });
+        
+        // Count by role
+        const roleCount: { [key: string]: number } = {};
+        allUsersDebug.forEach((u: any) => {
+          const roleKey = u.role || 'NULL';
+          roleCount[roleKey] = (roleCount[roleKey] || 0) + 1;
+        });
+        console.log('[Users API DEBUG] Users grouped by role:', roleCount);
+      } catch (debugError) {
+        console.error('[Users API DEBUG] Error fetching all users for debug:', debugError);
+      }
+
       // Build the query dynamically based on available columns
       let selectFields = 'user_id, first_name, last_name, email, phone, address, gender, created_at, updated_at, is_otp_verified, status, is_verified';
 
@@ -87,6 +115,8 @@ export async function GET(request: NextRequest) {
       const whereConditions = [];
       const queryParams = [];
 
+      console.log('[Users API DEBUG] Filtering by role:', role);
+
       if (role) {
         // Check for valid role values
         if (role === 'fur_parent') {
@@ -95,19 +125,26 @@ export async function GET(request: NextRequest) {
             // 1. role = 'fur_parent' explicitly
             // 2. role IS NULL AND user_type = 'user' (legacy users)
             // 3. user_type = 'user' (catch-all for user accounts)
-            whereConditions.push('(role = ? OR role = "user" OR (role IS NULL AND user_type = "user") OR user_type = "user")');
+            const condition = '(role = ? OR role = "user" OR (role IS NULL AND user_type = "user") OR user_type = "user")';
+            whereConditions.push(condition);
             queryParams.push(role);
+            console.log('[Users API DEBUG] Fur parent condition (both columns):', condition);
           } else if (hasRole) {
             // If we only have role column, check for both 'fur_parent' and 'user'
-            whereConditions.push('(role = ? OR role = "user")');
+            const condition = '(role = ? OR role = "user")';
+            whereConditions.push(condition);
             queryParams.push(role);
+            console.log('[Users API DEBUG] Fur parent condition (role only):', condition);
           } else if (hasUserType) {
-            whereConditions.push('user_type = "user"');
+            const condition = 'user_type = "user"';
+            whereConditions.push(condition);
+            console.log('[Users API DEBUG] Fur parent condition (user_type only):', condition);
           }
         } else {
           if (hasRole) {
             whereConditions.push('role = ?');
             queryParams.push(role);
+            console.log('[Users API DEBUG] Other role condition:', `role = '${role}'`);
           }
         }
       }
@@ -140,11 +177,45 @@ export async function GET(request: NextRequest) {
       const usersParams = [...queryParams];
 
       // Execute count query
+      console.log('[Users API DEBUG] Count query:', countQuery);
+      console.log('[Users API DEBUG] Count query params:', queryParams);
       const countResult = await query(countQuery, queryParams.slice(0, queryParams.length)) as any[];
       const total = countResult[0].total;
+      console.log(`[Users API DEBUG] Total users matching filter: ${total}`);
 
       // Execute users query
+      console.log('═══════════════════════════════════════════════════════════');
+      console.log(`[Users API DEBUG] Fetching users with role filter: "${role || 'ALL'}"`);
+      console.log('[Users API DEBUG] Full SQL Query:', usersQuery);
+      console.log('[Users API DEBUG] Query params:', usersParams);
       const usersResult = await query(usersQuery, usersParams) as any[];
+      console.log(`[Users API DEBUG] Query returned ${usersResult?.length || 0} users out of ${total} total`);
+      
+      // DEBUG: Show ALL returned user IDs with their roles
+      if (usersResult.length > 0) {
+        console.log('[Users API DEBUG] ALL user IDs returned:');
+        usersResult.forEach((u: any, index: number) => {
+          console.log(`  ${index + 1}. User ID ${u.user_id}: role="${u.role || 'NULL'}", user_type="${u.user_type || 'NULL'}", email="${u.email}"`);
+        });
+        
+        console.log('[Users API DEBUG] Sample user data:', {
+          first: {
+            user_id: usersResult[0].user_id,
+            role: usersResult[0].role,
+            user_type: usersResult[0].user_type,
+            email: usersResult[0].email
+          },
+          ...(usersResult.length > 1 && {
+            last: {
+              user_id: usersResult[usersResult.length - 1].user_id,
+              role: usersResult[usersResult.length - 1].role,
+              user_type: usersResult[usersResult.length - 1].user_type,
+              email: usersResult[usersResult.length - 1].email
+            }
+          })
+        });
+      }
+      console.log('═══════════════════════════════════════════════════════════');
 
       // Get appeals for all users in one query for better performance
       let userAppeals: { [key: string]: any[] } = {};

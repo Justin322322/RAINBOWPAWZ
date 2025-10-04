@@ -124,15 +124,33 @@ async function buildServiceQuery(search: string, statusFilter: string, categoryF
   const spCols = [];
   if (joinSP) {
     spCols.push("sp.provider_id AS providerId");
+    spCols.push("sp.user_id AS providerUserId"); // Add user_id for joining with users
     if (spColumns.includes('name')) spCols.push("COALESCE(sp.name,'Cremation Center') AS providerName");
     if (spColumns.includes('address')) spCols.push("COALESCE(sp.address,'') AS providerAddress");
     if (spColumns.includes('phone')) spCols.push("COALESCE(sp.phone,'') AS providerPhone");
+    if (spColumns.includes('application_status')) spCols.push("sp.application_status AS providerStatus");
   }
 
   const colsStr = [...baseCols, ...spCols].join(', ');
-  const joinClause = joinSP ? 'LEFT JOIN service_providers sp ON p.provider_id=sp.provider_id' : '';
+  
+  // Enhanced join to include users table for complete business owner information
+  let joinClause = '';
+  if (joinSP) {
+    joinClause = `
+      LEFT JOIN service_providers sp ON p.provider_id=sp.provider_id
+      LEFT JOIN users u ON sp.user_id=u.user_id
+    `;
+    // Add user columns for display
+    spCols.push("CONCAT(COALESCE(u.first_name,''), ' ', COALESCE(u.last_name,'')) AS ownerName");
+    spCols.push("u.email AS ownerEmail");
+  }
 
-  let sql = `SELECT ${colsStr} FROM service_packages p ${joinClause} WHERE 1=1`;
+  // Rebuild colsStr with new user columns
+  const finalColsStr = [...baseCols, ...spCols].join(', ');
+
+  // Start with base WHERE clause - include all packages
+  // Admin should see all services, including those without providers or from restricted businesses
+  let sql = `SELECT ${finalColsStr} FROM service_packages p ${joinClause} WHERE 1=1`;
   const params: any[] = [];
 
   // Build search conditions
