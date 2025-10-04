@@ -17,7 +17,7 @@ const ReceiptRejectionModal: React.FC<ReceiptRejectionModalProps> = ({
   isOpen,
   onClose,
   onConfirm,
-  bookingId,
+  bookingId: _bookingId,
   petName,
   isRejecting
 }) => {

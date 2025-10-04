@@ -228,7 +228,7 @@ export async function GET(request: Request) {
           COALESCE(sp.address, u.address) as address,
           COALESCE(sp.phone, u.phone) as phone,
           sp.description,
-          ${columnNames.has('provider_type') ? 'sp.provider_type' : "'cremation'"} as type,
+          sp.provider_type as type,
           sp.created_at,
           u.profile_picture,
           ${hasApplicationStatus ? 'sp.application_status' : hasVerificationStatus ? 'sp.verification_status' : "'approved' as application_status"},
@@ -626,9 +626,10 @@ export async function GET(request: Request) {
                 provider.distance = 'Distance unavailable';
                 provider.distanceValue = 0;
               }
-            } catch {
+            } catch (error) {
               provider.distance = 'Distance unavailable';
               provider.distanceValue = 0;
+              console.warn(`Distance calculation failed for provider ${provider.id}:`, error);
             }
             provider.packages = provider.packages || 0;
           }
@@ -651,6 +652,7 @@ export async function GET(request: Request) {
               provider.packages = 0;
               provider.distance = 'Distance unavailable';
               provider.distanceValue = 0;
+              console.warn(`Provider ${provider.id} distance calculation failed:`, result.reason);
               return provider;
             }
           })
