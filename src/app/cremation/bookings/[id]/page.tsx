@@ -26,6 +26,7 @@ import CremationCertificate from '@/components/certificates/CremationCertificate
 import Image from 'next/image';
 import { SkeletonCard } from '@/components/ui/SkeletonLoader';
 import BusinessCancellationModal from '@/components/booking/BusinessCancellationModal';
+import ReceiptRejectionModal from '@/components/booking/ReceiptRejectionModal';
 
 interface BookingDetailsProps {
   userData?: any;
@@ -80,6 +81,8 @@ function BookingDetailsPage({ userData }: BookingDetailsProps) {
   const [receiptActionLoading, setReceiptActionLoading] = useState(false);
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [isCancelling, setIsCancelling] = useState(false);
+  const [showReceiptRejectionModal, setShowReceiptRejectionModal] = useState(false);
+  const [isRejectingReceipt, setIsRejectingReceipt] = useState(false);
 
   // Flag to prevent re-fetching after successful updates
   const hasInitiallyLoaded = useRef(false);
@@ -422,6 +425,20 @@ function BookingDetailsPage({ userData }: BookingDetailsProps) {
       showToastRef.current?.(err instanceof Error ? err.message : 'Failed to process action', 'error');
     } finally {
       setReceiptActionLoading(false);
+    }
+  };
+
+  const handleReceiptRejection = async (reason: string) => {
+    if (!params.id) return;
+    setIsRejectingReceipt(true);
+    try {
+      await confirmOrRejectReceipt('reject', reason);
+      setShowReceiptRejectionModal(false);
+    } catch (error) {
+      console.error('Receipt rejection error:', error);
+      showToastRef.current?.('Failed to reject receipt. Please try again.', 'error');
+    } finally {
+      setIsRejectingReceipt(false);
     }
   };
 
@@ -861,10 +878,10 @@ function BookingDetailsPage({ userData }: BookingDetailsProps) {
             <div className="px-6 py-4 border-t border-gray-200 flex justify-end gap-2">
               <button
                 className="px-4 py-2 border border-red-300 text-red-700 rounded-md text-sm hover:bg-red-50 disabled:opacity-50"
-                disabled={receiptActionLoading}
-                onClick={() => confirmOrRejectReceipt('reject')}
+                disabled={receiptActionLoading || isRejectingReceipt}
+                onClick={() => setShowReceiptRejectionModal(true)}
               >
-                {receiptActionLoading ? 'Processing...' : 'Reject'}
+                {isRejectingReceipt ? 'Processing...' : 'Reject'}
               </button>
               <button
                 className="px-4 py-2 bg-green-600 text-white rounded-md text-sm hover:bg-green-700 disabled:opacity-50"
@@ -887,6 +904,18 @@ function BookingDetailsPage({ userData }: BookingDetailsProps) {
           bookingId={booking.id}
           petName={booking.pet_name}
           isCancelling={isCancelling}
+        />
+      )}
+
+      {/* Receipt Rejection Modal */}
+      {booking && (
+        <ReceiptRejectionModal
+          isOpen={showReceiptRejectionModal}
+          onClose={() => setShowReceiptRejectionModal(false)}
+          onConfirm={handleReceiptRejection}
+          bookingId={booking.id}
+          petName={booking.pet_name}
+          isRejecting={isRejectingReceipt}
         />
       )}
     </CremationDashboardLayout>
