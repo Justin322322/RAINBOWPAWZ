@@ -37,6 +37,7 @@ export default function TimeSlotSelector({
   const [selectedDateState, setSelectedDateState] = useState<string | undefined>(selectedDate || '');
   const [selectedTimeSlotState, setSelectedTimeSlotState] = useState<TimeSlot | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [cancelledTimesByDate, setCancelledTimesByDate] = useState<Record<string, string[]>>({});
 
   // Update internal state when props change
   useEffect(() => {
@@ -90,6 +91,40 @@ export default function TimeSlotSelector({
       }
 
       setAvailabilityData(data.availability || []);
+
+      // Fetch bookings to remove cancelled times from availability (fur parent side)
+      try {
+        const bookingsRes = await fetch(`/api/cremation/bookings?providerId=${providerId}`);
+        if (bookingsRes.ok) {
+          const bookingsJson = await bookingsRes.json();
+          const bookings = bookingsJson.bookings || [];
+          const map: Record<string, Set<string>> = {} as any;
+          bookings.forEach((b: any) => {
+            if (b.status === 'cancelled' && b.booking_date) {
+              const dateStr = String(b.booking_date).split('T')[0];
+              let timeStr: string | null = null;
+              if (b.booking_time) {
+                timeStr = String(b.booking_time).substring(0, 5);
+              } else if (b.scheduledTime) {
+                const m = String(b.scheduledTime).match(/(\d{1,2}:\d{2})/);
+                timeStr = m ? m[1] : null;
+              }
+              if (!map[dateStr]) map[dateStr] = new Set();
+              if (timeStr) map[dateStr].add(timeStr);
+            }
+          });
+          // Convert to arrays for state
+          const asArrays: Record<string, string[]> = {};
+          Object.keys(map).forEach(d => {
+            asArrays[d] = Array.from(map[d]);
+          });
+          setCancelledTimesByDate(asArrays);
+        } else {
+          setCancelledTimesByDate({});
+        }
+      } catch {
+        setCancelledTimesByDate({});
+      }
 
     } catch (error) {
       console.error('TimeSlotSelector: Error fetching availability data:', error);
@@ -145,6 +180,12 @@ export default function TimeSlotSelector({
 
       // Only include days that are available and have time slots
       let filteredTimeSlots = availabilityInfo?.timeSlots || [];
+
+      // Remove cancelled time slots for this date
+      const cancelledOnDate = cancelledTimesByDate[dateString] || [];
+      if (cancelledOnDate.length > 0 && filteredTimeSlots.length > 0) {
+        filteredTimeSlots = filteredTimeSlots.filter(slot => !cancelledOnDate.includes(slot.start));
+      }
 
       // If packageId is provided, filter time slots that have this package available
       if (packageId && filteredTimeSlots.length > 0) {
