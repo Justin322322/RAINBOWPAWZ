@@ -363,14 +363,20 @@ function BookingDetailsPage({ userData }: BookingDetailsProps) {
   const filteredSpecialNotes = (() => {
     const t = booking?.notes || '';
     if (!t) return '';
-    return t.replace(/Receipt:\s*\S+/gi, '').trim();
+    return t
+      .replace(/Receipt:\s*\S+/gi, '')
+      .replace(/\[ADD-ONS\]\s*\n?\s*Selected Add-ons:\s*.+?(?:\n\n|\n$|$)/gis, '')
+      .replace(/Selected Add-ons:\s*.+?(?:\n|$)/gi, '')
+      .trim();
   })();
 
   const parsedAddOns = (() => {
     const t = booking?.notes || '';
     if (!t) return '';
-    const m = t.match(/Selected Add-ons:\s*(.+?)(?:\n|$)/i);
-    return m ? m[1].trim() : '';
+    // Try to match both formats: with [ADD-ONS] prefix (multiline) and without
+    const m1 = t.match(/\[ADD-ONS\]\s*\n?\s*Selected Add-ons:\s*(.+?)(?:\n\n|\n$|$)/is);
+    const m2 = t.match(/Selected Add-ons:\s*(.+?)(?:\n|$)/i);
+    return (m1 ? m1[1].trim() : m2 ? m2[1].trim() : '');
   })();
 
   const getPaymentMethodLabel = (method?: string) => {
@@ -752,12 +758,12 @@ function BookingDetailsPage({ userData }: BookingDetailsProps) {
                     <div className="sm:col-span-1">
                       <div className="w-full max-w-[160px] border rounded-lg overflow-hidden bg-gray-50">
                         <Image
-                          src={booking.pet_image_url || '/icons/pet-placeholder.png'}
+                          src={booking.pet_image_url || '/images/pet-placeholder.svg'}
                           alt={booking.pet_name}
                           width={320}
                           height={320}
                           className="w-full h-full object-cover"
-                          onError={(e) => { (e.target as HTMLImageElement).src = '/icons/pet-placeholder.png'; }}
+                          onError={(e) => { (e.target as HTMLImageElement).src = '/images/pet-placeholder.svg'; }}
                         />
                       </div>
                     </div>

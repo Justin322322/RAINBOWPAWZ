@@ -48,6 +48,21 @@ export async function GET(request: NextRequest) {
       serviceProvider = serviceProviderResult[0];
     }
 
+    // Get restriction details if service provider is restricted
+    let restriction = null;
+    if (serviceProvider && serviceProvider.application_status === 'restricted') {
+      const restrictionResult = await query(`
+        SELECT id as restriction_id, reason, restriction_date, duration, report_count, is_active
+        FROM restrictions
+        WHERE subject_type = 'provider' AND subject_id = ? AND is_active = 1
+        LIMIT 1
+      `, [serviceProvider.provider_id]) as any[];
+
+      if (restrictionResult && restrictionResult.length > 0) {
+        restriction = restrictionResult[0];
+      }
+    }
+
     return NextResponse.json({
       success: true,
       user: {
@@ -65,7 +80,8 @@ export async function GET(request: NextRequest) {
         name: serviceProvider.name,
         application_status: serviceProvider.application_status,
         created_at: serviceProvider.created_at,
-        updated_at: serviceProvider.updated_at
+        updated_at: serviceProvider.updated_at,
+        restriction: restriction
       } : null
     });
 

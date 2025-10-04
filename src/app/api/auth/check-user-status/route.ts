@@ -51,6 +51,27 @@ export async function GET(request: NextRequest) {
       }, { status: 403 });
     }
 
+    // Get restriction details if user is restricted
+    let restriction = null;
+    if (userData.status === 'restricted') {
+      console.log('🔍 [Check User Status] User is restricted, fetching restriction details for user_id:', userData.user_id);
+      const restrictionResult = await query(`
+        SELECT id as restriction_id, reason, restriction_date, duration, report_count, is_active
+        FROM restrictions
+        WHERE subject_type = 'user' AND subject_id = ? AND is_active = 1
+        LIMIT 1
+      `, [userData.user_id]) as any[];
+
+      console.log('🔍 [Check User Status] Restriction query result:', restrictionResult);
+      
+      if (restrictionResult && restrictionResult.length > 0) {
+        restriction = restrictionResult[0];
+        console.log('🔍 [Check User Status] Found restriction:', restriction);
+      } else {
+        console.log('🔍 [Check User Status] No active restrictions found');
+      }
+    }
+
     const responseData = {
       success: true,
       user: {
@@ -66,10 +87,12 @@ export async function GET(request: NextRequest) {
         phone: userData.phone,
         address: userData.address,
         created_at: userData.created_at,
-        status: userData.status || 'active'
+        status: userData.status || 'active',
+        restriction: restriction
       }
     };
 
+    console.log('🔍 [Check User Status] Final response restriction:', restriction);
     console.log('📤 [API] Sending response:', responseData);
     return NextResponse.json(responseData);
 

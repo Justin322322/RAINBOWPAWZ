@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthTokenFromRequest } from '@/utils/auth';
 import { query } from '@/lib/db';
+import { ensureCancellationReasonColumn } from '@/lib/db/migrations';
 
 // Import the consolidated email service
 
@@ -63,8 +64,9 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // Best-effort ensure columns exist so responses can include pet dates
+    // Best-effort ensure columns exist so responses can include pet dates and cancellation reasons
     await ensurePetDateColumns();
+    await ensureCancellationReasonColumn();
 
     // Get user ID from auth token
     const authToken = getAuthTokenFromRequest(request);

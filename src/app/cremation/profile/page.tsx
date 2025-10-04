@@ -315,13 +315,21 @@ function CremationProfilePage({ userData }: { userData: any }) {
           province: parsed.province,
           postalCode: parsed.postalCode
         }));
-        setBusinessInfo({
+        const newBusinessInfo = {
           businessName: data.profile.business_name || '',
           description: data.profile.description || '',
           hours: data.profile.hours || '',
           businessType: data.profile.provider_type || 'cremation',
           businessEntityType: data.profile.business_entity_type || 'sole_proprietorship'
+        };
+        
+        console.log('🔍 [Business Profile Frontend] Setting business info from API:', {
+          provider_type: data.profile.provider_type,
+          business_entity_type: data.profile.business_entity_type,
+          newBusinessInfo
         });
+        
+        setBusinessInfo(newBusinessInfo);
       }
       setError(null);
     } catch (error) {
@@ -534,20 +542,26 @@ function CremationProfilePage({ userData }: { userData: any }) {
     setBusinessSuccess('');
 
     try {
+      const payload = {
+        business_name: businessInfo.businessName,
+        description: businessInfo.description,
+        hours: businessInfo.hours,
+        provider_type: businessInfo.businessType,
+        business_entity_type: businessInfo.businessEntityType,
+      };
+      
+      console.log('🔍 [Business Profile Frontend] Sending update payload:', payload);
+      
       // Corrected payload: removed address as it's handled in contact info
       const response = await fetch('/api/cremation/profile', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          business_name: businessInfo.businessName,
-          description: businessInfo.description,
-          hours: businessInfo.hours,
-          provider_type: businessInfo.businessType,
-          business_entity_type: businessInfo.businessEntityType,
-        }),
+        body: JSON.stringify(payload),
         credentials: 'include'
       });
       const data = await response.json();
+      
+      console.log('🔍 [Business Profile Frontend] Received response:', data);
 
       if (response.ok) {
         setBusinessSuccess('Business information updated successfully!');

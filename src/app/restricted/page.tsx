@@ -8,6 +8,7 @@ import { LoadingSpinner } from '@/app/admin/services/client';
 export default function RestrictedPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
+  const [restrictionReason, setRestrictionReason] = useState<string | null>(null);
 
   useEffect(() => {
     // Check if user should be on this page
@@ -61,6 +62,11 @@ export default function RestrictedPage() {
           return;
         }
 
+        // Set restriction reason if available
+        if (user.restriction && user.restriction.reason) {
+          setRestrictionReason(user.restriction.reason);
+        }
+
         setLoading(false);
       } catch (error) {
         console.error('Error checking status:', error);
@@ -99,6 +105,12 @@ export default function RestrictedPage() {
               <p className="text-gray-700 mb-2">
                 Your account has been restricted by our administrators.
               </p>
+              {restrictionReason && (
+                <div className="mb-3 p-3 bg-red-100 border border-red-300 rounded-md">
+                  <p className="text-sm font-medium text-red-800 mb-1">Restriction Reason:</p>
+                  <p className="text-sm text-red-700">{restrictionReason}</p>
+                </div>
+              )}
               <p className="text-gray-700">
                 Please review the information below or submit an appeal for review.
               </p>

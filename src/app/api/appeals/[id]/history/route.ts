@@ -17,6 +17,8 @@ export async function GET(
     }
 
     const appealId = parseInt(params.id);
+    console.log('🔍 [Appeal History] Fetching history for appeal:', appealId, 'User:', user.userId);
+    
     if (isNaN(appealId)) {
       return NextResponse.json({ error: 'Invalid appeal ID' }, { status: 400 });
     }
@@ -38,22 +40,34 @@ export async function GET(
     }
 
     // Fetch appeal history
-    const history = await query(`
-      SELECT 
-        h.*,
-        admin.first_name as admin_first_name,
-        admin.last_name as admin_last_name,
-        admin.email as admin_email
-      FROM appeal_history h
-      LEFT JOIN users admin ON h.admin_id = admin.user_id
-      WHERE h.appeal_id = ?
-      ORDER BY h.changed_at ASC
-    `, [appealId]) as any[];
+    console.log('🔍 [Appeal History] Querying appeal_history table...');
+    try {
+      const history = await query(`
+        SELECT 
+          h.*,
+          admin.first_name as admin_first_name,
+          admin.last_name as admin_last_name,
+          admin.email as admin_email
+        FROM appeal_history h
+        LEFT JOIN users admin ON h.admin_id = admin.user_id
+        WHERE h.appeal_id = ?
+        ORDER BY h.changed_at ASC
+      `, [appealId]) as any[];
 
-    return NextResponse.json({
-      success: true,
-      history
-    });
+      console.log('🔍 [Appeal History] Found history entries:', history.length);
+
+      return NextResponse.json({
+        success: true,
+        history
+      });
+    } catch (historyError) {
+      console.error('🔍 [Appeal History] Error querying history table:', historyError);
+      // If the table doesn't exist or there's an error, return empty history
+      return NextResponse.json({
+        success: true,
+        history: []
+      });
+    }
 
   } catch (error) {
     console.error('Error fetching appeal history:', error);

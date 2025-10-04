@@ -542,7 +542,7 @@ function CremationHistoryPage({ userData }: { userData: any }) {
                               height={40}
                               onError={(e: React.SyntheticEvent<HTMLImageElement, Event>) => {
                                 const target = e.target as HTMLImageElement;
-                                target.src = '/icons/pet-placeholder.png';
+                                target.src = '/images/pet-placeholder.svg';
                               }}
                             />
                           ) : (

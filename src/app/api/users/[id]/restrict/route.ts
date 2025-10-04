@@ -64,7 +64,34 @@ export async function PUT(request: NextRequest) {
     // **🔥 FIX: Use proper transaction management to prevent connection leaks**
     const _result = await withTransaction(async (transaction) => {
 
-      // No runtime DDL; table must be created via migration
+      // Ensure restrictions table exists and has proper structure
+      try {
+        await transaction.query(`
+          CREATE TABLE IF NOT EXISTS restrictions (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            subject_type ENUM('user', 'provider') NOT NULL,
+            subject_id INT NOT NULL,
+            reason TEXT,
+            duration VARCHAR(50),
+            report_count INT DEFAULT 0,
+            is_active BOOLEAN DEFAULT 1,
+            restriction_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            INDEX idx_subject (subject_type, subject_id),
+            INDEX idx_active (is_active)
+          )
+        `);
+        
+        // Fix any existing restrictions that don't have is_active set
+        await transaction.query(`
+          UPDATE restrictions 
+          SET is_active = 1 
+          WHERE is_active IS NULL OR is_active = 0
+        `);
+      } catch (error) {
+        console.error('Error ensuring restrictions table:', error);
+      }
 
       if (restricted) {
         // Check if user is already restricted
@@ -85,12 +112,14 @@ export async function PUT(request: NextRequest) {
             [reason, duration, reportCount, userId]
           );
         } else {
-          // Create new restriction
-          await transaction.query(
-            `INSERT INTO restrictions (subject_type, subject_id, reason, duration, report_count)
-             VALUES ('user', ?, ?, ?, ?)`,
-            [userId, reason, duration, reportCount]
-          );
+        // Create new restriction
+        console.log('🔍 [Restrict User] Creating restriction with reason:', reason);
+        await transaction.query(
+          `INSERT INTO restrictions (subject_type, subject_id, reason, duration, report_count, is_active)
+           VALUES ('user', ?, ?, ?, ?, 1)`,
+          [userId, reason, duration, reportCount]
+        );
+        console.log('🔍 [Restrict User] Restriction created successfully');
         }
 
         // Update user status to restricted (only use status field for now)

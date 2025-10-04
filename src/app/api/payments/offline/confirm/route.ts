@@ -116,7 +116,7 @@ export async function POST(request: NextRequest) {
       }
       console.log('🔄 [confirm] Cancelling booking due to receipt rejection');
       try {
-        await query('UPDATE bookings SET status = \"cancelled\", payment_status = \"awaiting_payment_confirmation\" WHERE id = ?', [bookingId]);
+        await query('UPDATE bookings SET status = \"cancelled\", payment_status = \"awaiting_payment_confirmation\", cancellation_reason = ? WHERE id = ?', [reason, bookingId]);
         console.log('✅ [confirm] Booking cancelled due to receipt rejection');
       } catch (updateError) {
         console.error('❌ [confirm] Failed to UPDATE bookings:', updateError);

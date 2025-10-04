@@ -47,6 +47,7 @@ export default function AppealsPage() {
   const [showForm, setShowForm] = useState(false);
   const [_selectedAppeal, setSelectedAppeal] = useState<Appeal | null>(null);
   const [_userStatus, setUserStatus] = useState<string>('');
+  const [restrictionReason, setRestrictionReason] = useState<string | null>(null);
 
   // Form state
   const [formData, setFormData] = useState({
@@ -117,6 +118,10 @@ export default function AppealsPage() {
         }
 
         setUserStatus('restricted');
+        // Set restriction reason if available
+        if (serviceProvider.restriction && serviceProvider.restriction.reason) {
+          setRestrictionReason(serviceProvider.restriction.reason);
+        }
       } else {
         // For personal users, check user status
         const user = statusData.user;
@@ -127,6 +132,10 @@ export default function AppealsPage() {
         }
 
         setUserStatus(user.status);
+        // Set restriction reason if available
+        if (user.restriction && user.restriction.reason) {
+          setRestrictionReason(user.restriction.reason);
+        }
       }
 
       // User is properly authenticated and restricted, proceed with loading appeals
@@ -142,16 +151,29 @@ export default function AppealsPage() {
 
   const loadAppeals = useCallback(async () => {
     try {
+      console.log('🔍 [Appeals Page] Loading appeals...');
       const response = await fetch('/api/appeals');
+      console.log('🔍 [Appeals Page] Response status:', response.status);
       if (response.ok) {
         const data = await response.json();
+        console.log('🔍 [Appeals Page] Received data:', data);
         const appealsWithHistory = await Promise.all(
-          (data.appeals || []).map(async (appeal: Appeal) => {
-            const history = await loadAppealHistory(appeal.appeal_id);
-            return { ...appeal, history };
+          (data.appeals || []).map(async (appeal: Appeal, index: number) => {
+            console.log(`🔍 [Appeals Page] Processing appeal ${index + 1}:`, appeal.appeal_id);
+            try {
+              const history = await loadAppealHistory(appeal.appeal_id);
+              console.log(`🔍 [Appeals Page] History for appeal ${appeal.appeal_id}:`, history.length, 'entries');
+              return { ...appeal, history };
+            } catch (error) {
+              console.error(`🔍 [Appeals Page] Error processing appeal ${appeal.appeal_id}:`, error);
+              return { ...appeal, history: [] };
+            }
           })
         );
+        console.log('🔍 [Appeals Page] Final appeals:', appealsWithHistory.length);
         setAppeals(appealsWithHistory);
+      } else {
+        console.error('🔍 [Appeals Page] Response not ok:', response.status, await response.text());
       }
     } catch (error) {
       console.error('Error loading appeals:', error);
@@ -171,10 +193,24 @@ export default function AppealsPage() {
 
   const loadAppealHistory = async (appealId: number) => {
     try {
+      console.log('🔍 [Appeals Page] Loading history for appeal:', appealId);
       const response = await fetch(`/api/appeals/${appealId}/history`);
+      console.log('🔍 [Appeals Page] History response status:', response.status);
+      
       if (response.ok) {
-        const data = await response.json();
-        return data.history || [];
+        const responseText = await response.text();
+        console.log('🔍 [Appeals Page] History response text:', responseText);
+        
+        if (responseText.trim()) {
+          const data = JSON.parse(responseText);
+          console.log('🔍 [Appeals Page] History data:', data);
+          return data.history || [];
+        } else {
+          console.log('🔍 [Appeals Page] Empty response, returning empty history');
+          return [];
+        }
+      } else {
+        console.error('🔍 [Appeals Page] History response not ok:', response.status);
       }
     } catch (error) {
       console.error('Error loading appeal history:', error);
@@ -297,6 +333,12 @@ export default function AppealsPage() {
               <p className="text-red-700 mb-4">
                 Your account has been restricted. You can submit an appeal below to request a review of this decision.
               </p>
+              {restrictionReason && (
+                <div className="mb-4 p-3 bg-red-100 border border-red-300 rounded-md">
+                  <p className="text-sm font-medium text-red-800 mb-1">Restriction Reason:</p>
+                  <p className="text-sm text-red-700">{restrictionReason}</p>
+                </div>
+              )}
               <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-4">
                 <button
                   onClick={() => setShowForm(true)}

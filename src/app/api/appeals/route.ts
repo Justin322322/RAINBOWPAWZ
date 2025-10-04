@@ -94,6 +94,8 @@ export async function POST(request: NextRequest) {
     const user = await verifySecureAuth(request);
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
+    console.log('🔍 [Appeals POST] User:', { userId: user.userId, accountType: user.accountType, userIdType: typeof user.userId });
+
     const { subject, message, appeal_type = 'restriction', evidence_files = [], business_id = null } = await request.json();
 
     if (!subject || !message) {
@@ -110,7 +112,11 @@ export async function POST(request: NextRequest) {
       console.error('Failed to ensure appeals table exists:', error);
     }
 
-    if (!(await checkTableExists())) {
+    const tableExists = await checkTableExists();
+    console.log('🔍 [Appeals POST] Table exists:', tableExists);
+    
+    if (!tableExists) {
+      console.log('🔍 [Appeals POST] Table does not exist, returning error');
       return NextResponse.json({
         error: 'Appeals system is not properly configured. Please contact support.',
         details: 'Appeals table does not exist'
@@ -118,11 +124,14 @@ export async function POST(request: NextRequest) {
     }
 
     // Check for existing pending appeal
+    const parsedUserId = parseInt(user.userId);
+    console.log('🔍 [Appeals POST] Checking for existing appeals:', { user_id: parsedUserId, isNaN: isNaN(parsedUserId) });
     const existingAppeal = await query(`
       SELECT appeal_id FROM appeals
       WHERE user_id = ? AND status IN ('pending', 'under_review')
       ORDER BY submitted_at DESC LIMIT 1
-    `, [parseInt(user.userId)]) as any[];
+    `, [parsedUserId]) as any[];
+    console.log('🔍 [Appeals POST] Existing appeals found:', existingAppeal.length);
 
     if (existingAppeal?.length > 0) {
       return NextResponse.json({
@@ -137,16 +146,18 @@ export async function POST(request: NextRequest) {
     if (user_type === 'business' && !actual_business_id) {
       const businessResult = await query(`
         SELECT provider_id FROM service_providers WHERE user_id = ?
-      `, [parseInt(user.userId)]) as any[];
+      `, [parsedUserId]) as any[];
       actual_business_id = businessResult?.[0]?.provider_id;
     }
 
     // Create appeal
+    console.log('🔍 [Appeals POST] Creating appeal:', { user_id: parsedUserId, user_type, actual_business_id, appeal_type, subject, isNaN: isNaN(parsedUserId) });
     const result = await withTransaction(async (transaction) => {
       const insertResult = await transaction.query(`
         INSERT INTO appeals (user_id, user_type, business_id, appeal_type, subject, message, evidence_files)
         VALUES (?, ?, ?, ?, ?, ?, ?)
-      `, [parseInt(user.userId), user_type, actual_business_id, appeal_type, subject, message, JSON.stringify(evidence_files)]) as any;
+      `, [parsedUserId, user_type, actual_business_id, appeal_type, subject, message, JSON.stringify(evidence_files)]) as any;
+      console.log('🔍 [Appeals POST] Appeal created with ID:', insertResult.insertId);
       return insertResult.insertId;
     });
 
@@ -172,6 +183,8 @@ export async function GET(request: NextRequest) {
     const user = await verifySecureAuth(request);
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
+    console.log('🔍 [Appeals API] User:', { userId: user.userId, accountType: user.accountType, userIdType: typeof user.userId });
+
     const { searchParams } = new URL(request.url);
     const status = searchParams.get('status');
     const user_id = searchParams.get('user_id');
@@ -184,12 +197,27 @@ export async function GET(request: NextRequest) {
       console.error('Failed to ensure appeals table exists:', error);
     }
 
-    if (!(await checkTableExists())) {
+    const tableExists = await checkTableExists();
+    console.log('🔍 [Appeals API] Table exists:', tableExists);
+    
+    if (!tableExists) {
+      console.log('🔍 [Appeals API] Table does not exist, returning empty array');
       return NextResponse.json({
         success: true,
         appeals: [],
         pagination: { total: 0, limit, offset, hasMore: false }
       });
+    }
+
+    // Debug: Check if there are any appeals in the database at all
+    try {
+      const allAppealsCheck = await query(`SELECT COUNT(*) as total FROM appeals`) as any[];
+      console.log('🔍 [Appeals API] Total appeals in database:', allAppealsCheck[0]?.total || 0);
+      
+      const userAppealsCheck = await query(`SELECT COUNT(*) as total FROM appeals WHERE user_id = ?`, [parseInt(user.userId)]) as any[];
+      console.log('🔍 [Appeals API] Appeals for this user:', userAppealsCheck[0]?.total || 0);
+    } catch (error) {
+      console.error('🔍 [Appeals API] Error checking appeals count:', error);
     }
 
     // Build query
@@ -206,8 +234,10 @@ export async function GET(request: NextRequest) {
         queryParams.push(user_id);
       }
     } else {
+      const parsedUserId = parseInt(user.userId);
+      console.log('🔍 [Appeals API] Parsed user ID:', { original: user.userId, parsed: parsedUserId, isNaN: isNaN(parsedUserId) });
       whereClause = 'WHERE a.user_id = ?';
-      queryParams.push(parseInt(user.userId));
+      queryParams.push(parsedUserId);
       if (status) {
         whereClause += ' AND a.status = ?';
         queryParams.push(status);
@@ -215,6 +245,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Fetch appeals
+    console.log('🔍 [Appeals API] Query:', { whereClause, queryParams });
     const appeals = await query(`
       SELECT a.*, u.first_name, u.last_name, u.email,
              admin.first_name as admin_first_name, admin.last_name as admin_last_name
@@ -226,12 +257,24 @@ export async function GET(request: NextRequest) {
       LIMIT ${Number(limit)} OFFSET ${Number(offset)}
     `, queryParams) as any[];
 
+    console.log('🔍 [Appeals API] Found appeals:', appeals.length);
+    if (appeals.length > 0) {
+      console.log('🔍 [Appeals API] First appeal sample:', {
+        appeal_id: appeals[0].appeal_id,
+        user_id: appeals[0].user_id,
+        subject: appeals[0].subject,
+        status: appeals[0].status,
+        submitted_at: appeals[0].submitted_at
+      });
+    }
+
     // Get total count
     const countResult = await query(`
       SELECT COUNT(*) as total FROM appeals a ${whereClause}
     `, queryParams) as any[];
 
     const total = countResult[0]?.total || 0;
+    console.log('🔍 [Appeals API] Total count:', total);
 
     return NextResponse.json({
       success: true,

@@ -461,7 +461,7 @@ const CremationCertificate: React.FC<CremationCertificateProps> = ({ booking, on
                 {/* Pet photo or placeholder */}
                 {booking.pet_image_url ? (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={booking.pet_image_url} alt={booking.pet_name} className="h-24 w-24 rounded-full object-cover border border-gray-300" onError={(e) => { (e.target as HTMLImageElement).src = '/icons/pet-placeholder.png'; }} />
+                  <img src={booking.pet_image_url} alt={booking.pet_name} className="h-24 w-24 rounded-full object-cover border border-gray-300" onError={(e) => { (e.target as HTMLImageElement).src = '/images/pet-placeholder.svg'; }} />
                 ) : (
                   <HeartIcon className="h-16 w-16 text-red-400 fill-current" />
                 )}

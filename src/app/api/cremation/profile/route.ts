@@ -132,6 +132,7 @@ export async function GET(request: NextRequest) {
       provider_id: row.provider_id || null,
       business_name: row.business_name || null,
       business_type: row.provider_type || null,
+      business_entity_type: row.business_entity_type || null,
       business_phone: row.business_phone || row.phone,
       business_address: row.business_address || row.address,
       description: row.description || null,
@@ -144,6 +145,15 @@ export async function GET(request: NextRequest) {
         governmentIdPath
       }
     };
+
+    console.log('🔍 [Business Profile GET] Raw data from database:', {
+      provider_type: row.provider_type,
+      business_entity_type: row.business_entity_type
+    });
+    console.log('🔍 [Business Profile GET] Profile data being returned:', {
+      business_type: profileData.business_type,
+      business_entity_type: profileData.business_entity_type
+    });
 
     return NextResponse.json(
       {
@@ -181,6 +191,8 @@ export async function PUT(request: NextRequest) {
     }
 
     const body = await request.json();
+    console.log('🔍 [Business Profile PUT] Received update data:', body);
+    
     const {
       first_name,
       last_name,
@@ -194,6 +206,11 @@ export async function PUT(request: NextRequest) {
       provider_type,
       business_entity_type
     } = body;
+
+    console.log('🔍 [Business Profile PUT] Extracted values:', {
+      provider_type,
+      business_entity_type
+    });
 
     // Conditionally update user table only if personal fields are provided
     if (first_name || last_name || phone || address) {
@@ -211,10 +228,18 @@ export async function PUT(request: NextRequest) {
 
     if (providerResult && providerResult.length > 0) {
       // Update existing service provider
+      console.log('🔍 [Business Profile PUT] Updating existing service provider with values:', {
+        provider_type: provider_type || null,
+        business_entity_type: business_entity_type || null,
+        user_id: user.userId
+      });
+      
       await query(
         'UPDATE service_providers SET name = COALESCE(?, name), phone = COALESCE(?, phone), address = COALESCE(?, address), description = COALESCE(?, description), hours = COALESCE(?, hours), provider_type = COALESCE(?, provider_type), business_entity_type = COALESCE(?, business_entity_type), updated_at = NOW() WHERE user_id = ?',
         [business_name || null, (business_phone || phone) || null, (business_address || address) || null, description || null, hours || null, provider_type || null, business_entity_type || null, user.userId]
       );
+      
+      console.log('🔍 [Business Profile PUT] Service provider updated successfully');
     } else if (business_name) {
       // Create new service provider record if business name is provided
       await query(
