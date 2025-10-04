@@ -131,8 +131,6 @@ async function buildServiceQuery(search: string, statusFilter: string, categoryF
     if (spColumns.includes('application_status')) spCols.push("sp.application_status AS providerStatus");
   }
 
-  const colsStr = [...baseCols, ...spCols].join(', ');
-  
   // Enhanced join to include users table for complete business owner information
   let joinClause = '';
   if (joinSP) {
