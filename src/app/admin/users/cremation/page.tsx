@@ -66,77 +66,34 @@ interface Appeal {
   resolved_at?: string;
 }
 
-const RestrictModal = memo(function RestrictModal({
-  isOpen,
-  onClose,
-  centerToAction,
-  initialReason,
-  onConfirm,
-  customZIndex,
-}: {
-  isOpen: boolean;
-  onClose: () => void;
-  centerToAction: { name?: string } | null;
-  initialReason: string;
-  onConfirm: (reason: string) => void;
-  customZIndex?: string;
-}) {
-  const [reason, setReason] = useState(initialReason);
-
-  useEffect(() => {
-    if (isOpen) {
-      setReason(initialReason || '');
-    }
-  }, [isOpen, initialReason]);
-
-  return (
-    <Modal
-      isOpen={isOpen}
-      onClose={onClose}
-      title="Restrict Cremation Center"
-      size="medium"
-      variant="danger"
-      customZIndex={customZIndex}
-    >
-      <div className="flex items-start mb-4">
-        <div className="mr-3 flex-shrink-0">
-          <ExclamationTriangleIcon className="h-6 w-6 text-red-600" />
-        </div>
-        <div className="text-sm text-gray-600 flex-1">
-          <p className="mb-4">Are you sure you want to restrict &quot;{centerToAction?.name}&quot;? This will prevent them from accepting new bookings.</p>
-          <div>
-            <label htmlFor="restrict-reason" className="block text-sm font-medium text-gray-700 mb-2">
-              Reason for restriction (optional)
-            </label>
-            <textarea
-              id="restrict-reason"
-              value={reason}
-              onChange={(e) => setReason(e.target.value)}
-              className="shadow-sm focus:ring-red-500 focus:border-red-500 block w-full sm:text-sm border-2 border-gray-400 rounded-md p-3 bg-white text-gray-900 placeholder-gray-500"
-              placeholder="Enter reason for restriction"
-              rows={3}
-            />
-          </div>
-        </div>
+// Custom restrict modal content with reason input
+const RestrictModalContent = ({ centerToAction, reason, setReason }: { 
+  centerToAction: { name?: string } | null; 
+  reason: string; 
+  setReason: (reason: string) => void; 
+}) => (
+  <div className="flex items-start mb-4">
+    <div className="mr-3 flex-shrink-0">
+      <ExclamationTriangleIcon className="h-6 w-6 text-red-600" />
+    </div>
+    <div className="text-sm text-gray-600 flex-1">
+      <p className="mb-4">Are you sure you want to restrict &quot;{centerToAction?.name}&quot;? This will prevent them from accepting new bookings.</p>
+      <div>
+        <label htmlFor="restrict-reason" className="block text-sm font-medium text-gray-700 mb-2">
+          Reason for restriction (optional)
+        </label>
+        <textarea
+          id="restrict-reason"
+          value={reason}
+          onChange={(e) => setReason(e.target.value)}
+          className="shadow-sm focus:ring-red-500 focus:border-red-500 block w-full sm:text-sm border-2 border-gray-400 rounded-md p-3 bg-white text-gray-900 placeholder-gray-500"
+          placeholder="Enter reason for restriction"
+          rows={3}
+        />
       </div>
-
-      <div className="mt-6 flex flex-col-reverse sm:grid sm:grid-cols-2 gap-3">
-        <Button
-          variant="secondary"
-          onClick={onClose}
-        >
-          Cancel
-        </Button>
-        <Button
-          variant="danger"
-          onClick={() => onConfirm(reason)}
-        >
-          Restrict Center
-        </Button>
-      </div>
-    </Modal>
-  );
-});
+    </div>
+  </div>
+);
 
 const AdminCremationCentersPage = React.memo(function AdminCremationCentersPage() {
   const [userName] = useState('System Administrator');
@@ -526,6 +483,7 @@ const AdminCremationCentersPage = React.memo(function AdminCremationCentersPage(
       // Handle 401 Unauthorized specifically (likely due to logout)
       if (response.status === 401) {
         // Don't show error for 401 during logout - just return silently
+        setIsProcessing(false);
         return;
       }
 
@@ -614,6 +572,7 @@ const AdminCremationCentersPage = React.memo(function AdminCremationCentersPage(
         // Handle 401 Unauthorized specifically (likely due to logout)
         if (response.status === 401) {
           // Don't show error for 401 during logout - just return silently
+          setIsProcessing(false);
           return;
         }
 
@@ -654,6 +613,7 @@ const AdminCremationCentersPage = React.memo(function AdminCremationCentersPage(
       // Handle 401 Unauthorized specifically for fallback (likely due to logout)
       if (fallbackResponse.status === 401) {
         // Don't show error for 401 during logout - just return silently
+        setIsProcessing(false);
         return;
       }
 
@@ -1241,18 +1201,45 @@ const AdminCremationCentersPage = React.memo(function AdminCremationCentersPage(
       </div>
 
       {/* Restrict Confirmation Modal */}
-      <RestrictModal
+      <Modal
         isOpen={showRestrictModal}
         onClose={() => {
           setShowRestrictModal(false);
           setCenterToAction(null);
           setRestrictReason('');
         }}
-        centerToAction={centerToAction}
-        initialReason={restrictReason}
-        onConfirm={(reason) => { setRestrictReason(reason); centerToAction && handleRestrictCenter(centerToAction); }}
+        title="Restrict Cremation Center"
+        size="medium"
+        variant="danger"
         customZIndex="z-[99999]"
-      />
+      >
+        <RestrictModalContent 
+          centerToAction={centerToAction}
+          reason={restrictReason}
+          setReason={setRestrictReason}
+        />
+        
+        <div className="mt-6 flex flex-col-reverse sm:grid sm:grid-cols-2 gap-3">
+          <Button
+            variant="secondary"
+            onClick={() => {
+              setShowRestrictModal(false);
+              setCenterToAction(null);
+              setRestrictReason('');
+            }}
+            disabled={isProcessing}
+          >
+            Cancel
+          </Button>
+          <Button
+            variant="danger"
+            onClick={() => centerToAction && handleRestrictCenter(centerToAction)}
+            disabled={isProcessing}
+          >
+            {isProcessing ? 'Processing...' : 'Restrict Center'}
+          </Button>
+        </div>
+      </Modal>
 
       {/* Unrestrict Confirmation Modal */}
       <ConfirmationModal

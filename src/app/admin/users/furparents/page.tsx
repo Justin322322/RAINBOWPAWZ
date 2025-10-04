@@ -335,17 +335,29 @@ const AdminFurParentsPage = React.memo(function AdminFurParentsPage() {
   const openRestrictModal = (user: User) => {
     setUserToAction(user);
     setRestrictReason('');
-    // Keep details modal open, just open restrict modal on top
-    setShowRestrictModal(true);
+    // Keep details modal open, just close other modals and open restrict modal on top
+    setShowAppealModal(false);
+    setShowRestoreModal(false);
     setOpenDropdownId(null);
+    
+    // Small delay to prevent flashing from rapid state changes
+    setTimeout(() => {
+      setShowRestrictModal(true);
+    }, 50);
   };
 
   // Function to open the unrestrict modal
   const openUnrestrictModal = (user: User) => {
     setUserToAction(user);
-    // Keep details modal open, just open unrestrict modal on top
-    setShowRestoreModal(true);
+    // Keep details modal open, just close other modals and open unrestrict modal on top
+    setShowAppealModal(false);
+    setShowRestrictModal(false);
     setOpenDropdownId(null);
+    
+    // Small delay to prevent flashing from rapid state changes
+    setTimeout(() => {
+      setShowRestoreModal(true);
+    }, 50);
   };
 
   // Function to toggle dropdown
@@ -546,77 +558,34 @@ const AdminFurParentsPage = React.memo(function AdminFurParentsPage() {
     // The useEffect will trigger a reload
   };
 
-  const RestrictModal = memo(function RestrictModal({
-    isOpen,
-    onClose,
-    userToAction,
-    initialReason,
-    onConfirm,
-    customZIndex,
-  }: {
-    isOpen: boolean;
-    onClose: () => void;
-    userToAction: { first_name?: string; last_name?: string } | null;
-    initialReason: string;
-    onConfirm: (reason: string) => void;
-    customZIndex?: string;
-  }) {
-    const [reason, setReason] = useState(initialReason);
-
-    useEffect(() => {
-      if (isOpen) {
-        setReason(initialReason || '');
-      }
-    }, [isOpen, initialReason]);
-
-    return (
-      <Modal
-        isOpen={isOpen}
-        onClose={onClose}
-        title="Restrict Fur Parent"
-        size="medium"
-        variant="danger"
-        customZIndex={customZIndex}
-      >
-        <div className="flex items-start mb-4">
-          <div className="mr-3 flex-shrink-0">
-            <ExclamationTriangleIcon className="h-6 w-6 text-red-600" />
-          </div>
-          <div className="text-sm text-gray-600 flex-1">
-            <p className="mb-4">Are you sure you want to restrict &quot;{userToAction?.first_name} {userToAction?.last_name}&quot;? This will prevent them from making new bookings.</p>
-            <div>
-              <label htmlFor="restrict-reason" className="block text-sm font-medium text-gray-700 mb-2">
-                Reason for restriction (optional)
-              </label>
-              <textarea
-                id="restrict-reason"
-                value={reason}
-                onChange={(e) => setReason(e.target.value)}
-                className="shadow-sm focus:ring-red-500 focus:border-red-500 block w-full sm:text-sm border-2 border-gray-400 rounded-md p-3 bg-white text-gray-900 placeholder-gray-500"
-                placeholder="Enter reason for restriction"
-                rows={3}
-              />
-            </div>
-          </div>
+  // Custom restrict modal content with reason input
+  const RestrictModalContent = ({ userToAction, reason, setReason }: { 
+    userToAction: { first_name?: string; last_name?: string } | null; 
+    reason: string; 
+    setReason: (reason: string) => void; 
+  }) => (
+    <div className="flex items-start mb-4">
+      <div className="mr-3 flex-shrink-0">
+        <ExclamationTriangleIcon className="h-6 w-6 text-red-600" />
+      </div>
+      <div className="text-sm text-gray-600 flex-1">
+        <p className="mb-4">Are you sure you want to restrict &quot;{userToAction?.first_name} {userToAction?.last_name}&quot;? This will prevent them from making new bookings.</p>
+        <div>
+          <label htmlFor="restrict-reason" className="block text-sm font-medium text-gray-700 mb-2">
+            Reason for restriction (optional)
+          </label>
+          <textarea
+            id="restrict-reason"
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+            className="shadow-sm focus:ring-red-500 focus:border-red-500 block w-full sm:text-sm border-2 border-gray-400 rounded-md p-3 bg-white text-gray-900 placeholder-gray-500"
+            placeholder="Enter reason for restriction"
+            rows={3}
+          />
         </div>
-
-        <div className="mt-6 flex flex-col-reverse sm:grid sm:grid-cols-2 gap-3">
-          <Button
-            variant="secondary"
-            onClick={onClose}
-          >
-            Cancel
-          </Button>
-          <Button
-            variant="danger"
-            onClick={() => onConfirm(reason)}
-          >
-            Restrict User
-          </Button>
-        </div>
-      </Modal>
-    );
-  });
+      </div>
+    </div>
+  );
 
   return (
     <AdminDashboardLayout activePage="furparents" userName={userName}>
@@ -707,7 +676,7 @@ const AdminFurParentsPage = React.memo(function AdminFurParentsPage() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[200]"
+            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100000]"
           >
             <motion.div
               initial={{ scale: 0.8, opacity: 0 }}
@@ -744,7 +713,7 @@ const AdminFurParentsPage = React.memo(function AdminFurParentsPage() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[200]"
+            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100000]"
           >
             <motion.div
               initial={{ scale: 0.8, opacity: 0 }}
@@ -1154,19 +1123,53 @@ const AdminFurParentsPage = React.memo(function AdminFurParentsPage() {
       </div>
 
       {/* Restrict Confirmation Modal */}
-      <RestrictModal
+      <Modal
         isOpen={showRestrictModal}
-        onClose={() => setShowRestrictModal(false)}
-        userToAction={userToAction}
-        initialReason={restrictReason}
-        onConfirm={(reason) => { handleRestrictUser(reason); }}
+        onClose={() => {
+          setShowRestrictModal(false);
+          setUserToAction(null);
+          setRestrictReason('');
+        }}
+        title="Restrict Fur Parent"
+        size="medium"
+        variant="danger"
         customZIndex="z-[99999]"
-      />
+      >
+        <RestrictModalContent 
+          userToAction={userToAction}
+          reason={restrictReason}
+          setReason={setRestrictReason}
+        />
+        
+        <div className="mt-6 flex flex-col-reverse sm:grid sm:grid-cols-2 gap-3">
+          <Button
+            variant="secondary"
+            onClick={() => {
+              setShowRestrictModal(false);
+              setUserToAction(null);
+              setRestrictReason('');
+            }}
+            disabled={isProcessing}
+          >
+            Cancel
+          </Button>
+          <Button
+            variant="danger"
+            onClick={() => handleRestrictUser(restrictReason)}
+            disabled={isProcessing}
+          >
+            {isProcessing ? 'Processing...' : 'Restrict User'}
+          </Button>
+        </div>
+      </Modal>
 
       {/* Unrestrict Confirmation Modal */}
       <ConfirmationModal
         isOpen={showRestoreModal}
-        onClose={() => setShowRestoreModal(false)}
+        onClose={() => {
+          setShowRestoreModal(false);
+          setUserToAction(null);
+        }}
         onConfirm={handleUnrestrictUser}
         title="Unrestrict Fur Parent"
         message={`Are you sure you want to unrestrict ${userToAction?.first_name} ${userToAction?.last_name}? This will allow them to make bookings again.`}
