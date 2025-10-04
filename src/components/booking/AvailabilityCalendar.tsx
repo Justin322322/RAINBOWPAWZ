@@ -215,8 +215,9 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
 
       const data = await response.json();
 
-      // Now fetch bookings to mark booked slots
+      // Now fetch bookings to mark booked slots and booked days
       let bookedSlots: { date: string; time: string; }[] = [];
+      const bookedDatesSet: Set<string> = new Set();
       try {
         const bookingsResponse = await fetch(`/api/cremation/bookings?providerId=${providerId}`, {
           headers,
@@ -247,8 +248,12 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
                 timeForComparison = timeMatch ? timeMatch[1] : null;
               }
               
+              const dateStr = booking.booking_date ? booking.booking_date.split('T')[0] : null;
+              if (dateStr) {
+                bookedDatesSet.add(dateStr);
+              }
               return {
-                date: booking.booking_date ? booking.booking_date.split('T')[0] : null,
+                date: dateStr,
                 time: timeForComparison,
                 status: booking.status
               };
@@ -290,7 +295,8 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
           return {
             date: day.date,
             isAvailable: Boolean(day.isAvailable), // Force boolean
-            timeSlots: timeSlots
+            timeSlots: timeSlots,
+            hasBookings: bookedDatesSet.has(day.date)
           };
         });
 

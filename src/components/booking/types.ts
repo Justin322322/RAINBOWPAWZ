@@ -21,6 +21,7 @@ type DayCalendarCell = {
   date: Date;
   isAvailable: boolean;
   timeSlots: TimeSlot[];
+  hasBookings?: boolean;
 };
 
 export type CalendarDay = EmptyCalendarCell | DayCalendarCell;

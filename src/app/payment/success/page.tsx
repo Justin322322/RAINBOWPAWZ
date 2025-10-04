@@ -5,10 +5,12 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import { CheckCircleIcon, DocumentIcon, EyeIcon } from '@heroicons/react/24/outline';
 import { toast } from 'react-hot-toast';
 import Image from 'next/image';
+import { useNotifications } from '@/context/NotificationContext';
 
 function PaymentSuccessContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
+  const { fetchNotifications } = useNotifications();
   const [isLoading, setIsLoading] = useState(true);
   const [paymentDetails, setPaymentDetails] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
@@ -28,6 +30,12 @@ function PaymentSuccessContent() {
         // Show success toast based on payment status
         if (data.data.status === 'succeeded') {
           toast.success('Payment completed successfully!');
+          // Proactively refresh notifications so the success shows without manual refresh
+          try {
+            await fetchNotifications(false);
+            // Call a delayed refresh to catch webhook-created notifications
+            setTimeout(() => { fetchNotifications(false).catch(() => {}); }, 2000);
+          } catch {}
         } else if (data.data.status === 'pending' || data.data.status === 'processing') {
           toast.loading('Payment is being processed...');
         } else if (data.data.status === 'failed') {
@@ -45,7 +53,7 @@ function PaymentSuccessContent() {
     } finally {
       setIsLoading(false);
     }
-  }, [bookingId]);
+  }, [bookingId, fetchNotifications]);
 
   const fetchReceipt = useCallback(async () => {
     if (!bookingId || paymentDetails?.payment_method !== 'qr_manual') return;

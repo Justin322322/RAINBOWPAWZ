@@ -33,7 +33,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Get booking counts per date for the week
-    // Only count confirmed and in_progress bookings (not pending or cancelled)
+    // Count all active and pending bookings (exclude only cancelled)
     const bookings = await query(
       `SELECT 
         DATE(booking_date) as date,
@@ -41,16 +41,18 @@ export async function GET(request: NextRequest) {
       FROM bookings
       WHERE provider_id = ?
         AND booking_date BETWEEN ? AND ?
-        AND status IN ('confirmed', 'in_progress')
+        AND status IN ('pending', 'confirmed', 'in_progress', 'completed')
       GROUP BY DATE(booking_date)
       ORDER BY booking_date`,
       [providerId, startDate, endDate]
     ) as any[];
 
-    // Convert to a map for easy lookup
+    // Convert to a map for easy lookup (stable YYYY-MM-DD keys without TZ issues)
     const bookingCounts: Record<string, number> = {};
     bookings.forEach((booking: any) => {
-      const dateStr = new Date(booking.date).toISOString().split('T')[0];
+      const dateStr = typeof booking.date === 'string'
+        ? booking.date
+        : new Date(booking.date).toISOString().split('T')[0];
       bookingCounts[dateStr] = parseInt(booking.count) || 0;
     });
 

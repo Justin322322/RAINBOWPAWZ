@@ -34,6 +34,9 @@ function MonthGrid({ days, selectedDate, formatDateToString, onDayClick, compact
                 (() => {
                   const isPastDay = day.date < new Date(new Date().setHours(0, 0, 0, 0));
                   const isSelected = selectedDate ? formatDateToString(day.date) === formatDateToString(selectedDate) : false;
+                  const hasBookedSlots = day.timeSlots.some((slot) => slot.isBooked);
+                  // Some providers remove slots after booking; fall back to hasBookings flag if present
+                  const isBookedDay = hasBookedSlots || (typeof (day as any).hasBookings === 'boolean' && (day as any).hasBookings);
                   return (
                     <button
                       type="button"
@@ -43,7 +46,7 @@ function MonthGrid({ days, selectedDate, formatDateToString, onDayClick, compact
                         h-full w-full flex flex-col items-center justify-center rounded-md p-0.5 sm:p-1 transition-colors text-xs sm:text-sm
                         ${isPastDay 
                           ? 'bg-gray-100 text-gray-400 cursor-not-allowed' 
-                          : day.timeSlots.some((slot) => slot.isBooked)
+                          : isBookedDay
                             ? 'bg-blue-100 hover:bg-blue-200 text-blue-800 border border-blue-300'
                             : day.timeSlots.length > 0 
                               ? 'bg-green-100 hover:bg-green-200 text-green-800 border border-green-300' 
@@ -56,13 +59,13 @@ function MonthGrid({ days, selectedDate, formatDateToString, onDayClick, compact
                         <div className="flex flex-col items-center mt-0.5 sm:mt-1">
                           <div
                             className={`px-1 py-0.5 rounded-sm text-xs font-medium ${
-                              day.timeSlots.some((slot) => slot.isBooked) ? 'bg-orange-200 text-orange-800' : 'bg-green-200 text-green-800'
+                              hasBookedSlots ? 'bg-orange-200 text-orange-800' : 'bg-green-200 text-green-800'
                             }`}
                           >
                             <span className="hidden sm:inline">{day.timeSlots.length} slots</span>
                             <span className="sm:hidden">{day.timeSlots.length}</span>
                           </div>
-                          {day.timeSlots.some((slot) => slot.isBooked) && (
+                          {hasBookedSlots && (
                             <div className="mt-0.5 px-1 py-0.5 bg-red-200 rounded-sm text-xs font-medium text-red-800">
                               <span className="hidden sm:inline">Has bookings</span>
                               <span className="sm:hidden">Booked</span>
