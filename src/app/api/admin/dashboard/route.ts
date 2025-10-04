@@ -60,7 +60,7 @@ export async function GET(request: NextRequest) {
     const previousMonthRevenue = revenueData.previousMonthRevenue || 0; // Ensure it's never null
     const _revenueChange = calculatePercentageChange(actualMonthlyRevenue, previousMonthRevenue);
 
-    // Get recent applications from service_providers table
+    // Get recent applications from service_providers table (all types)
     let recentApplications: any[] = [];
     try {
       recentApplications = await query(`
@@ -74,7 +74,6 @@ export async function GET(request: NextRequest) {
           sp.application_status as status
         FROM service_providers sp
         JOIN users u ON sp.user_id = u.user_id
-        WHERE sp.provider_type = 'cremation'
         ORDER BY sp.created_at DESC
         LIMIT 3
       `) as any[];
@@ -100,7 +99,6 @@ export async function GET(request: NextRequest) {
             created_at as submitDate,
             application_status as status
           FROM service_providers
-          WHERE provider_type = 'cremation'
           ORDER BY created_at DESC
           LIMIT 3
         `) as any[];

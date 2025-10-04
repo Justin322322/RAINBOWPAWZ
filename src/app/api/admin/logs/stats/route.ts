@@ -107,12 +107,13 @@ export async function GET(request: NextRequest) {
       )
     `) as any[];
     
-    // Get unique IP addresses
-    const uniqueIpsResult = await query(`
-      SELECT COUNT(DISTINCT al.ip_address) as count
+    // Get unique admin users (not IP addresses)
+    const uniqueAdminsResult = await query(`
+      SELECT COUNT(DISTINCT al.admin_id) as count
       FROM admin_logs al
       WHERE 1=1 ${dateCondition}
-      AND al.ip_address IS NOT NULL
+      AND al.admin_id IS NOT NULL
+      AND al.admin_id > 0
     `) as any[];
 
     return NextResponse.json({
@@ -121,7 +122,7 @@ export async function GET(request: NextRequest) {
       stats: {
         totalLogs: totalLogsResult[0]?.total || 0,
         errorLogs: errorLogsResult[0]?.count || 0,
-        uniqueIps: uniqueIpsResult[0]?.count || 0,
+        uniqueIps: uniqueAdminsResult[0]?.count || 0,
         actionBreakdown: actionStatsResult,
         entityBreakdown: entityStatsResult,
         adminActivity: adminStatsResult,
