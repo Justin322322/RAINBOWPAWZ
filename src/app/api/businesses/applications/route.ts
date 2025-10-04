@@ -107,13 +107,9 @@ export async function GET() {
     if (serviceProviderColumns.includes('created_at')) selectFields.push('sp.created_at');
     if (serviceProviderColumns.includes('updated_at')) selectFields.push('sp.updated_at');
 
-    // Build the WHERE clause based on available columns
-    let whereClause = '';
-    if (serviceProviderColumns.includes('provider_type')) {
-      whereClause += "sp.provider_type = 'cremation'";
-    } else {
-      whereClause += '1=1'; // No provider_type column, so select all
-    }
+    // Build the WHERE clause - show all business applications regardless of provider_type
+    // Admin should see all applications (cremation, memorial, veterinary, etc.)
+    const whereClause = '1=1'; // Select all providers
 
     const applicationQuery = `
       SELECT
