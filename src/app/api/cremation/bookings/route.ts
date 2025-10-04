@@ -76,6 +76,8 @@ export async function GET(request: NextRequest) {
     const requestUrl = new URL(request.url);
     const providerId = requestUrl.searchParams.get('providerId');
     const statusFilter = requestUrl.searchParams.get('status') || 'all';
+    const includeCancelledParam = requestUrl.searchParams.get('includeCancelled');
+    const includeCancelled = includeCancelledParam === '1' || includeCancelledParam === 'true';
     const searchTerm = requestUrl.searchParams.get('search') || '';
     const paymentStatusFilter = requestUrl.searchParams.get('paymentStatus') || 'all';
     const limit = parseInt(requestUrl.searchParams.get('limit') || '50');
@@ -179,7 +181,6 @@ export async function GET(request: NextRequest) {
         JOIN users u ON sb.user_id = u.user_id
         LEFT JOIN service_packages sp ON sb.package_id = sp.package_id
         WHERE (sb.package_id IN (${packagePlaceholders}) OR sb.provider_id = ?)
-        AND sb.status NOT IN ('completed', 'cancelled')
       `;
 
       // Add each package ID as a separate parameter, then add providerId
@@ -199,7 +200,6 @@ export async function GET(request: NextRequest) {
         LEFT JOIN pets p ON p.user_id = u.user_id AND p.created_at <= DATE_ADD(b.created_at, INTERVAL 5 SECOND)
         JOIN service_packages sp ON b.package_id = sp.package_id
         WHERE b.package_id IN (${packagePlaceholders})
-        AND b.status NOT IN ('completed', 'cancelled')
         GROUP BY b.id
       `;
 
@@ -207,10 +207,17 @@ export async function GET(request: NextRequest) {
       queryParams.push(...packageIds);
     }
 
-    // Add status filter if not 'all'
+    // Add status filter and default exclusions
     if (statusFilter !== 'all') {
       sql += ' AND status = ?';
       queryParams.push(statusFilter);
+    } else {
+      // Default view excludes completed; include cancelled only if explicitly requested
+      if (!includeCancelled) {
+        sql += " AND status <> 'completed'";
+      } else {
+        // Include all statuses (no exclusion) when includeCancelled is true
+      }
     }
 
     // Add payment status filter if not 'all'

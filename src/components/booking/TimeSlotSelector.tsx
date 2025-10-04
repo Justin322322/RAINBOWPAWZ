@@ -94,7 +94,7 @@ export default function TimeSlotSelector({
 
       // Fetch bookings to remove cancelled times from availability (fur parent side)
       try {
-        const bookingsRes = await fetch(`/api/cremation/bookings?providerId=${providerId}`);
+        const bookingsRes = await fetch(`/api/cremation/bookings?providerId=${providerId}&includeCancelled=1`);
         if (bookingsRes.ok) {
           const bookingsJson = await bookingsRes.json();
           const bookings = bookingsJson.bookings || [];

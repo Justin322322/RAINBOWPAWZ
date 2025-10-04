@@ -237,7 +237,7 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
 
         // 2) Detailed bookings for slot-level markings (best-effort; may be limited)
         try {
-          const bookingsResponse = await fetch(`/api/cremation/bookings?providerId=${providerId}`, {
+          const bookingsResponse = await fetch(`/api/cremation/bookings?providerId=${providerId}&includeCancelled=1`, {
             headers,
             method: 'GET',
             credentials: 'same-origin',
