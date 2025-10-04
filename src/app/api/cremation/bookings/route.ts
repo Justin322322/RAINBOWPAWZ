@@ -207,14 +207,17 @@ export async function GET(request: NextRequest) {
       queryParams.push(...packageIds);
     }
 
+    // Establish table alias for disambiguation
+    const tableAlias = useServiceBookings ? 'sb' : 'b';
+
     // Add status filter and default exclusions
     if (statusFilter !== 'all') {
-      sql += ' AND status = ?';
+      sql += ` AND ${tableAlias}.status = ?`;
       queryParams.push(statusFilter);
     } else {
       // Default view excludes completed; include cancelled only if explicitly requested
       if (!includeCancelled) {
-        sql += " AND status <> 'completed'";
+        sql += ` AND ${tableAlias}.status <> 'completed'`;
       } else {
         // Include all statuses (no exclusion) when includeCancelled is true
       }
@@ -224,11 +227,11 @@ export async function GET(request: NextRequest) {
     if (paymentStatusFilter !== 'all') {
       if (paymentStatusFilter === 'gcash') {
         // Special case for GCash payments
-        sql += ' AND payment_method = ?';
+        sql += ` AND ${tableAlias}.payment_method = ?`;
         queryParams.push('gcash');
       } else if (hasPaymentStatusColumn) {
         // For other payment statuses, only if the column exists
-        sql += ' AND payment_status = ?';
+        sql += ` AND ${tableAlias}.payment_status = ?`;
         queryParams.push(paymentStatusFilter);
       }
       // If payment_status column doesn't exist, we skip this filter
@@ -259,7 +262,8 @@ export async function GET(request: NextRequest) {
     // Add order by and limit (inline to avoid MySQL prepared statement issues)
     const limitInt = Number(limit);
     const offsetInt = Number(offset);
-    sql += ` ORDER BY created_at DESC LIMIT ${limitInt} OFFSET ${offsetInt}`;
+    const createdAtCol = useServiceBookings ? 'sb.created_at' : 'b.created_at';
+    sql += ` ORDER BY ${createdAtCol} DESC LIMIT ${limitInt} OFFSET ${offsetInt}`;
 
     console.log('🔍 DEBUG: Final SQL query:', sql);
     console.log('🔍 DEBUG: Query parameters:', queryParams);
