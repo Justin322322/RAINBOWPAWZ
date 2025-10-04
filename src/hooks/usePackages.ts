@@ -11,6 +11,7 @@ interface UsePackagesProps {
 export function usePackages({ userData }: UsePackagesProps) {
   const [packages, setPackages] = useState<PackageData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -30,8 +31,15 @@ export function usePackages({ userData }: UsePackagesProps) {
   const providerId = userData?.business_id || userData?.provider_id || userData?.service_provider_id || null;
   const userDataId = userData?.id;
 
-  const fetchPackages = useCallback(async () => {
-    setIsLoading(true);
+  const fetchPackages = useCallback(async (silent = false) => {
+    // Use isRefreshing for background updates (after create/edit)
+    // Use isLoading for initial page load
+    if (silent) {
+      setIsRefreshing(true);
+    } else {
+      setIsLoading(true);
+    }
+    
     try {
       // Log the provider ID for debugging
       console.log('[usePackages] Fetching packages with providerId:', providerId);
@@ -47,6 +55,7 @@ export function usePackages({ userData }: UsePackagesProps) {
         showToastRef.current?.('Unable to load packages: Provider ID not found', 'error');
         setPackages([]);
         setIsLoading(false);
+        setIsRefreshing(false);
         return;
       }
 
@@ -159,6 +168,7 @@ export function usePackages({ userData }: UsePackagesProps) {
       setPackages([]);
     } finally {
       setIsLoading(false);
+      setIsRefreshing(false);
     }
   }, [providerId, userDataId, userData?.business_id, userData?.provider_id, userData?.service_provider_id]); // Include all userData dependencies
 
@@ -266,6 +276,7 @@ export function usePackages({ userData }: UsePackagesProps) {
   return {
     packages,
     isLoading,
+    isRefreshing,
     setIsLoading,
     searchTerm,
     setSearchTerm,
