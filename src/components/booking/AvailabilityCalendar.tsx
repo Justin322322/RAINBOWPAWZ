@@ -18,9 +18,10 @@ interface AvailabilityCalendarProps {
   providerId: number;
   onAvailabilityChange?: (availability: DayAvailability[]) => void;
   onSaveSuccess?: () => void;
+  compact?: boolean;
 }
 
-export default function AvailabilityCalendar({ providerId, onAvailabilityChange, onSaveSuccess }: AvailabilityCalendarProps) {
+export default function AvailabilityCalendar({ providerId, onAvailabilityChange, onSaveSuccess, compact = false }: AvailabilityCalendarProps) {
   // Enhanced view state
   const { showToast } = useToast();
   const [viewMode, setViewMode] = useState<'month' | 'year'>('month');
@@ -1251,7 +1252,7 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
   }, [showConflictMessage]);
 
   return (
-    <div className="w-full">
+    <div className={compact ? "w-full max-w-5xl mx-auto" : "w-full"}>
       <CalendarHeader
         viewMode={viewMode}
         setViewMode={setViewMode}
@@ -1303,6 +1304,7 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
           selectedDate={selectedDate}
           formatDateToString={formatDateToString}
           onDayClick={handleDayClick}
+          compact={compact}
         />
       ) : (
         <YearOverview

@@ -15,7 +15,8 @@ import {
 } from '@heroicons/react/24/outline';
 import { useToast } from '@/context/ToastContext';
 import { PackageImage } from '@/components/packages/PackageImage';
-import AvailabilityCalendar from '@/components/booking/AvailabilityCalendar';
+import WeeklySchedule from '@/components/booking/WeeklySchedule';
+import AvailabilityEditorModal from '@/components/modals/AvailabilityEditorModal';
 import { useRouter } from 'next/navigation';
 import StatCard from '@/components/ui/StatCard';
 import { SkeletonCard } from '@/components/ui/SkeletonLoader';
@@ -37,9 +38,13 @@ function CremationDashboardPage({ userData }: { userData: any }) {
   const { showToast } = useToast();
 
   // Availability calendar state
-  const [availabilityError, setAvailabilityError] = useState<string | null>(null);
+  const [_availabilityError, setAvailabilityError] = useState<string | null>(null);
   const [availabilitySetupNeeded, setAvailabilitySetupNeeded] = useState(false);
-  const [showAvailabilitySection, setShowAvailabilitySection] = useState(false);
+  const [showAvailabilityModal, setShowAvailabilityModal] = useState(false);
+  const [scheduleKey, setScheduleKey] = useState(0); // Key to force refresh of WeeklySchedule
+
+  // Provider ID for availability modal
+  const providerId = userData?.business_id || userData?.provider_id || null;
 
   // Define stats configuration - matching admin dashboard pattern
   const statsConfig = [
@@ -226,7 +231,7 @@ function CremationDashboardPage({ userData }: { userData: any }) {
   }, [userData, isLoading]);
 
   // Handle availability changes (called when calendar data is fetched or updated)
-  const handleAvailabilityChange = (_availability: any) => {
+  const _handleAvailabilityChange = (_availability: any) => {
     // DO NOT show toast here, as this is called on initial load too.
     // Toast will be triggered by a more specific onSaveSuccess callback.
   };
@@ -234,12 +239,15 @@ function CremationDashboardPage({ userData }: { userData: any }) {
   // This function is specifically called only after a successful save action
   const handleSaveSuccess = () => {
     showToast('Availability settings saved successfully', 'success');
+    // Refresh the weekly schedule
+    setScheduleKey(prev => prev + 1);
   };
 
-  // Show or hide the availability section
-  const toggleAvailabilitySection = () => {
-    setShowAvailabilitySection(!showAvailabilitySection);
+  // Toggle availability modal
+  const toggleAvailabilityModal = () => {
+    setShowAvailabilityModal(!showAvailabilityModal);
   };
+
 
   return (
     <CremationDashboardLayout activePage="dashboard" userData={userData}>
@@ -316,8 +324,58 @@ function CremationDashboardPage({ userData }: { userData: any }) {
         )}
       </div>
 
-      {/* Main Content Grid - 2x2 Equal Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6 mb-8">
+      {/* Weekly Schedule - Full Width at Top */}
+      <div className="mb-8">
+        <div className="bg-white rounded-xl shadow-md border border-gray-100 overflow-hidden">
+          <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+            <div>
+              <h2 className="text-lg font-medium text-gray-800">Weekly Schedule</h2>
+              <p className="text-xs text-gray-500 mt-1">View your availability and bookings for the week</p>
+            </div>
+            <button
+              onClick={toggleAvailabilityModal}
+              className="px-4 py-2 bg-[var(--primary-green)] text-white rounded-lg hover:bg-[var(--primary-green-hover)] transition-colors duration-300 text-sm font-medium flex items-center gap-2"
+            >
+              <CalendarIcon className="h-4 w-4" />
+              Edit Schedule
+            </button>
+          </div>
+
+          {availabilitySetupNeeded ? (
+            <div className="p-6 text-center">
+              <ExclamationCircleIcon className="h-10 w-10 text-yellow-500 mx-auto mb-3" />
+              <h3 className="text-sm font-medium text-yellow-800 mb-2">Setup Required</h3>
+              <p className="text-yellow-700 text-xs mb-4">
+                Calendar tables need setup. Click {'"'}Edit Schedule{'"'} to create them.
+              </p>
+            </div>
+          ) : (
+            <div className="p-4">
+              {(() => {
+                const providerId = userData?.business_id || userData?.provider_id;
+                return providerId ? (
+                  <WeeklySchedule
+                    key={scheduleKey}
+                    providerId={providerId}
+                    onDayClick={(_date) => {
+                      // When clicking a day, open the modal editor
+                      setShowAvailabilityModal(true);
+                    }}
+                  />
+                ) : (
+                  <div className="flex items-center justify-center p-8">
+                    <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-[var(--primary-green)]"></div>
+                    <span className="ml-3 text-gray-600">Loading schedule...</span>
+                  </div>
+                );
+              })()}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Three Cards Below - Equal Width */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
         {/* Recent Bookings */}
         <div className="bg-white rounded-xl shadow-md border border-gray-100 overflow-hidden">
           <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
@@ -463,88 +521,6 @@ function CremationDashboardPage({ userData }: { userData: any }) {
           )}
         </div>
 
-        {/* Availability Calendar */}
-        <div className="bg-white rounded-xl shadow-md border border-gray-100 overflow-hidden">
-          <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
-            <h2 className="text-lg font-medium text-gray-800">Manage Availability</h2>
-            <button
-              onClick={toggleAvailabilitySection}
-              className="px-3 py-1 border border-[var(--primary-green)] text-[var(--primary-green)] rounded text-xs hover:bg-[var(--primary-green-bg)] transition-colors duration-300"
-            >
-              {showAvailabilitySection ? 'Hide' : 'Show'}
-            </button>
-          </div>
-
-          {availabilitySetupNeeded ? (
-            <div className="p-6 text-center">
-              <ExclamationCircleIcon className="h-10 w-10 text-yellow-500 mx-auto mb-3" />
-              <h3 className="text-sm font-medium text-yellow-800 mb-2">Setup Required</h3>
-              <p className="text-yellow-700 text-xs mb-4">
-                Calendar tables need setup. Click {'"'}Show{'"'} to create them.
-              </p>
-            </div>
-          ) : showAvailabilitySection ? (
-            <div className="p-4">
-              {availabilityError ? (
-                <div className="bg-yellow-50 border border-yellow-200 text-yellow-800 px-3 py-2 rounded mb-4 text-xs">
-                  <div className="flex">
-                    <ExclamationCircleIcon className="h-4 w-4 text-yellow-500 mr-2 flex-shrink-0 mt-0.5" />
-                    <span>{availabilityError}</span>
-                  </div>
-                </div>
-              ) : null}
-              <div className="w-full">
-                {(() => {
-                  const providerId = userData?.business_id || userData?.provider_id;
-                  return providerId ? (
-                    <AvailabilityCalendar
-                      providerId={providerId}
-                      onAvailabilityChange={handleAvailabilityChange}
-                      onSaveSuccess={handleSaveSuccess}
-                    />
-                  ) : (
-                    <div className="flex items-center justify-center p-8">
-                      <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-[var(--primary-green)]"></div>
-                      <span className="ml-3 text-gray-600">Loading availability calendar...</span>
-                    </div>
-                  );
-                })()}
-              </div>
-            </div>
-          ) : (
-            <div className="p-6">
-              <div className="text-center mb-4">
-                <div className="w-40 h-40 mx-auto mb-6 flex items-center justify-center">
-                  <Image
-                    src="/no-bookings.png"
-                    alt="Manage availability"
-                    width={160}
-                    height={160}
-                    className="w-full h-full object-contain"
-                  />
-                </div>
-                <p className="text-sm text-gray-600 mb-4">
-                  Manage your booking availability and time slots.
-                </p>
-              </div>
-              <ul className="space-y-2 text-xs text-gray-600">
-                <li className="flex items-start">
-                  <span className="text-[var(--primary-green)] mr-2">•</span>
-                  Set available days
-                </li>
-                <li className="flex items-start">
-                  <span className="text-[var(--primary-green)] mr-2">•</span>
-                  Configure time slots
-                </li>
-                <li className="flex items-start">
-                  <span className="text-[var(--primary-green)] mr-2">•</span>
-                  Manage blackout dates
-                </li>
-              </ul>
-            </div>
-          )}
-        </div>
-
         {/* Service Packages */}
         <div className="bg-white rounded-xl shadow-md border border-gray-100 overflow-hidden">
           <div className="px-6 py-4 border-b border-gray-200">
@@ -634,6 +610,17 @@ function CremationDashboardPage({ userData }: { userData: any }) {
           </div>
         </div>
       </div>
+
+
+      {/* Availability Editor Modal */}
+      {providerId && (
+        <AvailabilityEditorModal
+          isOpen={showAvailabilityModal}
+          onClose={() => setShowAvailabilityModal(false)}
+          providerId={providerId}
+          onSaveSuccess={handleSaveSuccess}
+        />
+      )}
     </CremationDashboardLayout>
   );
 }

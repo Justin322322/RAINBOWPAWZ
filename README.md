@@ -446,6 +446,7 @@ erDiagram
 - **Business Notifications**: Business-specific notifications with read status (linked to users)
 - **Reviews**: Customer feedback and rating system with expiration (linked to users, providers, bookings)
 - **Provider Availability/Time Slots**: Detailed scheduling and availability management (linked to providers)
+- **Provider Booking Views**: Tracks which bookings have been viewed by providers for real-time notification system (linked to providers, bookings)
 
 **Operational & Logging Tables (Not Shown in ERD - No Foreign Key Relationships):**
 - **Admin Notifications**: Admin-specific notification system (standalone operational table)

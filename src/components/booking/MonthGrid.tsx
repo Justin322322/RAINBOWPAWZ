@@ -9,9 +9,10 @@ interface MonthGridProps {
   selectedDate: Date | null;
   formatDateToString: (d: Date) => string;
   onDayClick: (d: Date) => void;
+  compact?: boolean;
 }
 
-function MonthGrid({ days, selectedDate, formatDateToString, onDayClick }: MonthGridProps) {
+function MonthGrid({ days, selectedDate, formatDateToString, onDayClick, compact = false }: MonthGridProps) {
   const _shouldReduceMotion = useReducedMotion();
   return (
     <>
@@ -23,10 +24,10 @@ function MonthGrid({ days, selectedDate, formatDateToString, onDayClick }: Month
         ))}
       </div>
 
-      <div className="grid grid-cols-7 gap-0.5 sm:gap-1">
+      <div className={`grid grid-cols-7 gap-0.5 sm:gap-1 ${compact ? 'max-h-[500px]' : ''}`}>
         {days.map((day, index) => {
           return (
-            <div key={index} className="aspect-square p-0.5">
+            <div key={index} className={compact ? "h-20 p-0.5" : "aspect-square p-0.5"}>
               {day.type === 'empty' ? (
                 <div className="h-full"></div>
               ) : (
@@ -40,7 +41,13 @@ function MonthGrid({ days, selectedDate, formatDateToString, onDayClick }: Month
                       disabled={isPastDay}
                       className={`
                         h-full w-full flex flex-col items-center justify-center rounded-md p-0.5 sm:p-1 transition-colors text-xs sm:text-sm
-                        ${isPastDay ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : day.timeSlots.length > 0 ? 'bg-green-100 hover:bg-green-200 text-green-800 border border-green-300' : 'bg-gray-50 hover:bg-gray-100 text-gray-800'}
+                        ${isPastDay 
+                          ? 'bg-gray-100 text-gray-400 cursor-not-allowed' 
+                          : day.timeSlots.some((slot) => slot.isBooked)
+                            ? 'bg-blue-100 hover:bg-blue-200 text-blue-800 border border-blue-300'
+                            : day.timeSlots.length > 0 
+                              ? 'bg-green-100 hover:bg-green-200 text-green-800 border border-green-300' 
+                              : 'bg-gray-50 hover:bg-gray-100 text-gray-800'}
                         ${isSelected ? 'ring-2 ring-[var(--primary-green)]' : ''}
                       `}
                     >

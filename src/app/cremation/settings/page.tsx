@@ -86,7 +86,7 @@ function CremationSettingsPage({ userData }: CremationSettingsProps) {
     };
 
     loadSettings();
-  }, []);
+  }, [showToast]);
 
   // Payment QR handlers
   const validateFile = (file: File): string | null => {
