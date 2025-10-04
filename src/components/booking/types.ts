@@ -10,6 +10,8 @@ export type DayAvailability = {
   date: string;
   isAvailable: boolean;
   timeSlots: TimeSlot[];
+  bookedTimes?: string[];
+  cancelledTimes?: string[];
 };
 
 type EmptyCalendarCell = {
@@ -22,6 +24,7 @@ type DayCalendarCell = {
   isAvailable: boolean;
   timeSlots: TimeSlot[];
   hasBookings?: boolean;
+  hasCancelled?: boolean;
 };
 
 export type CalendarDay = EmptyCalendarCell | DayCalendarCell;

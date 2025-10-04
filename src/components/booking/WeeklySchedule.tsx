@@ -21,6 +21,8 @@ interface DaySchedule {
   isPast: boolean;
   bookingCount?: number;
   hasBookings?: boolean;
+  bookedTimes?: string[];
+  cancelledTimes?: string[];
 }
 
 interface WeeklyScheduleProps {
@@ -124,6 +126,36 @@ export default function WeeklySchedule({ providerId, onDayClick }: WeeklySchedul
           const bookingsData = await bookingsResponse.json();
           bookingCounts = bookingsData.bookingCounts || {};
         }
+
+        // Fetch detailed bookings to surface booked/cancelled times
+        const bookedTimesByDate: Map<string, Set<string>> = new Map();
+        const cancelledTimesByDate: Map<string, Set<string>> = new Map();
+        try {
+          const detailedResponse = await fetch(`/api/cremation/bookings?providerId=${providerId}`);
+          if (detailedResponse.ok) {
+            const detailedData = await detailedResponse.json();
+            const list = detailedData.bookings || [];
+            const withinRange = (dateStr: string) => dateStr >= startDate && dateStr <= endDate;
+            list.forEach((b: any) => {
+              const dateStr = b.booking_date ? String(b.booking_date).split('T')[0] : '';
+              if (!dateStr || !withinRange(dateStr)) return;
+              let timeStr: string | null = null;
+              if (b.booking_time) timeStr = String(b.booking_time).substring(0, 5);
+              else if (b.scheduledTime) {
+                const m = String(b.scheduledTime).match(/(\d{1,2}:\d{2})/);
+                timeStr = m ? m[1] : null;
+              }
+              if (!timeStr) return;
+              if (b.status === 'cancelled') {
+                if (!cancelledTimesByDate.has(dateStr)) cancelledTimesByDate.set(dateStr, new Set());
+                cancelledTimesByDate.get(dateStr)!.add(timeStr);
+              } else {
+                if (!bookedTimesByDate.has(dateStr)) bookedTimesByDate.set(dateStr, new Set());
+                bookedTimesByDate.get(dateStr)!.add(timeStr);
+              }
+            });
+          }
+        } catch {}
         
         // Generate 7 days for the week
         const days: DaySchedule[] = [];
@@ -138,6 +170,8 @@ export default function WeeklySchedule({ providerId, onDayClick }: WeeklySchedul
           );
 
           const bookingCount = bookingCounts[dateString] || 0;
+          const bookedTimes = Array.from(bookedTimesByDate.get(dateString) || []);
+          const cancelledTimes = Array.from(cancelledTimesByDate.get(dateString) || []);
           
           days.push({
             date: dateString,
@@ -150,6 +184,8 @@ export default function WeeklySchedule({ providerId, onDayClick }: WeeklySchedul
             isPast: isPast(currentDate),
             bookingCount,
             hasBookings: bookingCount > 0,
+            bookedTimes,
+            cancelledTimes,
           });
         }
 
@@ -310,6 +346,16 @@ export default function WeeklySchedule({ providerId, onDayClick }: WeeklySchedul
                       </div>
                     ))}
                   </div>
+                  {(day.bookedTimes && day.bookedTimes.length > 0) && (
+                    <div className="text-[11px] text-blue-800 bg-blue-50 border border-blue-200 rounded px-2 py-1">
+                      Booked: {day.bookedTimes.join(', ')}
+                    </div>
+                  )}
+                  {(day.cancelledTimes && day.cancelledTimes.length > 0) && (
+                    <div className="text-[11px] text-red-800 bg-red-50 border border-red-200 rounded px-2 py-1">
+                      Cancelled: {day.cancelledTimes.join(', ')}
+                    </div>
+                  )}
                 </>
               ) : (
                 <div className="text-center py-4">

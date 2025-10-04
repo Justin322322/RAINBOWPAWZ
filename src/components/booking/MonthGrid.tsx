@@ -71,6 +71,11 @@ function MonthGrid({ days, selectedDate, formatDateToString, onDayClick, compact
                               <span className="sm:hidden">Booked</span>
                             </div>
                           )}
+                          {(day as any).cancelledTimes && (day as any).cancelledTimes.length > 0 && (
+                            <div className="mt-0.5 px-1 py-0.5 bg-red-100 rounded-sm text-[10px] font-medium text-red-700">
+                              Cancelled: {(day as any).cancelledTimes.join(', ')}
+                            </div>
+                          )}
                         </div>
                       )}
                     </button>

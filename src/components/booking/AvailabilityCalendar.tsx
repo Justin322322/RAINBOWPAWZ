@@ -216,50 +216,81 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
       const data = await response.json();
 
       // Now fetch bookings to mark booked slots and booked days
-      let bookedSlots: { date: string; time: string; }[] = [];
+      let bookedSlots: { date: string; time: string; status: string; }[] = [];
       const bookedDatesSet: Set<string> = new Set();
+      const cancelledDatesToTimes: Map<string, Set<string>> = new Map();
       try {
-        const bookingsResponse = await fetch(`/api/cremation/bookings?providerId=${providerId}`, {
+        // 1) Range-based booking counts (reliable for full month)
+        const weekCountsResponse = await fetch(`/api/cremation/bookings/week?providerId=${providerId}&startDate=${startDate}&endDate=${endDate}`, {
           headers,
           method: 'GET',
           credentials: 'same-origin',
         });
-        
-        if (bookingsResponse.ok) {
-          const bookingsData = await bookingsResponse.json();
-          
-          // Extract all bookings that are not cancelled
-          const bookings = bookingsData.bookings || [];
-          bookedSlots = bookings
-            .filter((booking: any) => booking.status !== 'cancelled')
-            .map((booking: any) => {
-              // Handle both raw database format and formatted API response
-              let timeForComparison = null;
-              
-              // Try to get raw booking_time first (from database)
-              if (booking.booking_time) {
-                // Raw format: "09:00:00" or "09:00"
-                timeForComparison = booking.booking_time.substring(0, 5);
-              } 
-              // Fallback to formatted scheduledTime
-              else if (booking.scheduledTime) {
-                // Formatted: "09:00 AM" -> extract "09:00"
-                const timeMatch = booking.scheduledTime.match(/(\d{1,2}:\d{2})/);
-                timeForComparison = timeMatch ? timeMatch[1] : null;
-              }
-              
-              const dateStr = booking.booking_date ? booking.booking_date.split('T')[0] : null;
-              if (dateStr) {
-                bookedDatesSet.add(dateStr);
-              }
-              return {
-                date: dateStr,
-                time: timeForComparison,
-                status: booking.status
-              };
-            })
-            .filter((booking: any) => booking.date && booking.time);
+        if (weekCountsResponse.ok) {
+          const weekCountsData = await weekCountsResponse.json();
+          const counts = weekCountsData.bookingCounts || {};
+          Object.keys(counts).forEach((d) => {
+            if (counts[d] > 0) bookedDatesSet.add(d);
+          });
         }
+
+        // 2) Detailed bookings for slot-level markings (best-effort; may be limited)
+        try {
+          const bookingsResponse = await fetch(`/api/cremation/bookings?providerId=${providerId}`, {
+            headers,
+            method: 'GET',
+            credentials: 'same-origin',
+          });
+          if (bookingsResponse.ok) {
+            const bookingsData = await bookingsResponse.json();
+            const bookings = bookingsData.bookings || [];
+            bookedSlots = bookings
+              .map((booking: any) => {
+                const status = booking.status;
+                const isCancelled = status === 'cancelled';
+                if (isCancelled) {
+                  const dateStrRaw = booking.booking_date ? booking.booking_date.split('T')[0] : null;
+                  if (dateStrRaw) {
+                    if (!cancelledDatesToTimes.has(dateStrRaw)) cancelledDatesToTimes.set(dateStrRaw, new Set());
+                  }
+                }
+                return booking;
+              })
+              .filter((booking: any) => booking.status !== 'cancelled')
+              .map((booking: any) => {
+                let timeForComparison = null;
+                if (booking.booking_time) {
+                  timeForComparison = booking.booking_time.substring(0, 5);
+                } else if (booking.scheduledTime) {
+                  const timeMatch = booking.scheduledTime.match(/(\d{1,2}:\d{2})/);
+                  timeForComparison = timeMatch ? timeMatch[1] : null;
+                }
+                const dateStr = booking.booking_date ? booking.booking_date.split('T')[0] : null;
+                if (dateStr) {
+                  bookedDatesSet.add(dateStr);
+                }
+                return { date: dateStr, time: timeForComparison, status: booking.status };
+              })
+              .filter((booking: any) => booking.date && booking.time);
+
+            // Capture cancelled times for red marking
+            bookings
+              .filter((b: any) => b.status === 'cancelled')
+              .forEach((b: any) => {
+                const dateStr = b.booking_date ? b.booking_date.split('T')[0] : null;
+                let timeStr: string | null = null;
+                if (b.booking_time) timeStr = b.booking_time.substring(0, 5);
+                else if (b.scheduledTime) {
+                  const m = b.scheduledTime.match(/(\d{1,2}:\d{2})/);
+                  timeStr = m ? m[1] : null;
+                }
+                if (dateStr && timeStr) {
+                  if (!cancelledDatesToTimes.has(dateStr)) cancelledDatesToTimes.set(dateStr, new Set());
+                  cancelledDatesToTimes.get(dateStr)!.add(timeStr);
+                }
+              });
+          }
+        } catch {}
       } catch (bookingError) {
         console.error('Error fetching bookings:', bookingError);
         // Continue with availability data, even if bookings failed
@@ -278,11 +309,13 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
               const isBooked = bookedSlots.some(
                 booking => booking.date === day.date && booking.time === slot.start
               );
+              const isCancelled = cancelledDatesToTimes.get(day.date)?.has(slot.start) === true;
               
               return {
                 ...slot,
                 id: slot.id || Date.now().toString() + Math.random().toString(36).substring(2, 9), // Ensure each slot has a unique ID
-                isBooked: isBooked
+                isBooked: isBooked,
+                isCancelled: isCancelled
               };
             }) :
             [];
@@ -296,7 +329,9 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
             date: day.date,
             isAvailable: Boolean(day.isAvailable), // Force boolean
             timeSlots: timeSlots,
-            hasBookings: bookedDatesSet.has(day.date)
+            hasBookings: bookedDatesSet.has(day.date),
+            bookedTimes: timeSlots.filter((s: any) => s.isBooked).map((s: any) => s.start),
+            cancelledTimes: timeSlots.filter((s: any) => s.isCancelled).map((s: any) => s.start)
           };
         });
 
