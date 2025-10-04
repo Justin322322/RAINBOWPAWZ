@@ -86,7 +86,20 @@ function PackagesPage({ userData }: PackagesPageProps) {
   const handleDetailsPackage = useCallback((packageId: number) => {
     const pkg = packages.find(p => p.id === packageId);
     if (pkg) {
-      setSelectedPackage(pkg);
+      // Add fresh cache-busting timestamps to images when opening details
+      const pkgWithFreshImages = {
+        ...pkg,
+        images: pkg.images.map(img => {
+          if (img.startsWith('/api/image/')) {
+            const separator = img.includes('?') ? '&' : '?';
+            // Remove old timestamp if exists and add new one
+            const cleanUrl = img.split(/[?&]v=/)[0];
+            return `${cleanUrl}${separator}v=${Date.now()}`;
+          }
+          return img;
+        })
+      };
+      setSelectedPackage(pkgWithFreshImages);
       setShowDetailsModal(true);
     }
   }, [packages]);

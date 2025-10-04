@@ -70,19 +70,34 @@ export function usePackages({ userData }: UsePackagesProps) {
         pagination: data.pagination
       });
 
-      // Helper: normalize image paths similar to Edit Package modal
+      // Helper: normalize image paths with cache-busting
       const normalizeImagePath = (imagePath: string): string => {
         if (!imagePath || typeof imagePath !== 'string') return '';
-        if (imagePath.startsWith('/api/image/')) return imagePath;
+        
+        // Base64 images don't need cache-busting
         if (imagePath.startsWith('data:image/')) return imagePath;
-        if (imagePath.startsWith('/uploads/')) {
+        
+        let normalizedPath = imagePath;
+        
+        // Normalize API image paths
+        if (imagePath.startsWith('/api/image/')) {
+          normalizedPath = imagePath;
+        } else if (imagePath.startsWith('/uploads/')) {
           const uploadPath = imagePath.substring('/uploads/'.length);
-          return `/api/image/${uploadPath}`;
+          normalizedPath = `/api/image/${uploadPath}`;
+        } else if (!imagePath.startsWith('/') && !imagePath.startsWith('http')) {
+          normalizedPath = `/${imagePath}`;
+        } else {
+          normalizedPath = imagePath;
         }
-        if (!imagePath.startsWith('/') && !imagePath.startsWith('http')) {
-          return `/${imagePath}`;
+        
+        // Add cache-busting parameter to API image URLs
+        if (normalizedPath.startsWith('/api/image/')) {
+          const separator = normalizedPath.includes('?') ? '&' : '?';
+          return `${normalizedPath}${separator}v=${Date.now()}`;
         }
-        return imagePath;
+        
+        return normalizedPath;
       };
 
       // Process the packages to ensure add-ons and images are properly formatted

@@ -92,14 +92,16 @@ export const ProductionSafeImage: React.FC<ProductionSafeImageProps> = ({
       }
     }
 
-    // If it's already an API route, use it directly
+    // If it's already an API route, add cache-busting parameter
     if (imgSrc.startsWith('/api/image/')) {
-      return imgSrc;
+      // Add timestamp to prevent caching issues when images are updated
+      const separator = imgSrc.includes('?') ? '&' : '?';
+      return `${imgSrc}${separator}t=${Date.now()}`;
     }
 
-    // If it's a file path that starts with /uploads/, convert to API route
+    // If it's a file path that starts with /uploads/, convert to API route with cache-busting
     if (imgSrc.startsWith('/uploads/')) {
-      return `/api/image${imgSrc}`;
+      return `/api/image${imgSrc}?t=${Date.now()}`;
     }
 
     // If it's a relative path without /uploads/, assume it's a public asset

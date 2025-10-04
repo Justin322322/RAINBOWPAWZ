@@ -849,10 +849,12 @@ const PackageModal: React.FC<PackageModalProps> = ({
         : 'Package updated successfully!';
       showToast(successMessage, 'success');
 
+      // Call onSuccess first to refresh the packages list
+      onSuccess();
+      
       // Wait for success animation before closing
       setTimeout(() => {
         onClose();
-        onSuccess();
         // Reset success state after closing
         setTimeout(() => {
           setIsSuccess(false);
@@ -931,9 +933,8 @@ const PackageModal: React.FC<PackageModalProps> = ({
                 </div>
                 <button
                   onClick={() => {
-                    onClose();
-                    onSuccess();
                     setIsSuccess(false);
+                    onClose();
                   }}
                   className="px-6 py-2 bg-[var(--primary-green)] text-white rounded-lg hover:bg-[var(--primary-green-hover)] transition-colors duration-200 font-medium"
                 >
