@@ -87,8 +87,12 @@ const ProviderCard = React.memo(function ProviderCard({
       )}
 
       <div className="flex justify-between items-center mb-2">
-        <span className="text-sm text-[var(--primary-green)] font-medium">
-          {provider.distance}
+        <span className={`text-sm font-medium ${
+          provider.distance === 'Distance unavailable' 
+            ? 'text-gray-500' 
+            : 'text-[var(--primary-green)]'
+        }`}>
+          {provider.distance === 'Distance unavailable' ? 'Click for directions' : provider.distance}
         </span>
         <span className="text-xs text-gray-500">
           {provider.packages} package{provider.packages !== 1 ? 's' : ''}

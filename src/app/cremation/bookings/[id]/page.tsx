@@ -419,8 +419,12 @@ function BookingDetailsPage({ userData }: BookingDetailsProps) {
       const j = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(j.error || 'Failed to update receipt');
       setShowReceiptModal(false);
-      showToastRef.current?.(action === 'confirm' ? 'Payment confirmed.' : 'Receipt rejected.', 'success');
-      setBooking(prev => prev ? { ...prev, payment_status: action === 'confirm' ? 'paid' : 'awaiting_payment_confirmation' } : prev);
+      showToastRef.current?.(action === 'confirm' ? 'Payment confirmed.' : 'Receipt rejected and booking cancelled.', 'success');
+      setBooking(prev => prev ? { 
+        ...prev, 
+        payment_status: action === 'confirm' ? 'paid' : 'awaiting_payment_confirmation',
+        status: action === 'reject' ? 'cancelled' : prev.status
+      } : prev);
     } catch (err) {
       showToastRef.current?.(err instanceof Error ? err.message : 'Failed to process action', 'error');
     } finally {

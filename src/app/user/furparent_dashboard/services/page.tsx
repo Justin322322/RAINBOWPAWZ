@@ -207,34 +207,17 @@ function ServicesPage({ userData }: ServicesPageProps) {
       }
 
       const data = await response.json();
-
-      // Filter out providers with unavailable distances and sort by distance
-      const filteredProviders = (data.providers || []).filter((provider: any) => 
-        provider.distance && provider.distance !== 'Distance unavailable' && provider.distanceValue > 0
-      );
       
-      const sortedProviders = [...filteredProviders].sort((a, b) => {
+      // Sort providers by distance (server-side sorting should handle this, but ensure client-side consistency)
+      const sortedProviders = [...(data.providers || [])].sort((a, b) => {
         const distanceA = extractDistanceValue(a.distance);
         const distanceB = extractDistanceValue(b.distance);
         return distanceA - distanceB;
       });
 
       setServiceProviders(sortedProviders);
-      
-      // Update pagination to reflect filtered providers
-      const updatedPagination = {
-        ...data.pagination,
-        total: sortedProviders.length,
-        totalPages: Math.ceil(sortedProviders.length / pagination.limit)
-      };
-      setPagination(updatedPagination);
-      
-      // Update statistics to reflect filtered providers
-      const updatedStatistics = {
-        ...data.statistics,
-        filteredCount: sortedProviders.length
-      };
-      setStatistics(updatedStatistics);
+      setPagination(data.pagination);
+      setStatistics(data.statistics);
 
       // Update cache
       const now = Date.now();
@@ -243,8 +226,8 @@ function ServicesPage({ userData }: ServicesPageProps) {
         newCache.set(cacheKey, {
           data: {
             providers: sortedProviders,
-            pagination: updatedPagination,
-            statistics: updatedStatistics
+            pagination: data.pagination,
+            statistics: data.statistics
           },
           timestamp: now
         });
