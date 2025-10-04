@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, memo, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import AdminDashboardLayout from '@/components/navigation/AdminDashboardLayout';
 import Image from 'next/image';
 import {
@@ -264,7 +264,7 @@ const AdminCremationCentersPage = React.memo(function AdminCremationCentersPage(
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [showToast]);
 
   // Handle appeal notification from URL parameters
   useEffect(() => {
@@ -363,7 +363,7 @@ const AdminCremationCentersPage = React.memo(function AdminCremationCentersPage(
     }, 100);
     
     return appeals;
-  }, []);
+  }, [loadCenterAppeals]);
 
   // Move the useEffect here after handleViewDetails is defined
   useEffect(() => {
