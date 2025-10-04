@@ -219,6 +219,7 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
       let bookedSlots: { date: string; time: string; status: string; }[] = [];
       const bookedDatesSet: Set<string> = new Set();
       const cancelledDatesToTimes: Map<string, Set<string>> = new Map();
+      const cancelledDatesSet: Set<string> = new Set();
       try {
         // 1) Range-based booking counts (reliable for full month)
         const weekCountsResponse = await fetch(`/api/cremation/bookings/week?providerId=${providerId}&startDate=${startDate}&endDate=${endDate}`, {
@@ -251,6 +252,7 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
                 if (isCancelled) {
                   const dateStrRaw = booking.booking_date ? booking.booking_date.split('T')[0] : null;
                   if (dateStrRaw) {
+                    cancelledDatesSet.add(dateStrRaw);
                     if (!cancelledDatesToTimes.has(dateStrRaw)) cancelledDatesToTimes.set(dateStrRaw, new Set());
                   }
                 }
@@ -283,6 +285,9 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
                 else if (b.scheduledTime) {
                   const m = b.scheduledTime.match(/(\d{1,2}:\d{2})/);
                   timeStr = m ? m[1] : null;
+                }
+                if (dateStr) {
+                  cancelledDatesSet.add(dateStr);
                 }
                 if (dateStr && timeStr) {
                   if (!cancelledDatesToTimes.has(dateStr)) cancelledDatesToTimes.set(dateStr, new Set());
@@ -331,7 +336,8 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
             timeSlots: timeSlots,
             hasBookings: bookedDatesSet.has(day.date),
             bookedTimes: timeSlots.filter((s: any) => s.isBooked).map((s: any) => s.start),
-            cancelledTimes: timeSlots.filter((s: any) => s.isCancelled).map((s: any) => s.start)
+            cancelledTimes: timeSlots.filter((s: any) => s.isCancelled).map((s: any) => s.start),
+            hasCancelled: cancelledDatesSet.has(day.date)
           };
         });
 
