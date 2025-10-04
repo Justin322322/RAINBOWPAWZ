@@ -9,12 +9,15 @@ interface ConfirmationModalProps {
   onClose: () => void;
   onConfirm: () => Promise<void> | void;
   title: string;
-  message: string;
+  message?: string;
+  children?: React.ReactNode;
   confirmText?: string;
   cancelText?: string;
   confirmButtonClass?: string;
   icon?: React.ReactNode;
   customZIndex?: string;
+  size?: 'small' | 'medium' | 'large';
+  variant?: 'default' | 'danger';
 }
 
 const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
@@ -23,14 +26,30 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
   onConfirm,
   title,
   message,
+  children,
   confirmText = 'Confirm',
   cancelText = 'Cancel',
   confirmButtonClass = 'bg-green-600 hover:bg-green-700',
   icon = null,
   customZIndex,
+  size = 'small',
+  variant = 'default',
 }) => {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isSuccess, setIsSuccess] = useState<boolean>(false);
+  
+  // Determine modal width based on size
+  const sizeClasses = {
+    small: 'max-w-md',
+    medium: 'max-w-lg',
+    large: 'max-w-2xl'
+  };
+  
+  // Determine header color based on variant
+  const variantClasses = {
+    default: 'bg-[var(--primary-green)]',
+    danger: 'bg-red-600'
+  };
   return (
     <AnimatePresence>
       {isOpen && (
@@ -54,9 +73,9 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0.95, opacity: 0 }}
             transition={{ duration: 0.2, ease: "easeOut" }}
-            className="relative bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden"
+            className={`relative bg-white rounded-xl shadow-2xl w-full ${sizeClasses[size]} overflow-hidden`}
           >
-            <div className="bg-[var(--primary-green)] text-white px-4 sm:px-6 py-3 sm:py-4 flex justify-between items-center">
+            <div className={`${variantClasses[variant]} text-white px-4 sm:px-6 py-3 sm:py-4 flex justify-between items-center`}>
               <h3 className="text-lg sm:text-xl font-medium text-white">{title}</h3>
               <button
                 onClick={onClose}
@@ -67,14 +86,16 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
             </div>
 
             <div className="px-6 py-4">
-              <div className="flex items-center mb-4">
-                {icon && (
-                  <div className="mr-3 flex-shrink-0">
-                    {icon}
-                  </div>
-                )}
-                <p className="text-sm text-gray-600">{message}</p>
-              </div>
+              {children || (
+                <div className="flex items-center mb-4">
+                  {icon && (
+                    <div className="mr-3 flex-shrink-0">
+                      {icon}
+                    </div>
+                  )}
+                  <p className="text-sm text-gray-600">{message}</p>
+                </div>
+              )}
 
               <AnimatePresence mode="wait">
                 {isSuccess ? (
