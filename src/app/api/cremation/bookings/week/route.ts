@@ -56,9 +56,30 @@ export async function GET(request: NextRequest) {
       bookingCounts[dateStr] = parseInt(booking.count) || 0;
     });
 
+    // Also fetch cancelled booking counts for the range
+    const cancelled = await query(
+      `SELECT 
+        DATE(booking_date) AS date,
+        COUNT(*) AS count
+      FROM bookings
+      WHERE provider_id = ?
+        AND booking_date BETWEEN ? AND ?
+        AND status = 'cancelled'
+      GROUP BY DATE(booking_date)
+      ORDER BY DATE(booking_date)`,
+      [providerId, startDate, endDate]
+    ) as any[];
+
+    const cancelledCounts: Record<string, number> = {};
+    cancelled.forEach((row: any) => {
+      const dateStr = typeof row.date === 'string' ? row.date : new Date(row.date).toISOString().split('T')[0];
+      cancelledCounts[dateStr] = parseInt(row.count) || 0;
+    });
+
     return NextResponse.json({
       success: true,
       bookingCounts,
+      cancelledCounts,
       totalBookings: bookings.reduce((sum: number, b: any) => sum + (parseInt(b.count) || 0), 0)
     });
 
