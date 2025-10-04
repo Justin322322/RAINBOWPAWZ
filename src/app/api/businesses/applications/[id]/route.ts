@@ -203,6 +203,7 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
       phone: business.business_phone || 'Not provided',
       address: business.business_address || 'Not provided',
       businessType: business.business_type,
+      businessEntityType: business.business_entity_type,
       description: business.service_description || business.description || 'No description provided',
       businessHours: business.business_hours || business.hours || 'Not specified',
       submitDate,

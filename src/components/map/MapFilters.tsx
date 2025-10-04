@@ -249,7 +249,10 @@ export default function MapFilters({ providers, filters, onFilterChange, classNa
                   <div>
                     <div className="text-lg font-semibold text-[var(--primary-green)]">
                       {filteredProviders.length > 0 
-                        ? `${Math.min(...filteredProviders.map(p => p.distanceValue)).toFixed(1)} km`
+                        ? (() => {
+                            const minDistance = Math.min(...filteredProviders.map(p => p.distanceValue));
+                            return minDistance < 1 ? `${Math.round(minDistance * 1000)} m` : `${minDistance.toFixed(1)} km`;
+                          })()
                         : '—'
                       }
                     </div>
@@ -258,7 +261,10 @@ export default function MapFilters({ providers, filters, onFilterChange, classNa
                   <div>
                     <div className="text-lg font-semibold text-[var(--primary-green)]">
                       {filteredProviders.length > 0 
-                        ? `${Math.max(...filteredProviders.map(p => p.distanceValue)).toFixed(1)} km`
+                        ? (() => {
+                            const maxDistance = Math.max(...filteredProviders.map(p => p.distanceValue));
+                            return maxDistance < 1 ? `${Math.round(maxDistance * 1000)} m` : `${maxDistance.toFixed(1)} km`;
+                          })()
                         : '—'
                       }
                     </div>

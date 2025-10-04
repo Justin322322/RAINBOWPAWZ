@@ -624,14 +624,25 @@ function CremationBookingsPage({ userData }: { userData: any }) {
               </div>
 
               {/* Special Requests Card */}
-              {selectedBooking.notes && (
-                <div className="bg-white rounded-xl shadow-md border border-gray-200 p-5">
-                  <h2 className="text-lg font-semibold text-gray-900 mb-4">Special Requests</h2>
-                  <div className="bg-gray-50 rounded-lg p-4">
-                    <p className="text-sm text-gray-700">{selectedBooking.notes}</p>
+              {selectedBooking.notes && (() => {
+                // Filter out receipt and add-ons information from special requests
+                const filteredNotes = selectedBooking.notes
+                  .replace(/\[PAYMENT RECEIPT\]\s*Receipt:\s*\S+/gi, '')
+                  .replace(/Receipt:\s*\S+/gi, '')
+                  .replace(/\[ADD-ONS\]\s*Selected Add-ons:.*$/gims, '')
+                  .replace(/Selected Add-ons:.*$/gims, '')
+                  .replace(/\n\s*\n/g, '\n')
+                  .trim();
+                
+                return filteredNotes && filteredNotes !== 'No special notes' ? (
+                  <div className="bg-white rounded-xl shadow-md border border-gray-200 p-5">
+                    <h2 className="text-lg font-semibold text-gray-900 mb-4">Special Requests</h2>
+                    <div className="bg-gray-50 rounded-lg p-4">
+                      <p className="text-sm text-gray-700">{filteredNotes}</p>
+                    </div>
                   </div>
-                </div>
-              )}
+                ) : null;
+              })()}
             </div>
 
             {/* Footer */}

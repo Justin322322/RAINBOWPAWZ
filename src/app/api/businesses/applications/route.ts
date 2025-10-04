@@ -79,7 +79,8 @@ export async function GET() {
     if (serviceProviderColumns.includes('province')) selectFields.push('sp.province');
     if (serviceProviderColumns.includes('city')) selectFields.push('sp.city');
     if (serviceProviderColumns.includes('zip')) selectFields.push('sp.zip');
-    if (serviceProviderColumns.includes('service_description')) selectFields.push('sp.service_description');    // Handle status field - in the updated schema we only have application_status
+    if (serviceProviderColumns.includes('service_description')) selectFields.push('sp.service_description');
+    if (serviceProviderColumns.includes('provider_type')) selectFields.push('sp.provider_type AS business_type');    // Handle status field - in the updated schema we only have application_status
     // Include provider contact name/email if present for better owner fallback
     if (serviceProviderColumns.includes('contact_first_name')) selectFields.push('sp.contact_first_name');
     if (serviceProviderColumns.includes('contact_last_name')) selectFields.push('sp.contact_last_name');

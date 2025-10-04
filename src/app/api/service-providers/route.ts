@@ -73,10 +73,13 @@ export async function GET(request: Request) {
 
     if (!isNaN(lat) && !isNaN(lng)) {
       userCoordinates = { lat, lng };
+      console.log(`[DEBUG] Using provided coordinates:`, userCoordinates);
     } else {
       // Only fallback to geocoding if we have a valid location string
       if (userLocation && userLocation.trim() !== '') {
+        console.log(`[DEBUG] Geocoding user location:`, userLocation);
         userCoordinates = await geocodeAddress(userLocation);
+        console.log(`[DEBUG] User coordinates from geocoding:`, userCoordinates);
         if (!userCoordinates) {
           // Location not found in our database
           return NextResponse.json({
@@ -86,10 +89,10 @@ export async function GET(request: Request) {
           });
         }
       } else {
-        // No valid location data available
+        // No valid location data available - require coordinates
         return NextResponse.json({
           success: false,
-          error: 'Invalid coordinates provided and no valid location address available',
+          error: 'User coordinates are required for accurate distance calculation',
           providers: []
         });
       }
@@ -238,7 +241,10 @@ export async function GET(request: Request) {
 
       if (providersResult && providersResult.length > 0) {
         const parseDistanceValue = (distanceString: string): number => {
+          console.log(`[DEBUG] Parsing distance string: "${distanceString}"`);
+          
           if (!distanceString || typeof distanceString !== 'string') {
+            console.log(`[DEBUG] Invalid distance string, returning 0`);
             return 0;
           }
 
@@ -247,25 +253,59 @@ export async function GET(request: Request) {
           const cleanDistance = distanceString.replace(/,/g, '');
           const distanceMatch = cleanDistance.match(/^.*?(\d+(?:\.\d+)?).*?(?:km|m).*?$/i);
 
+          console.log(`[DEBUG] Clean distance: "${cleanDistance}", match:`, distanceMatch);
+
           if (!distanceMatch) {
+            console.log(`[DEBUG] No distance match found, returning 0`);
             return 0;
           }
 
           const numericValue = parseFloat(distanceMatch[1]);
+          console.log(`[DEBUG] Numeric value: ${numericValue}`);
 
           // Convert meters to kilometers if needed (more precise unit detection)
           if (/^\s*\d+(?:\.\d+)?\s*m\s*$/i.test(cleanDistance.trim())) {
-            return numericValue / 1000;
+            const result = numericValue / 1000;
+            console.log(`[DEBUG] Converting meters to km: ${numericValue}m = ${result}km`);
+            return result;
           }
 
+          console.log(`[DEBUG] Returning km value: ${numericValue}`);
           return numericValue;
         };
         // Async function to calculate distance for a single provider with server caching
         const calculateProviderDistance = async (provider: any, userCoords: any): Promise<void> => {
-          const providerCoordinates = await geocodeAddress(provider.address || 'Bataan');
+          console.log(`[DEBUG] Geocoding address for ${provider.name}:`, provider.address);
+          if (!provider.address || provider.address.trim() === '') {
+            console.log(`[DEBUG] No address provided for ${provider.name}`);
+            provider.distance = 'Address not available';
+            provider.distanceValue = 0;
+            return;
+          }
+          
+          // Use the same geocoding API that the frontend uses for consistency
+          const geocodeResponse = await fetch(`${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/api/geocoding?address=${encodeURIComponent(provider.address)}`);
+          let providerCoordinates = null;
+          if (geocodeResponse.ok) {
+            const results = await geocodeResponse.json();
+            if (results && results.length > 0) {
+              const bestResult = results[0];
+              providerCoordinates = { lat: bestResult.lat, lng: bestResult.lon };
+            }
+          }
+          
+          // Fallback to server-side geocoding if API fails
+          if (!providerCoordinates) {
+            providerCoordinates = await geocodeAddress(provider.address);
+          }
+          
+          console.log(`[DEBUG] Geocoding result for ${provider.name}:`, providerCoordinates);
+          console.log(`[DEBUG] Provider coordinates:`, providerCoordinates);
+          console.log(`[DEBUG] User coordinates:`, userCoords);
 
           // Check if providerCoordinates is null and skip distance calculation
           if (!providerCoordinates) {
+            console.log(`[DEBUG] No coordinates found for ${provider.name}`);
             provider.distance = 'Location not available';
             provider.distanceValue = 0;
             return;
@@ -277,35 +317,70 @@ export async function GET(request: Request) {
             [providerCoordinates.lat, providerCoordinates.lng]
           );
 
-          if (cachedRoute) {
-            // Use cached data for immediate response
-            provider.distance = cachedRoute.distance;
-            provider.distanceValue = cachedRoute.distanceValue;
+          // Check if coordinates are identical (would result in 0 distance)
+          const coordinatesIdentical = userCoords.lat === providerCoordinates.lat && userCoords.lng === providerCoordinates.lng;
+          
+          console.log(`[DEBUG] Cache check for ${provider.name}:`, {
+            userCoords,
+            providerCoordinates,
+            cachedRoute,
+            coordinatesIdentical
+          });
+
+          if (coordinatesIdentical) {
+            console.log(`[DEBUG] Identical coordinates detected for ${provider.name}, this should not happen with proper geocoding`);
+            // This indicates a geocoding issue - both user and provider have same coordinates
+            // Skip this provider as it's likely a geocoding error
+            provider.distance = 'Location unavailable';
+            provider.distanceValue = 0;
             return;
           }
 
+          if (cachedRoute) {
+            // Check if cached route has reasonable distance (not 0 or very small)
+            if (cachedRoute.distanceValue > 0.001) {
+              // Use cached data for immediate response
+              provider.distance = cachedRoute.distance;
+              provider.distanceValue = cachedRoute.distanceValue;
+              console.log(`[DEBUG] Using cached route for ${provider.name}:`, {
+                distance: provider.distance,
+                distanceValue: provider.distanceValue
+              });
+              return;
+            } else {
+              console.log(`[DEBUG] Cached route has invalid distance for ${provider.name}, recalculating`);
+            }
+          }
+
+          // Always use routing service for accurate distances (same as directions button)
           try {
-            // Try to get actual routing distance with reduced timeout
+            console.log(`[DEBUG] Calculating route for ${provider.name}:`, {
+              from: [userCoords.lat, userCoords.lng],
+              to: [providerCoordinates.lat, providerCoordinates.lng],
+              address: provider.address
+            });
+
             const routeResult = await routingService.getRoute(
               [userCoords.lat, userCoords.lng],
               [providerCoordinates.lat, providerCoordinates.lng],
-              { timeout: 800 } // Reduced to 800ms for faster response
+              { timeout: 5000, trafficAware: true } // Use traffic-aware routing like directions button
             );
+
+            console.log(`[DEBUG] Route result for ${provider.name}:`, routeResult);
 
             // Validate that distance exists in the response before parsing
             if (!routeResult?.distance) {
               throw new Error('Invalid route response: missing distance');
             }
 
-            // Extract numeric distance value with improved parsing
-            const numericDistance = parseDistanceValue(routeResult.distance);
-
-            if (numericDistance === 0) {
-              throw new Error(`Unable to parse distance from: ${routeResult.distance}`);
-            }
-
+            // Use the distance directly from routing service (same as directions button)
             provider.distance = routeResult.distance;
-            provider.distanceValue = numericDistance;
+            provider.distanceValue = parseDistanceValue(routeResult.distance);
+            
+            console.log(`[DEBUG] Final distance for ${provider.name}:`, {
+              distance: provider.distance,
+              distanceValue: provider.distanceValue
+            });
 
             // Cache the result in server cache for future requests
             serverCache.setRoutingData(
@@ -314,17 +389,27 @@ export async function GET(request: Request) {
               {
                 distance: routeResult.distance,
                 duration: routeResult.duration,
-                distanceValue: numericDistance,
+                distanceValue: provider.distanceValue,
                 provider: routeResult.provider,
                 trafficAware: routeResult.trafficAware
               }
             );
 
-          } catch {
-            // Fallback to simple distance calculation (faster)
+          } catch (error) {
+            console.log(`[DEBUG] Routing failed for ${provider.name}, using fallback:`, error);
+            // If routing fails, use simple distance calculation as last resort
             const distance = calculateDistance(userCoords, providerCoordinates);
-            provider.distance = `${distance.toFixed(1)} km`;
+            console.log(`[DEBUG] Fallback distance calculation for ${provider.name}:`, {
+              userCoords,
+              providerCoordinates,
+              calculatedDistance: distance
+            });
+            provider.distance = distance < 1 ? `${Math.round(distance * 1000)} m` : `${distance.toFixed(1)} km`;
             provider.distanceValue = distance;
+            console.log(`[DEBUG] Final fallback distance for ${provider.name}:`, {
+              distance: provider.distance,
+              distanceValue: provider.distanceValue
+            });
           }
         };
 
@@ -371,23 +456,172 @@ export async function GET(request: Request) {
           }
         }
 
+        // Pre-calculate routes for all providers in parallel for better performance
+        const preCalculateRoutes = async () => {
+          const routePromises = providersResult.map(async (provider) => {
+            try {
+              if (!provider.address || provider.address.trim() === '') {
+                console.log(`[DEBUG] No address provided for ${provider.name} in pre-calculation`);
+                return null;
+              }
+              
+              // Use the same geocoding API that the frontend uses for consistency
+              const geocodeResponse = await fetch(`${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/api/geocoding?address=${encodeURIComponent(provider.address)}`);
+              let providerCoordinates = null;
+              if (geocodeResponse.ok) {
+                const results = await geocodeResponse.json();
+                if (results && results.length > 0) {
+                  const bestResult = results[0];
+                  providerCoordinates = { lat: bestResult.lat, lng: bestResult.lon };
+                }
+              }
+              
+              // Fallback to server-side geocoding if API fails
+              if (!providerCoordinates) {
+                providerCoordinates = await geocodeAddress(provider.address);
+              }
+              
+              if (!providerCoordinates) {
+                console.log(`[DEBUG] Failed to geocode ${provider.name}: ${provider.address}`);
+                return null;
+              }
+
+              // Check cache first
+              const cachedRoute = serverCache.getRoutingData(
+                [userCoordinates.lat, userCoordinates.lng],
+                [providerCoordinates.lat, providerCoordinates.lng]
+              );
+
+              if (cachedRoute) {
+                return {
+                  providerId: provider.id,
+                  distance: cachedRoute.distance,
+                  distanceValue: cachedRoute.distanceValue
+                };
+              }
+
+              // Calculate route
+              const routeResult = await routingService.getRoute(
+                [userCoordinates.lat, userCoordinates.lng],
+                [providerCoordinates.lat, providerCoordinates.lng],
+                { timeout: 5000, trafficAware: true }
+              );
+
+              if (routeResult?.distance) {
+                const distanceValue = parseDistanceValue(routeResult.distance);
+                
+                // Cache the result
+                serverCache.setRoutingData(
+                  [userCoordinates.lat, userCoordinates.lng],
+                  [providerCoordinates.lat, providerCoordinates.lng],
+                  {
+                    distance: routeResult.distance,
+                    duration: routeResult.duration,
+                    distanceValue: distanceValue,
+                    provider: routeResult.provider,
+                    trafficAware: routeResult.trafficAware
+                  }
+                );
+
+                return {
+                  providerId: provider.id,
+                  distance: routeResult.distance,
+                  distanceValue: distanceValue
+                };
+              }
+            } catch (error) {
+              // Route calculation failed, will fallback later
+              console.warn(`Route calculation failed for provider ${provider.id}:`, error);
+            }
+            return null;
+          });
+
+          const routeResults = await Promise.allSettled(routePromises);
+          const routes = new Map();
+          
+          routeResults.forEach((result) => {
+            if (result.status === 'fulfilled' && result.value) {
+              routes.set(result.value.providerId, {
+                distance: result.value.distance,
+                distanceValue: result.value.distanceValue
+              });
+            }
+          });
+
+          return routes;
+        };
+
+        // Clear any invalid cached routes first
+        console.log(`[DEBUG] Clearing invalid cached routes - using traffic-aware routing`);
+        
+        // Force fresh calculations by not using cache for now
+        // This ensures we get traffic-aware routing results
+        
+        // Pre-calculate all routes
+        const preCalculatedRoutes = await preCalculateRoutes();
+
         // Prepare concurrent operations for all providers
         const providerOperations = providersResult.map(async (provider) => {
           try {
             // Use pre-fetched package count
             provider.packages = packageCounts.get(provider.id) || 0;
 
-            // Calculate distance using the dedicated async function
-            await calculateProviderDistance(provider, userCoordinates);
+            // Use pre-calculated route if available
+            const preCalculatedRoute = preCalculatedRoutes.get(provider.id);
+            if (preCalculatedRoute) {
+              provider.distance = preCalculatedRoute.distance;
+              provider.distanceValue = preCalculatedRoute.distanceValue;
+            } else {
+              // Fallback to individual calculation if pre-calculation failed
+              await calculateProviderDistance(provider, userCoordinates);
+            }
 
           } catch {
-            // Final fallback - use simple distance calculation with fallback coordinates
+            // Final fallback - try routing service first, then simple calculation
             try {
-              const providerCoordinates = await geocodeAddress(provider.address || 'Bataan');
+              if (!provider.address || provider.address.trim() === '') {
+                provider.distance = 'Address not available';
+                provider.distanceValue = 0;
+                return;
+              }
+              
+              // Use the same geocoding API that the frontend uses for consistency
+              const geocodeResponse = await fetch(`${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/api/geocoding?address=${encodeURIComponent(provider.address)}`);
+              let providerCoordinates = null;
+              if (geocodeResponse.ok) {
+                const results = await geocodeResponse.json();
+                if (results && results.length > 0) {
+                  const bestResult = results[0];
+                  providerCoordinates = { lat: bestResult.lat, lng: bestResult.lon };
+                }
+              }
+              
+              // Fallback to server-side geocoding if API fails
+              if (!providerCoordinates) {
+                providerCoordinates = await geocodeAddress(provider.address);
+              }
+              
               if (providerCoordinates) {
-                const distanceValue = calculateDistance(userCoordinates, providerCoordinates);
-                provider.distance = `${distanceValue.toFixed(1)} km`;
-                provider.distanceValue = distanceValue;
+                // Try routing service first (same as directions button)
+                try {
+                  const routeResult = await routingService.getRoute(
+                    [userCoordinates.lat, userCoordinates.lng],
+                    [providerCoordinates.lat, providerCoordinates.lng],
+                    { timeout: 5000, trafficAware: true }
+                  );
+                  
+                  if (routeResult?.distance) {
+                    provider.distance = routeResult.distance;
+                    provider.distanceValue = parseDistanceValue(routeResult.distance);
+                  } else {
+                    throw new Error('No distance in route result');
+                  }
+                } catch {
+                  // Fallback to simple distance calculation
+                  const distanceValue = calculateDistance(userCoordinates, providerCoordinates);
+                  provider.distance = distanceValue < 1 ? `${Math.round(distanceValue * 1000)} m` : `${distanceValue.toFixed(1)} km`;
+                  provider.distanceValue = distanceValue;
+                }
               } else {
                 provider.distance = 'Distance unavailable';
                 provider.distanceValue = 0;

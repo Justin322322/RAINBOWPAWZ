@@ -311,7 +311,7 @@ const BusinessAccountModal: React.FC<BusinessAccountModalProps> = ({ isOpen, onC
         sex: formData.sex,
         password: formData.password,
         businessName: formData.businessName,
-        businessType: 'cremation',
+        businessType: formData.businessType,
         businessEntityType: formData.businessEntityType,
         businessPhone: formData.businessPhone,
         businessAddress: businessAddress,
@@ -529,6 +529,22 @@ const BusinessAccountModal: React.FC<BusinessAccountModalProps> = ({ isOpen, onC
                     />
                   </div>
                 </div>
+              </div>
+              <div className="mt-6">
+                <SelectInput
+                  label="Business Type"
+                  id="businessType"
+                  name="businessType"
+                  value={formData.businessType}
+                  onChange={(value) => setFormData({ ...formData, businessType: value })}
+                  required
+                  size="lg"
+                  options={[
+                    { value: "cremation", label: "Pet Cremation Services" },
+                    { value: "memorial", label: "Pet Memorial Services" },
+                    { value: "veterinary", label: "Veterinary Services" }
+                  ]}
+                />
               </div>
               <div className="mt-6">
                 <SelectInput

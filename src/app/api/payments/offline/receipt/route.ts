@@ -197,19 +197,24 @@ export async function POST(request: NextRequest) {
         );
       }
     } else {
+      // Last resort fallback - append to special_requests but with clear formatting
       try {
         const current = (await query(
           "SELECT special_requests FROM bookings WHERE id = ? LIMIT 1",
           [bookingId]
         )) as any[];
         const prev = current?.[0]?.special_requests || "";
-        const appended = prev
-          ? `${prev}\nReceipt: ${path}`
-          : `Receipt: ${path}`;
-        await query("UPDATE bookings SET special_requests = ? WHERE id = ?", [
-          appended,
-          bookingId,
-        ]);
+        
+        // Only append if receipt info isn't already there
+        if (!prev.includes("Receipt:")) {
+          const appended = prev
+            ? `${prev}\n\n[PAYMENT RECEIPT] Receipt: ${path}`
+            : `[PAYMENT RECEIPT] Receipt: ${path}`;
+          await query("UPDATE bookings SET special_requests = ? WHERE id = ?", [
+            appended,
+            bookingId,
+          ]);
+        }
       } catch {}
     }
 

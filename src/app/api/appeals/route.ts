@@ -35,7 +35,7 @@ function handleError(error: any, operation: string) {
 
 // Check if appeals table exists
 async function checkTableExists() {
-  const tableExists = await query("SHOW TABLES LIKE 'users'");
+  const tableExists = await query("SHOW TABLES LIKE 'appeals'");
   return (tableExists as any[]).length > 0;
 }
 
@@ -43,7 +43,7 @@ async function checkTableExists() {
 async function ensureAppealsTable() {
   try {
     await query(`
-      CREATE TABLE IF NOT EXISTS users (
+      CREATE TABLE IF NOT EXISTS appeals (
         appeal_id INT AUTO_INCREMENT PRIMARY KEY,
         user_id INT NOT NULL,
         user_type ENUM('personal', 'business') NOT NULL DEFAULT 'personal',
@@ -119,7 +119,7 @@ export async function POST(request: NextRequest) {
 
     // Check for existing pending appeal
     const existingAppeal = await query(`
-      SELECT appeal_id FROM users
+      SELECT appeal_id FROM appeals
       WHERE user_id = ? AND status IN ('pending', 'under_review')
       ORDER BY submitted_at DESC LIMIT 1
     `, [parseInt(user.userId)]) as any[];
@@ -144,7 +144,7 @@ export async function POST(request: NextRequest) {
     // Create appeal
     const result = await withTransaction(async (transaction) => {
       const insertResult = await transaction.query(`
-        INSERT INTO users (user_id, user_type, business_id, appeal_type, subject, message, evidence_files)
+        INSERT INTO appeals (user_id, user_type, business_id, appeal_type, subject, message, evidence_files)
         VALUES (?, ?, ?, ?, ?, ?, ?)
       `, [parseInt(user.userId), user_type, actual_business_id, appeal_type, subject, message, JSON.stringify(evidence_files)]) as any;
       return insertResult.insertId;
@@ -218,7 +218,7 @@ export async function GET(request: NextRequest) {
     const appeals = await query(`
       SELECT a.*, u.first_name, u.last_name, u.email,
              admin.first_name as admin_first_name, admin.last_name as admin_last_name
-      FROM users a
+      FROM appeals a
       LEFT JOIN users u ON a.user_id = u.user_id
       LEFT JOIN users admin ON a.admin_id = admin.user_id
       ${whereClause}
@@ -228,7 +228,7 @@ export async function GET(request: NextRequest) {
 
     // Get total count
     const countResult = await query(`
-      SELECT COUNT(*) as total FROM users a ${whereClause}
+      SELECT COUNT(*) as total FROM appeals a ${whereClause}
     `, queryParams) as any[];
 
     const total = countResult[0]?.total || 0;

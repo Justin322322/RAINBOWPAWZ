@@ -845,14 +845,25 @@ export async function POST(request: NextRequest) {
               `${addon.name} (₱${addon.price.toLocaleString()})`
             ).join(', ');
 
-            const updatedSpecialRequests = specialRequests
-              ? `${specialRequests}\n\nSelected Add-ons: ${addOnsText}`
-              : `Selected Add-ons: ${addOnsText}`;
+            // Get current special requests and only append if add-ons info isn't already there
+            const currentSpecialRequests = await transaction.query(
+              'SELECT special_requests FROM bookings WHERE id = ? LIMIT 1',
+              [bookingId]
+            ) as any[];
+            
+            const prev = currentSpecialRequests[0]?.special_requests || '';
+            
+            // Only append if add-ons info isn't already there
+            if (!prev.includes('Selected Add-ons:')) {
+              const updatedSpecialRequests = specialRequests
+                ? `${specialRequests}\n\n[ADD-ONS] Selected Add-ons: ${addOnsText}`
+                : `[ADD-ONS] Selected Add-ons: ${addOnsText}`;
 
-            await transaction.query(
-              'UPDATE bookings SET special_requests = ? WHERE id = ?',
-              [updatedSpecialRequests, bookingId]
-            );
+              await transaction.query(
+                'UPDATE bookings SET special_requests = ? WHERE id = ?',
+                [updatedSpecialRequests, bookingId]
+              );
+            }
           }
         } catch (addOnError) {
           // Continue with the booking process even if add-ons fail

@@ -156,7 +156,7 @@ export async function GET(request: NextRequest) {
               message,
               status,
               submitted_at
-            FROM users
+            FROM appeals
             WHERE user_id IN (${userIds.map(() => '?').join(',')})
             ORDER BY submitted_at DESC
           `;

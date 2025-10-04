@@ -30,7 +30,7 @@ function ServicesPage({ userData }: ServicesPageProps) {
 
   // Get user location from profile - optimized approach
   useEffect(() => {
-    const getLocation = () => {
+    const getLocation = async () => {
       setIsLoadingLocation(true);
 
       // Use userData prop first (from server), then fallback to session storage
@@ -49,12 +49,27 @@ function ServicesPage({ userData }: ServicesPageProps) {
       }
 
       // Set location based on current user data
-      let location = null;
+      let location: LocationData | null = null;
       if (currentUserData?.address && currentUserData.address.trim() !== '') {
         location = {
           address: currentUserData.address,
           source: 'profile' as const
         };
+        
+        // Geocode the address to get coordinates for consistent distance calculation
+        try {
+          const response = await fetch(`/api/geocoding?address=${encodeURIComponent(currentUserData.address)}`);
+          if (response.ok) {
+            const results = await response.json();
+            if (results && results.length > 0) {
+              const bestResult = results[0];
+              location.coordinates = [bestResult.lat, bestResult.lon];
+              console.log(`[Services Page] Geocoded coordinates for ${currentUserData.address}:`, location.coordinates);
+            }
+          }
+        } catch (error) {
+          console.error('Failed to geocode user address:', error);
+        }
       }
 
       setUserLocation(location);
@@ -62,7 +77,7 @@ function ServicesPage({ userData }: ServicesPageProps) {
     };
 
     // Run immediately
-    getLocation();
+    getLocation().catch(console.error);
 
     // Listen for custom events (when profile is updated) - optimized
     const handleUserDataUpdate = (event: CustomEvent) => {

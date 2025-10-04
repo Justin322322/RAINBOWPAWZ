@@ -182,12 +182,20 @@ const BookingsPage: React.FC<BookingsPageProps> = ({ userData }) => {
   // Helpers to handle receipt inside special_requests
   const getReceiptUrlFromText = (text?: string | null): string | null => {
     if (!text) return null;
-    const match = text.match(/Receipt:\s*(\S+)/i);
+    // Try to match both old and new formats
+    const match = text.match(/(?:\[PAYMENT RECEIPT\]\s*)?Receipt:\s*(\S+)/i);
     return match ? match[1] : null;
-    };
+  };
   const getFilteredSpecialRequests = (text?: string | null): string => {
     if (!text) return '';
-    return text.replace(/Receipt:\s*\S+/gi, '').trim();
+    // Remove receipt information and add-ons information, keeping only the original special requests
+    return text
+      .replace(/\[PAYMENT RECEIPT\]\s*Receipt:\s*\S+/gi, '')
+      .replace(/Receipt:\s*\S+/gi, '')
+      .replace(/\[ADD-ONS\]\s*Selected Add-ons:.*$/gims, '')
+      .replace(/Selected Add-ons:.*$/gims, '')
+      .replace(/\n\s*\n/g, '\n') // Remove extra newlines
+      .trim();
   };
 
   useEffect(() => {

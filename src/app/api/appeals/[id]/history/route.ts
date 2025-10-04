@@ -23,7 +23,7 @@ export async function GET(
 
     // Check if appeal exists and user has permission to view it
     const appeals = await query(`
-      SELECT user_id FROM users WHERE appeal_id = ?
+      SELECT user_id FROM appeals WHERE appeal_id = ?
     `, [appealId]) as any[];
 
     if (!appeals || appeals.length === 0) {

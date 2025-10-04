@@ -35,6 +35,7 @@ interface Application {
   submitDate: string;
   businessName: string;
   businessType?: string;
+  businessEntityType?: string;
   businessHours?: string;
   city?: string;
   province?: string;
@@ -53,6 +54,38 @@ interface Application {
   }>;
   verificationDate?: string;
   application_status?: string;
+}
+
+// Helper function to format business type for display
+function formatBusinessType(businessType: string): string {
+  switch (businessType) {
+    case 'cremation':
+      return 'Pet Cremation Services';
+    case 'memorial':
+      return 'Pet Memorial Services';
+    case 'veterinary':
+      return 'Veterinary Services';
+    default:
+      return businessType || 'Not specified';
+  }
+}
+
+// Helper function to format business entity type for display
+function formatBusinessEntityType(entityType: string): string {
+  switch (entityType) {
+    case 'sole_proprietorship':
+      return 'Sole Proprietorship';
+    case 'corporation':
+      return 'Corporation';
+    case 'partnership':
+      return 'Partnership';
+    case 'limited_liability_company':
+      return 'Limited Liability Company (LLC)';
+    case 'cooperative':
+      return 'Cooperative';
+    default:
+      return entityType || 'Not specified';
+  }
 }
 
 function ApplicationDetailContent({ id }: ApplicationDetailContentProps) {
@@ -516,9 +549,13 @@ function ApplicationDetailContent({ id }: ApplicationDetailContentProps) {
                 <div>
                   <p className="text-sm font-medium text-gray-500">Business Type</p>
                   <p className="mt-1 text-sm text-gray-900">
-                    {application.businessType === 'cremation'
-                      ? 'Pet Cremation Services'
-                      : safeValue(application.businessType, 'Pet Cremation Services')}
+                    {formatBusinessType(application.businessType || '')}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-500">Business Entity Type</p>
+                  <p className="mt-1 text-sm text-gray-900">
+                    {formatBusinessEntityType(application.businessEntityType || '')}
                   </p>
                 </div>
                 <div>

@@ -31,7 +31,22 @@ export function calculateDistance(coord1: Coordinates | null, coord2: Coordinate
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
   const distance = R * c; // Distance in kilometers
 
-  return Math.max(0.1, parseFloat(distance.toFixed(1))); // Ensure minimum distance of 0.1km
+  // Return the actual distance without forcing a minimum
+  return parseFloat(distance.toFixed(3)); // More precise for short distances
+}
+
+/**
+ * Format distance in kilometers to human-readable format
+ * Shows meters for distances less than 1km, km for longer distances
+ */
+export function formatDistance(km: number): string {
+  if (km < 1) {
+    // Convert to meters and round to nearest 10m for better readability
+    const meters = Math.round(km * 1000);
+    return `${meters} m`;
+  } else {
+    return `${km.toFixed(1)} km`;
+  }
 }
 
 /**
