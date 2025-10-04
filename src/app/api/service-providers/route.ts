@@ -184,10 +184,10 @@ export async function GET(request: Request) {
         whereClause = "1=0"; // This will return no results, preventing pending providers from showing
       }
 
-      // Add provider_type filter if column exists
-      if (columnNames.has('provider_type')) {
-        whereClause += " AND provider_type = 'cremation'";
-      }
+      // Remove provider_type filter to show all business types
+      // if (columnNames.has('provider_type')) {
+      //   whereClause += " AND provider_type = 'cremation'";
+      // }
 
       // Add active status filter if the column exists
       if (hasStatus) {

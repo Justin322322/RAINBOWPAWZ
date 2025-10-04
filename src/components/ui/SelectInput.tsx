@@ -102,7 +102,7 @@ const SelectInput = forwardRef<HTMLDivElement, SelectInputProps>(
           </button>
           
           {isOpen && !disabled && (
-            <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-auto">
+            <div className="absolute z-[99999] w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-auto" style={{ zIndex: 99999 }}>
               <ul className="py-1">
                 {options.map((option) => (
                   <li key={option.value}>

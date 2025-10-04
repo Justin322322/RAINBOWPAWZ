@@ -282,7 +282,7 @@ function ServicesPage({ userData }: ServicesPageProps) {
         <div className="absolute inset-0 bg-[url('/bg_4.png')] bg-repeat opacity-20"></div>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
           <h1 className="text-4xl md:text-5xl lg:text-6xl modern-heading text-white text-center mb-4">
-            Find the Right Cremation Services with Ease
+            Find the Right Pet Services with Ease
           </h1>
           <p className="text-xl text-white text-center max-w-3xl mx-auto modern-text font-light">
             No more endless searching—quickly locate and connect with trusted professionals in your area.
@@ -303,7 +303,7 @@ function ServicesPage({ userData }: ServicesPageProps) {
                   </svg>
                   <div className="flex-1">
                     <p className="text-lg text-gray-900 font-semibold mb-2">Loading service providers...</p>
-                    <p className="text-base text-gray-700">This may take a moment on first load. We&apos;re finding the best cremation services near you.</p>
+                    <p className="text-base text-gray-700">This may take a moment on first load. We&apos;re finding the best service providers near you.</p>
                   </div>
                 </div>
               )}
@@ -329,7 +329,7 @@ function ServicesPage({ userData }: ServicesPageProps) {
                           <span className="text-sm text-gray-600">
                             Showing {((pagination.currentPage - 1) * pagination.limit) + 1} to {Math.min(pagination.currentPage * pagination.limit, pagination.total)} of {pagination.total} providers
                             {statistics.totalProviders > 0 && statistics.totalProviders !== pagination.total && (
-                              <span className="text-gray-500"> (out of {statistics.totalProviders} total cremation services)</span>
+                              <span className="text-gray-500"> (out of {statistics.totalProviders} total service providers)</span>
                             )}
                           </span>
 

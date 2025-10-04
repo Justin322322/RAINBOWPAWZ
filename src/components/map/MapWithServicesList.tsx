@@ -168,7 +168,7 @@ const MapWithServicesList = React.memo(function MapWithServicesList({
     // Service type filter
     if (filters.serviceType) {
       filtered = filtered.filter(provider =>
-        (provider.type || 'service').toLowerCase().includes(filters.serviceType.toLowerCase())
+        provider.type && provider.type.toLowerCase().includes(filters.serviceType.toLowerCase())
       );
     }
 
@@ -206,7 +206,7 @@ const MapWithServicesList = React.memo(function MapWithServicesList({
       id: provider.id,
       name: provider.name,
       address: provider.address,
-      type: provider.type || 'service',
+      type: provider.type,
       distance: provider.distance || '',
       distanceValue: provider.distanceValue || 0,
       packages: provider.packages || 0,
@@ -390,7 +390,7 @@ const MapWithServicesList = React.memo(function MapWithServicesList({
                       </h4>
                       <p className="text-gray-500">
                         {serviceProviders.length === 0 
-                          ? "We couldn't find any pet cremation services in your area."
+                          ? "We couldn't find any service providers in your area."
                           : "Try adjusting your search criteria or filters to see more results."
                         }
                       </p>
