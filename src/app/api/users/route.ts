@@ -91,11 +91,15 @@ export async function GET(request: NextRequest) {
         // Check for valid role values
         if (role === 'fur_parent') {
           if (hasRole && hasUserType) {
-            // Either explicitly set as fur_parent or using older user_type=user
-            whereConditions.push('(role = ? OR (role IS NULL AND user_type = "user"))');
+            // Match users who are fur_parents in multiple ways:
+            // 1. role = 'fur_parent' explicitly
+            // 2. role IS NULL AND user_type = 'user' (legacy users)
+            // 3. user_type = 'user' (catch-all for user accounts)
+            whereConditions.push('(role = ? OR role = "user" OR (role IS NULL AND user_type = "user") OR user_type = "user")');
             queryParams.push(role);
           } else if (hasRole) {
-            whereConditions.push('role = ?');
+            // If we only have role column, check for both 'fur_parent' and 'user'
+            whereConditions.push('(role = ? OR role = "user")');
             queryParams.push(role);
           } else if (hasUserType) {
             whereConditions.push('user_type = "user"');

@@ -72,6 +72,13 @@ const withUserAuth = <P extends object>(
     }, [userData]);
 
     useEffect(() => {
+      // Check if logout is in progress - if so, don't do anything
+      const isLoggingOut = sessionStorage.getItem('is_logging_out') === 'true';
+      if (isLoggingOut) {
+        console.log('🔐 [withUserAuth] Logout in progress, skipping auth check');
+        return;
+      }
+
       // If already verified globally and OTP is verified, we can skip the check
       if (globalUserAuthState.verified && globalUserAuthState.userData) {
         // Check if the user is OTP verified
@@ -169,6 +176,13 @@ const withUserAuth = <P extends object>(
         } catch {
           sessionStorage.removeItem('user_data');
         }
+      }
+
+      // Check again before API call to prevent race conditions
+      const isLoggingOutBeforeAPI = sessionStorage.getItem('is_logging_out') === 'true';
+      if (isLoggingOutBeforeAPI) {
+        console.log('🔐 [withUserAuth] Logout detected before API check, aborting');
+        return;
       }
 
       // Perform secure auth check

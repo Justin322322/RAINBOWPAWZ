@@ -26,6 +26,9 @@ export default function LogoutModal({ isOpen, onClose, userName = 'User' }: Logo
   const handleLogout = async () => {
     setIsLoggingOut(true);
 
+    // Set logout flag FIRST to prevent any auth checks from interfering
+    sessionStorage.setItem('is_logging_out', 'true');
+
     try {
       // Call the logout API
       const _response = await fetch('/api/auth/logout', {
@@ -41,25 +44,15 @@ export default function LogoutModal({ isOpen, onClose, userName = 'User' }: Logo
       // Show toast notification
       showToast('Logged out successfully. See you soon!', 'success');
 
+      // Clear global auth states FIRST (prevents HOC from triggering redirects)
+      clearGlobalAdminAuthState();
+      clearGlobalBusinessAuthState();
+      clearGlobalUserAuthState();
+
       // Clear client-side auth data
       clearAuthToken();
 
-      // Clear business verification cache (functionality removed)
-      
-      // Clear global admin auth state
-      clearGlobalAdminAuthState();
-      
-      // Clear global business auth state
-      clearGlobalBusinessAuthState();
-      
-      // Clear global user auth state
-      clearGlobalUserAuthState();
-      
-
-      // Set logout flag to prevent 401 modal errors during logout
-      sessionStorage.setItem('is_logging_out', 'true');
-
-      // Clear session storage - be more thorough for cremation users
+      // Clear session storage - be more thorough for all users
       sessionStorage.removeItem('user_data');
       sessionStorage.removeItem('admin_data');
       sessionStorage.removeItem('otp_verified');
@@ -85,19 +78,36 @@ export default function LogoutModal({ isOpen, onClose, userName = 'User' }: Logo
         router.push('/');
       }, 1500);
     } catch {
-      // Set logout flag to prevent 401 modal errors during logout
-      sessionStorage.setItem('is_logging_out', 'true');
-
-      // Still clear the token and redirect even if the API call fails
-      clearAuthToken();
-
-      // Clear business verification cache even on error (functionality removed)
+      // Still clear everything even if the API call fails
       clearGlobalAdminAuthState();
       clearGlobalBusinessAuthState();
       clearGlobalUserAuthState();
+      
+      clearAuthToken();
+
+      // Clear session storage
+      sessionStorage.removeItem('user_data');
+      sessionStorage.removeItem('admin_data');
+      sessionStorage.removeItem('otp_verified');
+      sessionStorage.removeItem('auth_user_id');
+      sessionStorage.removeItem('auth_account_type');
+      sessionStorage.removeItem('business_verification_cache');
+      sessionStorage.removeItem('verified_business');
+      sessionStorage.removeItem('cremation_user_name');
+      sessionStorage.removeItem('user_full_name');
+
+      if (typeof localStorage !== 'undefined') {
+        localStorage.removeItem('auth_token_3000');
+        localStorage.removeItem('cremation_user_name');
+      }
 
       showToast('Logged out successfully', 'success');
-      router.push('/');
+      
+      // Redirect immediately on error
+      setTimeout(() => {
+        sessionStorage.removeItem('is_logging_out');
+        router.push('/');
+      }, 100);
     }
   };
 
