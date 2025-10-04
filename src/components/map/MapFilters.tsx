@@ -50,9 +50,9 @@ const DISTANCE_OPTIONS = [
 
 const SERVICE_TYPE_OPTIONS = [
   { value: '', label: 'All services' },
-  { value: 'cremation', label: 'Cremation Services' },
-  { value: 'memorial', label: 'Memorial Services' },
-  { value: 'burial', label: 'Burial Services' }
+  { value: 'cremation', label: 'Pet Cremation Services' },
+  { value: 'memorial', label: 'Pet Memorial Services' },
+  { value: 'veterinary', label: 'Veterinary Services' }
 ];
 
 const PACKAGE_COUNT_OPTIONS = [

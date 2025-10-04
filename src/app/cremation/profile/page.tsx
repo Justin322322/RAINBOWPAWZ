@@ -832,8 +832,7 @@ function CremationProfilePage({ userData }: { userData: any }) {
                           options={[
                             { value: "cremation", label: "Pet Cremation Services" },
                             { value: "memorial", label: "Pet Memorial Services" },
-                            { value: "veterinary", label: "Veterinary Services" },
-                            { value: "burial", label: "Pet Burial Services" }
+                            { value: "veterinary", label: "Veterinary Services" }
                           ]}
                         />
                       </div>
