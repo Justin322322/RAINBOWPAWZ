@@ -431,7 +431,7 @@ function AdminReviewsPage() {
                           title="View report"
                         >
                           <FlagIcon className="h-3 w-3 mr-1" />
-                          Reported
+                          Flagged for Review
                         </button>
                       )}
                     </div>

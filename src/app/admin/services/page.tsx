@@ -4,7 +4,6 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import AdminDashboardLayout from '@/components/navigation/AdminDashboardLayout';
 import {
   MagnifyingGlassIcon,
-  XMarkIcon,
   EyeIcon,
   QueueListIcon,
   FireIcon,
@@ -15,6 +14,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import Select from '@/components/ui/Select';
 import { PackageImage } from '@/components/packages/PackageImage';
+import { Modal } from '@/components/ui/Modal';
 
 // Lazy-loaded image component for better performance
 const LazyServiceImage: React.FC<{
@@ -607,7 +607,7 @@ const ServiceCard = React.memo(function ServiceCard({
     ? service.bookings
     : 0;
 
-  const reviewsCount = typeof service.reviewsCount === 'number' && !isNaN(service.reviewsCount)
+  const _reviewsCount2 = typeof service.reviewsCount === 'number' && !isNaN(service.reviewsCount)
     ? service.reviewsCount
     : 0;
 
@@ -659,7 +659,7 @@ const ServiceCard = React.memo(function ServiceCard({
         <div className="flex items-center mb-2">
           <StarRating rating={rating} size="small" />
           <span className="ml-2 text-xs text-gray-600">
-            {reviewsCount > 0 ? `${rating.toFixed(1)} (${reviewsCount} ${reviewsCount === 1 ? 'review' : 'reviews'})` : 'No reviews yet'}
+            {_reviewsCount2 > 0 ? `${rating.toFixed(1)} (${_reviewsCount2} ${_reviewsCount2 === 1 ? 'review' : 'reviews'})` : 'No reviews yet'}
           </span>
         </div>
 
@@ -692,19 +692,6 @@ function ServiceDetailsModal({
   imageError: Record<number, boolean>;
   setImageError: React.Dispatch<React.SetStateAction<Record<number, boolean>>>;
 }) {
-  // Handle ESC key to close modal
-  React.useEffect(() => {
-    const handleEscKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        onClose();
-      }
-    };
-
-    document.addEventListener('keydown', handleEscKey);
-    return () => {
-      document.removeEventListener('keydown', handleEscKey);
-    };
-  }, [onClose]);
 
   // Format the service data for display
   const formattedName = service.name || 'Unnamed Service';
@@ -724,7 +711,7 @@ function ServiceDetailsModal({
     ? service.bookings
     : 0;
 
-  const reviewsCount = typeof service.reviewsCount === 'number' && !isNaN(service.reviewsCount)
+  const _reviewsCount = typeof service.reviewsCount === 'number' && !isNaN(service.reviewsCount)
     ? service.reviewsCount
     : 0;
 
@@ -738,246 +725,151 @@ function ServiceDetailsModal({
     : service.price;
 
   return (
-    <div
-      className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[90] p-1 sm:p-4"
-      onClick={(e) => {
-        if (e.target === e.currentTarget) {
-          onClose();
-        }
-      }}
+    <Modal
+      isOpen={true}
+      onClose={onClose}
+      title="Service Details"
+      size="large"
+      className="max-w-4xl mx-4 sm:mx-auto"
+      contentClassName="max-h-[85vh] overflow-y-auto"
+      customZIndex="z-[50000]"
     >
-      <div
-        className="bg-white rounded-lg sm:rounded-xl shadow-xl max-w-4xl w-full max-h-[98vh] sm:max-h-[90vh] flex flex-col overflow-hidden mx-1 sm:mx-0"
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* Fixed Header */}
-        <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-200 flex justify-between items-center flex-shrink-0">
-          <h2 className="text-lg sm:text-xl font-semibold text-gray-800">Service Details</h2>
-          <button
-            onClick={onClose}
-            className="text-gray-500 hover:text-gray-700 transition-colors p-1"
-          >
-            <XMarkIcon className="h-5 w-5 sm:h-6 sm:w-6" />
-          </button>
-        </div>
-
-        {/* Scrollable Content */}
-        <div className="flex-1 overflow-y-auto modal-scrollbar">
-          <div className="p-4 sm:p-6 pb-6 sm:pb-8">
-            <div className="space-y-6">
-              {/* Header Section */}
-              <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between space-y-4 sm:space-y-0">
-                <div className="flex items-start space-x-4">
-                  <div className="h-12 w-12 sm:h-16 sm:w-16 bg-[var(--primary-green)] text-white rounded-full flex items-center justify-center flex-shrink-0">
-                    <FireIcon className="h-6 w-6 sm:h-8 sm:w-8" />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <h3 className="text-xl sm:text-2xl font-semibold text-gray-900 mb-1">{formattedName}</h3>
-                    <p className="text-sm text-gray-600 mb-2">{formattedCenter}</p>
-                    <div className="flex items-center space-x-3">
-                      <StatusBadge status={service.status} />
-                      <span className="text-sm text-gray-500">•</span>
-                      <span className="text-sm text-gray-600">{service.category}</span>
-                    </div>
-                  </div>
-                </div>
-                <div className="flex flex-col items-end">
-                  <span className="text-2xl sm:text-3xl font-bold text-[var(--primary-green)]">{formattedPrice}</span>
-                  {reviewsCount > 0 && (
-                    <div className="flex items-center space-x-1 mt-1">
-                      <StarRating rating={rating} size="small" />
-                      <span className="text-sm text-gray-600">
-                        {rating.toFixed(1)} ({reviewsCount} reviews)
-                      </span>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Image Section */}
-              <div className="relative">
-                {service.images.length === 0 || imageError[service.id] ? (
-                  <div className="w-full h-48 sm:h-64 bg-gray-100 rounded-lg flex flex-col items-center justify-center">
-                    <svg className="h-16 w-16 text-gray-400 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
-                        d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                    </svg>
-                    <span className="text-sm text-gray-500">No image available</span>
-                  </div>
-                ) : (
-                  <div className="w-full h-48 sm:h-64 rounded-lg overflow-hidden">
-                    <PackageImage
-                      images={service.images}
-                      alt={formattedName}
-                      size="large"
-                      className="object-cover w-full h-full"
-                      onError={() => setImageError(prev => ({ ...prev, [service.id]: true }))}
-                    />
-                  </div>
-                )}
-                <div className="absolute top-3 right-3">
-                  <CategoryBadge category={service.category} />
-                </div>
-              </div>
-
-              {/* Separator */}
-              <hr className="border-gray-200" />
-
-              {/* Service Information Cards */}
-              <div>
-                <h4 className="text-lg font-medium text-gray-900 mb-4">Service Details</h4>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                  {/* Cremation Type Card */}
-                  <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow">
-                    <div className="flex items-center space-x-3">
-                      <div className="w-8 h-8 bg-gray-50 rounded-full flex items-center justify-center flex-shrink-0">
-                        <svg className="w-4 h-4 text-[var(--primary-green)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                        </svg>
-                      </div>
-                      <div>
-                        <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Cremation Type</p>
-                        <p className="text-sm font-semibold text-gray-900">{formattedType}</p>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Processing Time Card */}
-                  <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow">
-                    <div className="flex items-center space-x-3">
-                      <div className="w-8 h-8 bg-gray-50 rounded-full flex items-center justify-center flex-shrink-0">
-                        <svg className="w-4 h-4 text-[var(--primary-green)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                      </div>
-                      <div>
-                        <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Processing Time</p>
-                        <p className="text-sm font-semibold text-gray-900">{formattedTime}</p>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Total Bookings Card */}
-                  <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow">
-                    <div className="flex items-center space-x-3">
-                      <div className="w-8 h-8 bg-gray-50 rounded-full flex items-center justify-center flex-shrink-0">
-                        <svg className="w-4 h-4 text-[var(--primary-green)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                        </svg>
-                      </div>
-                      <div>
-                        <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Total Bookings</p>
-                        <p className="text-sm font-semibold text-gray-900">{bookings}</p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Separator */}
-              <hr className="border-gray-200" />
-
-              {/* Description */}
-              <div>
-                <h4 className="text-lg font-medium text-gray-900 mb-3">Service Description</h4>
-                <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
-                  <p className="text-sm text-gray-700 leading-relaxed">{formattedDescription}</p>
-                </div>
-              </div>
-
-              {/* Separator */}
-              <hr className="border-gray-200" />
-
-              {/* What's Included & Add-ons */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* What's Included Card */}
-                <div className="bg-white border border-gray-200 rounded-lg overflow-hidden shadow-sm">
-                  <div className="bg-gray-50 border-b border-gray-200 px-4 py-3">
-                    <h4 className="text-lg font-semibold text-gray-900 flex items-center">
-                      <svg className="w-5 h-5 mr-2 text-[var(--primary-green)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
-                      What&apos;s Included
-                    </h4>
-                  </div>
-                  <div className="p-4">
-                    {inclusions.length > 0 ? (
-                      <div className="space-y-3">
-                        {inclusions.map((item, idx) => (
-                          <div key={idx} className="flex items-start space-x-3">
-                            <div className="w-2 h-2 bg-[var(--primary-green)] rounded-full mt-2 flex-shrink-0"></div>
-                            <span className="text-sm text-gray-700 leading-relaxed">{item}</span>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="text-center py-8">
-                        <svg className="w-12 h-12 text-gray-300 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2M4 13h2m8-5v2m0 0v2m0-2h2m-2 0h-2" />
-                        </svg>
-                        <p className="text-sm text-gray-500">No inclusions specified</p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Add-ons Card */}
-                <div className="bg-white border border-gray-200 rounded-lg overflow-hidden shadow-sm">
-                  <div className="bg-gray-50 border-b border-gray-200 px-4 py-3">
-                    <h4 className="text-lg font-semibold text-gray-900 flex items-center">
-                      <svg className="w-5 h-5 mr-2 text-[var(--primary-green)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                      </svg>
-                      Add-ons Available
-                    </h4>
-                  </div>
-                  <div className="p-4">
-                    {addOns.length > 0 ? (
-                      <div className="space-y-3">
-                        {addOns.map((item, idx) => (
-                          <div key={idx} className="flex items-start space-x-3">
-                            <div className="w-2 h-2 bg-[var(--primary-green)] rounded-full mt-2 flex-shrink-0"></div>
-                            <span className="text-sm text-gray-700 leading-relaxed">{item}</span>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="text-center py-8">
-                        <svg className="w-12 h-12 text-gray-300 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                        <p className="text-sm text-gray-500">No add-ons available</p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              {/* Separator */}
-              <hr className="border-gray-200" />
-
-              {/* Terms & Conditions */}
-              <div>
-                <h4 className="text-lg font-medium text-gray-900 mb-3">Terms & Conditions</h4>
-                <div className="bg-gray-50 rounded-lg p-4">
-                  <p className="text-sm text-gray-700 leading-relaxed">{formattedConditions}</p>
-                </div>
-              </div>
+      <div className="bg-white rounded-xl border border-gray-200 shadow-sm">
+        {/* Content area */}
+        <div className="p-6 space-y-6">
+          {/* Header Section */}
+          <div className="text-center">
+            <h1 className="text-2xl font-bold text-gray-900 mb-2">{formattedName}</h1>
+            <p className="text-gray-600">{formattedCenter}</p>
+          </div>
+          {/* Stats Row */}
+          <div className="flex justify-center space-x-12">
+            <div className="text-center">
+              <div className="text-2xl font-bold text-green-600">{bookings}</div>
+              <div className="text-sm text-gray-600">Bookings</div>
+            </div>
+            <div className="text-center">
+              <div className="text-2xl font-bold text-green-600">{formattedPrice}</div>
+              <div className="text-sm text-gray-600">Price</div>
+            </div>
+            <div className="text-center">
+              <div className="text-2xl font-bold text-green-600">{rating.toFixed(1)}</div>
+              <div className="text-sm text-gray-600">Rating</div>
             </div>
           </div>
-        </div>
 
-        {/* Fixed Footer */}
-        <div className="px-4 sm:px-6 py-3 sm:py-4 border-t border-gray-200 bg-gray-50 flex justify-end space-x-3 flex-shrink-0">
-          <button
-            onClick={onClose}
-            className="px-4 sm:px-6 py-2 sm:py-2.5 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
-          >
-            Close
-          </button>
+          {/* Separator */}
+          <div className="border-t border-gray-200"></div>
+
+          {/* Image Section */}
+          <div className="relative">
+            {service.images.length === 0 || imageError[service.id] ? (
+              <div className="w-full h-48 sm:h-64 bg-gray-100 rounded-lg flex flex-col items-center justify-center">
+                <svg className="h-16 w-16 text-gray-400 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+                    d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+                <span className="text-sm text-gray-500">No image available</span>
+              </div>
+            ) : (
+              <div className="w-full h-48 sm:h-64 rounded-lg overflow-hidden">
+                <PackageImage
+                  images={service.images}
+                  alt={formattedName}
+                  size="large"
+                  className="object-cover w-full h-full"
+                  onError={() => setImageError(prev => ({ ...prev, [service.id]: true }))}
+                />
+              </div>
+            )}
+            <div className="absolute top-3 right-3">
+              <CategoryBadge category={service.category} />
+            </div>
+          </div>
+
+          {/* Separator */}
+          <div className="border-t border-gray-200"></div>
+
+          {/* Service Information */}
+          <div className="space-y-3">
+            <div className="flex items-center gap-3">
+              <span className="text-sm font-medium text-gray-600 min-w-[120px]">Status:</span>
+              <StatusBadge status={service.status} />
+            </div>
+            <div className="flex items-center gap-3">
+              <span className="text-sm font-medium text-gray-600 min-w-[120px]">Category:</span>
+              <span className="text-sm text-gray-900">{service.category}</span>
+            </div>
+            <div className="flex items-center gap-3">
+              <span className="text-sm font-medium text-gray-600 min-w-[120px]">Type:</span>
+              <span className="text-sm text-gray-900">{formattedType}</span>
+            </div>
+            <div className="flex items-center gap-3">
+              <span className="text-sm font-medium text-gray-600 min-w-[120px]">Processing Time:</span>
+              <span className="text-sm text-gray-900">{formattedTime}</span>
+            </div>
+          </div>
+
+          {/* Separator */}
+          <div className="border-t border-gray-200"></div>
+
+          {/* Description */}
+          <div>
+            <h3 className="text-lg font-semibold text-gray-900 mb-3">Service Description</h3>
+            <p className="text-gray-700 leading-relaxed">{formattedDescription}</p>
+          </div>
+
+          {/* Separator */}
+          <div className="border-t border-gray-200"></div>
+
+          {/* What's Included & Add-ons */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* What&apos;s Included */}
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-3">What&apos;s Included</h3>
+              {inclusions.length > 0 ? (
+                <ul className="space-y-2">
+                  {inclusions.map((item, idx) => (
+                    <li key={idx} className="flex items-start space-x-2">
+                      <CheckCircleIcon className="h-5 w-5 text-green-500 mt-0.5 flex-shrink-0" />
+                      <span className="text-gray-700">{item}</span>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-gray-500">No inclusions specified</p>
+              )}
+            </div>
+
+            {/* Add-ons */}
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-3">Available Add-ons</h3>
+              {addOns.length > 0 ? (
+                <ul className="space-y-2">
+                  {addOns.map((item, idx) => (
+                    <li key={idx} className="flex items-start space-x-2">
+                      <span className="h-2 w-2 bg-green-600 rounded-full mt-2 flex-shrink-0"></span>
+                      <span className="text-gray-700">{item}</span>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-gray-500">No add-ons available</p>
+              )}
+            </div>
+          </div>
+
+          {/* Separator */}
+          <div className="border-t border-gray-200"></div>
+
+          {/* Terms & Conditions */}
+          <div>
+            <h3 className="text-lg font-semibold text-gray-900 mb-3">Terms & Conditions</h3>
+            <p className="text-gray-700 leading-relaxed">{formattedConditions}</p>
+          </div>
         </div>
       </div>
-    </div>
+    </Modal>
   );
 }
 

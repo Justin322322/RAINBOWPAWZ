@@ -1382,7 +1382,3 @@ const BookingsPage: React.FC<BookingsPageProps> = ({ userData }) => {
 
 // Export the component directly (OTP verification is now handled by layout)
 export default BookingsPage;
-
-
-
-

@@ -704,32 +704,32 @@ const AdminCremationCentersPage = React.memo(function AdminCremationCentersPage(
       case 'pending':
         return (
           <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">
-            Pending
+            Awaiting Review
           </span>
         );
       case 'approved':
       case 'active':
         return (
           <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
-            Active
+            Verified
           </span>
         );
       case 'declined':
         return (
           <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">
-            Declined
+            Rejected
           </span>
         );
       case 'restricted':
         return (
-          <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-purple-100 text-purple-800">
+          <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">
             Restricted
           </span>
         );
       case 'inactive':
         return (
           <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">
-            Inactive
+            Inactive Account
           </span>
         );
       default:
@@ -737,19 +737,19 @@ const AdminCremationCentersPage = React.memo(function AdminCremationCentersPage(
         if (centerObj?.verification_status === 'verified' || verified) {
           return (
             <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
-              Active
+              Verified
             </span>
           );
         } else if (centerObj?.verification_status === 'restricted') {
           return (
-            <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-purple-100 text-purple-800">
+            <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">
               Restricted
             </span>
           );
         } else {
           return (
             <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">
-              Pending
+              Awaiting Review
             </span>
           );
         }

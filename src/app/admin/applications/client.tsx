@@ -28,7 +28,7 @@ function AdminApplicationsContent() {
   const [applications, setApplications] = useState<Application[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [statusFilter, setStatusFilter] = useState('pending');
+  const [statusFilter, setStatusFilter] = useState('all');
 
   // Fetch applications data
   useEffect(() => {
@@ -147,7 +147,7 @@ function AdminApplicationsContent() {
           >
             <option value="all">All Statuses </option>
             <option value="pending">Pending</option>
-            <option value="reviewing">Under Review</option>
+            <option value="reviewing">Reviewing</option>
             <option value="documents_required">Documents Required</option>
             <option value="approved">Approved</option>
             <option value="declined">Declined</option>
@@ -243,32 +243,32 @@ function AdminApplicationsContent() {
                     <td className="px-6 py-4 whitespace-nowrap">
                       {application.applicationStatus === 'pending' && (
                         <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">
-                          Pending
+                          Awaiting Review
                         </span>
                       )}
                       {application.applicationStatus === 'reviewing' && (
                         <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
-                          Under Review
+                          Reviewing
                         </span>
                       )}
                       {application.applicationStatus === 'approved' && (
                         <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
-                          Approved
+                          Verified
                         </span>
                       )}
                       {application.applicationStatus === 'declined' && (
                         <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">
-                          Declined
+                          Rejected
                         </span>
                       )}
                       {application.applicationStatus === 'restricted' && (
-                        <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-purple-100 text-purple-800">
+                        <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">
                           Restricted
                         </span>
                       )}
                       {application.applicationStatus === 'documents_required' && (
                         <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-orange-100 text-orange-800">
-                          Documents Required
+                          Missing Documents
                         </span>
                       )}
                     </td>

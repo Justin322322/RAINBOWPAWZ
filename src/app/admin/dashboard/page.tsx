@@ -167,24 +167,30 @@ function AdminDashboardPage({ adminData }: { adminData: any }) {
       case 'pending':
         return (
           <span className="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800 min-w-[90px] justify-center">
-            Pending
+            Awaiting Review
+          </span>
+        );
+      case 'reviewing':
+        return (
+          <span className="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800 min-w-[90px] justify-center">
+            Under Review
           </span>
         );
       case 'approved':
         return (
           <span className="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800 min-w-[90px] justify-center">
-            Approved
+            Verified
           </span>
         );
       case 'declined':
         return (
           <span className="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800 min-w-[90px] justify-center">
-            Declined
+            Rejected
           </span>
         );
       case 'restricted':
         return (
-          <span className="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-purple-100 text-purple-800 min-w-[90px] justify-center">
+          <span className="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800 min-w-[90px] justify-center">
             Restricted
           </span>
         );
@@ -493,7 +499,7 @@ function AdminDashboardPage({ adminData }: { adminData: any }) {
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-sm font-medium text-gray-500">Active Users</h3>
                   <div className="flex space-x-2">
-                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
                       Total: {(dashboardData.userDistribution?.activeUsers?.cremationCenters || 0) + (dashboardData.userDistribution?.activeUsers?.furParents || 0)}
                     </span>
                   </div>
@@ -519,7 +525,7 @@ function AdminDashboardPage({ adminData }: { adminData: any }) {
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-sm font-medium text-gray-500">Application Status</h3>
                   <div className="flex space-x-2">
-                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
                       This Month: {dashboardData.userDistribution?.pendingApplications?.thisMonth || 0}
                     </span>
                   </div>

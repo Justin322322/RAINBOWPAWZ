@@ -1514,82 +1514,8 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
                       )}
                     </div>
 
-                    {/* Payment Method Section */}
-                    <div className="border-b pb-6">
-                      <h3 className="text-lg font-medium text-gray-900 mb-4">
-                        <CreditCardIcon className="h-5 w-5 inline mr-2 text-[var(--primary-green)]" />
-                        Payment Method
-                      </h3>
-
-                      {!_providerQr ? (
-                        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-                          <div className="flex items-center">
-                            <ExclamationCircleIcon className="h-5 w-5 text-red-500 mr-2" />
-                            <p className="text-sm text-red-700">
-                              Provider has not uploaded a QR code. Payment is not available.
-                            </p>
-                          </div>
-                        </div>
-                      ) : (
-                        <QRCodePayment
-                          qrCodeUrl={_providerQr}
-                          providerName={bookingData?.provider?.name || 'Provider'}
-                          amount={
-                            (bookingData?.package?.price || 0) +
-                            addOnsTotalPrice +
-                            (deliveryOption === 'delivery' ? deliveryFee : 0)
-                          }
-                          onReceiptUpload={(file) => {
-                            setReceiptFile(file);
-                            const reader = new FileReader();
-                            reader.onload = (e) => {
-                              setReceiptPreview(e.target?.result as string);
-                            };
-                            reader.readAsDataURL(file);
-                            clearValidationError('receipt');
-                          }}
-                          onReferenceNumberChange={(refNum) => {
-                            setPaymentReferenceNumber(refNum);
-                            if (refNum.trim()) {
-                              clearValidationError('referenceNumber');
-                            }
-                          }}
-                          receiptFile={receiptFile}
-                          receiptPreview={receiptPreview}
-                          referenceNumber={paymentReferenceNumber}
-                          onRemoveReceipt={removeReceiptFile}
-                        />
-                      )}
-
-                      {/* Validation Errors */}
-                      {validationErrors.qrCode && validationErrors.formSubmitted && (
-                        <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-md">
-                          <div className="flex items-center">
-                            <ExclamationCircleIcon className="h-5 w-5 text-red-500 mr-2" />
-                            <p className="text-sm text-red-700">{validationErrors.qrCode}</p>
-                          </div>
-                        </div>
-                      )}
-                      {validationErrors.receipt && validationErrors.formSubmitted && (
-                        <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-md">
-                          <div className="flex items-center">
-                            <ExclamationCircleIcon className="h-5 w-5 text-red-500 mr-2" />
-                            <p className="text-sm text-red-700">{validationErrors.receipt}</p>
-                          </div>
-                        </div>
-                      )}
-                      {validationErrors.referenceNumber && validationErrors.formSubmitted && (
-                        <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-md">
-                          <div className="flex items-center">
-                            <ExclamationCircleIcon className="h-5 w-5 text-red-500 mr-2" />
-                            <p className="text-sm text-red-700">{validationErrors.referenceNumber}</p>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-
                     {/* Delivery Options Section */}
-                    <div>
+                    <div className="border-b pb-6">
                       <h3 className="text-lg font-medium text-gray-900 mb-4">
                         <TruckIcon className="h-5 w-5 inline mr-2 text-[var(--primary-green)]" />
                         Delivery Options
@@ -1691,6 +1617,81 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
                         )}
                       </div>
                     </div>
+
+                    {/* Payment Method Section */}
+                    <div className="border-b pb-6">
+                      <h3 className="text-lg font-medium text-gray-900 mb-4">
+                        <CreditCardIcon className="h-5 w-5 inline mr-2 text-[var(--primary-green)]" />
+                        Payment Method
+                      </h3>
+
+                      {!_providerQr ? (
+                        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                          <div className="flex items-center">
+                            <ExclamationCircleIcon className="h-5 w-5 text-red-500 mr-2" />
+                            <p className="text-sm text-red-700">
+                              Provider has not uploaded a QR code. Payment is not available.
+                            </p>
+                          </div>
+                        </div>
+                      ) : (
+                        <QRCodePayment
+                          qrCodeUrl={_providerQr}
+                          providerName={bookingData?.provider?.name || 'Provider'}
+                          amount={
+                            (bookingData?.package?.price || 0) +
+                            addOnsTotalPrice +
+                            (deliveryOption === 'delivery' ? deliveryFee : 0)
+                          }
+                          onReceiptUpload={(file) => {
+                            setReceiptFile(file);
+                            const reader = new FileReader();
+                            reader.onload = (e) => {
+                              setReceiptPreview(e.target?.result as string);
+                            };
+                            reader.readAsDataURL(file);
+                            clearValidationError('receipt');
+                          }}
+                          onReferenceNumberChange={(refNum) => {
+                            setPaymentReferenceNumber(refNum);
+                            if (refNum.trim()) {
+                              clearValidationError('referenceNumber');
+                            }
+                          }}
+                          receiptFile={receiptFile}
+                          receiptPreview={receiptPreview}
+                          referenceNumber={paymentReferenceNumber}
+                          onRemoveReceipt={removeReceiptFile}
+                        />
+                      )}
+
+                      {/* Validation Errors */}
+                      {validationErrors.qrCode && validationErrors.formSubmitted && (
+                        <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-md">
+                          <div className="flex items-center">
+                            <ExclamationCircleIcon className="h-5 w-5 text-red-500 mr-2" />
+                            <p className="text-sm text-red-700">{validationErrors.qrCode}</p>
+                          </div>
+                        </div>
+                      )}
+                      {validationErrors.receipt && validationErrors.formSubmitted && (
+                        <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-md">
+                          <div className="flex items-center">
+                            <ExclamationCircleIcon className="h-5 w-5 text-red-500 mr-2" />
+                            <p className="text-sm text-red-700">{validationErrors.receipt}</p>
+                          </div>
+                        </div>
+                      )}
+                      {validationErrors.referenceNumber && validationErrors.formSubmitted && (
+                        <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-md">
+                          <div className="flex items-center">
+                            <ExclamationCircleIcon className="h-5 w-5 text-red-500 mr-2" />
+                            <p className="text-sm text-red-700">{validationErrors.referenceNumber}</p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
                   </div>
 
                   {/* Subtle validation indicator */}

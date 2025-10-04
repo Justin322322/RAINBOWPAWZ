@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState, Suspense, useCallback } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { CheckCircleIcon, DocumentIcon, EyeIcon } from '@heroicons/react/24/solid';
+import { CheckCircleIcon, DocumentIcon, EyeIcon } from '@heroicons/react/24/outline';
 import { toast } from 'react-hot-toast';
 import Image from 'next/image';
 
@@ -92,11 +92,13 @@ function PaymentSuccessContent() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin mx-auto h-12 w-12 border-4 border-green-600 border-t-transparent rounded-full mb-4"></div>
-          <h2 className="text-xl font-semibold text-gray-900 mb-2">Verifying Payment</h2>
-          <p className="text-gray-600">Please wait while we confirm your payment...</p>
+      <div className="min-h-screen bg-gray-50">
+        <div className="max-w-2xl mx-auto py-16 px-4 sm:px-6 lg:px-8">
+          <div className="text-center">
+            <div className="animate-spin mx-auto h-16 w-16 border-4 border-green-600 border-t-transparent rounded-full mb-6"></div>
+            <h2 className="text-2xl font-bold text-gray-900 mb-3">Verifying Payment</h2>
+            <p className="text-lg text-gray-600">Please wait while we confirm your payment...</p>
+          </div>
         </div>
       </div>
     );
@@ -104,42 +106,47 @@ function PaymentSuccessContent() {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="max-w-md w-full bg-white rounded-lg shadow-lg p-8 text-center">
-          <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 mb-4">
-            <svg className="h-6 w-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-            </svg>
+      <div className="min-h-screen bg-gray-50">
+        <div className="max-w-2xl mx-auto py-16 px-4 sm:px-6 lg:px-8">
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 text-center">
+            <div className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-red-50 mb-6">
+              <svg className="h-8 w-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </div>
+            <h2 className="text-2xl font-bold text-gray-900 mb-3">Payment Verification Failed</h2>
+            <p className="text-lg text-gray-600 mb-8">{error}</p>
+            <button
+              onClick={() => router.push('/user/furparent_dashboard/bookings')}
+              className="w-full bg-red-600 text-white py-3 px-6 rounded-lg hover:bg-red-700 transition-colors font-medium"
+            >
+              Go to Bookings
+            </button>
           </div>
-          <h2 className="text-xl font-semibold text-gray-900 mb-2">Payment Verification Failed</h2>
-          <p className="text-gray-600 mb-6">{error}</p>
-          <button
-            onClick={() => router.push('/user/furparent_dashboard/bookings')}
-            className="w-full bg-gray-600 text-white py-2 px-4 rounded-lg hover:bg-gray-700 transition-colors"
-          >
-            Go to Bookings
-          </button>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-      <div className="max-w-md w-full bg-white rounded-lg shadow-lg p-8 text-center">
-        <div className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-green-100 mb-6">
-          <CheckCircleIcon className="h-10 w-10 text-green-600" />
+    <div className="min-h-screen bg-gray-50">
+      <div className="max-w-2xl mx-auto py-16 px-4 sm:px-6 lg:px-8">
+        {/* Success Header */}
+        <div className="text-center mb-8">
+          <div className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-green-100 mb-4">
+            <CheckCircleIcon className="h-8 w-8 text-green-600" />
+          </div>
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">Payment Successful!</h1>
+          <p className="text-gray-600">
+            Your payment has been processed successfully.
+          </p>
         </div>
 
-        <h1 className="text-2xl font-bold text-gray-900 mb-2">Payment Successful!</h1>
-        <p className="text-gray-600 mb-6">
-          Your payment has been processed successfully.
-        </p>
-
+        {/* Payment Details Card */}
         {paymentDetails && (
-          <div className="bg-gray-50 rounded-lg p-4 mb-6 text-left">
-            <h3 className="font-semibold text-gray-900 mb-3">Payment Details</h3>
-            <div className="space-y-2 text-sm">
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">Payment Details</h2>
+            <div className="space-y-3">
               <div className="flex justify-between">
                 <span className="text-gray-600">Booking ID:</span>
                 <span className="font-medium">#{paymentDetails.booking_id || bookingId}</span>
@@ -152,7 +159,7 @@ function PaymentSuccessContent() {
               )}
               <div className="flex justify-between">
                 <span className="text-gray-600">Amount:</span>
-                <span className="font-medium">
+                <span className="font-medium text-lg">
                   ₱{Number(paymentDetails.amount || 0).toLocaleString('en-PH', { minimumFractionDigits: 2 })}
                 </span>
               </div>
@@ -207,7 +214,7 @@ function PaymentSuccessContent() {
 
         {/* Receipt Display for QR Payments */}
         {paymentDetails && paymentDetails.payment_method === 'qr_manual' && (
-          <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
             <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
               <DocumentIcon className="h-5 w-5 mr-2 text-gray-600" />
               Payment Receipt
@@ -215,8 +222,8 @@ function PaymentSuccessContent() {
 
             {receiptLoading ? (
               <div className="flex items-center justify-center py-8">
-                <div className="animate-spin h-8 w-8 border-4 border-green-600 border-t-transparent rounded-full"></div>
-                <span className="ml-3 text-gray-600">Loading receipt...</span>
+                <div className="animate-spin h-8 w-8 border-4 border-green-600 border-t-transparent rounded-full mr-3"></div>
+                <span className="text-gray-600">Loading receipt...</span>
               </div>
             ) : receiptData ? (
               <div className="space-y-4">
@@ -225,7 +232,7 @@ function PaymentSuccessContent() {
                   <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-xs font-medium text-blue-900 mb-1">GCash Reference Number</p>
+                        <p className="text-sm font-medium text-blue-900 mb-1">GCash Reference Number</p>
                         <p className="text-lg font-mono font-semibold text-blue-700">{receiptData.reference_number}</p>
                       </div>
                       <button
@@ -233,7 +240,7 @@ function PaymentSuccessContent() {
                           navigator.clipboard.writeText(receiptData.reference_number);
                           toast.success('Reference number copied!');
                         }}
-                        className="px-3 py-1.5 text-xs font-medium text-blue-700 bg-blue-100 hover:bg-blue-200 rounded transition-colors"
+                        className="px-3 py-1.5 text-sm font-medium text-blue-700 bg-blue-100 hover:bg-blue-200 rounded transition-colors"
                       >
                         Copy
                       </button>
@@ -241,7 +248,7 @@ function PaymentSuccessContent() {
                   </div>
                 )}
 
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
                   <div>
                     <p className="text-sm text-gray-600">Status:
                       <span className={`ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${receiptData.status === 'confirmed'
@@ -269,12 +276,12 @@ function PaymentSuccessContent() {
                   </a>
                 </div>
 
-                <div className="border rounded-lg overflow-hidden bg-gray-50">
+                <div className="border rounded-lg overflow-hidden bg-gray-50 p-4">
                   <Image
                     src={receiptData.receipt_path}
                     alt="Payment Receipt"
-                    width={1200}
-                    height={800}
+                    width={600}
+                    height={400}
                     className="w-full h-auto object-contain"
                   />
                 </div>
@@ -296,6 +303,7 @@ function PaymentSuccessContent() {
           </div>
         )}
 
+        {/* Action Buttons */}
         <div className="space-y-3">
           <button
             onClick={handleContinue}
@@ -312,10 +320,21 @@ function PaymentSuccessContent() {
           </button>
         </div>
 
+        {/* Information Notice */}
         <div className="mt-6 pt-6 border-t border-gray-200">
-          <p className="text-xs text-gray-500">
-            You will receive a confirmation email shortly. If you have any questions, please contact our support team.
-          </p>
+          <div className="bg-blue-50 rounded-lg p-3">
+            <div className="flex items-start">
+              <svg className="h-5 w-5 text-blue-600 mt-0.5 mr-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+              </svg>
+              <div>
+                <p className="text-sm text-blue-800 font-medium">Confirmation Email Sent</p>
+                <p className="text-sm text-blue-700 mt-1">
+                  You will receive a confirmation email shortly with all booking details.
+                </p>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>

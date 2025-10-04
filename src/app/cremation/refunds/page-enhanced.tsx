@@ -18,6 +18,7 @@ import CremationDashboardLayout from '@/components/navigation/CremationDashboard
 import withBusinessVerification from '@/components/withBusinessVerification';
 import { StatsCardSkeleton } from '@/components/ui/LoadingComponents';
 import { Modal } from '@/components/ui/Modal';
+import StatCard from '@/components/ui/StatCard';
 import { useToast } from '@/context/ToastContext';
 
 interface RefundRecord {
@@ -204,35 +205,24 @@ function CremationRefundsPageEnhanced({ userData }: { userData: any }) {
           <StatsCardSkeleton count={3} />
         ) : (
           <>
-            <div className="bg-white rounded-lg shadow p-6">
-              <div className="flex items-center">
-                <CurrencyDollarIcon className="w-8 h-8 text-green-500" />
-                <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-600">Total Refunded</p>
-                  <p className="text-2xl font-bold text-gray-900">₱{totalRefundAmount.toLocaleString()}</p>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-white rounded-lg shadow p-6">
-              <div className="flex items-center">
-                <ExclamationTriangleIcon className="w-8 h-8 text-yellow-500" />
-                <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-600">Pending Review</p>
-                  <p className="text-2xl font-bold text-gray-900">{pendingRefunds}</p>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-white rounded-lg shadow p-6">
-              <div className="flex items-center">
-                <DocumentCheckIcon className="w-8 h-8 text-blue-500" />
-                <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-600">Total Requests</p>
-                  <p className="text-2xl font-bold text-gray-900">{refunds.length}</p>
-                </div>
-              </div>
-            </div>
+            <StatCard
+              icon={<CurrencyDollarIcon className="h-8 w-8" />}
+              label="Total Refunded"
+              value={`₱${totalRefundAmount.toLocaleString()}`}
+              color="green"
+            />
+            <StatCard
+              icon={<ExclamationTriangleIcon className="h-8 w-8" />}
+              label="Pending Review"
+              value={pendingRefunds}
+              color="green"
+            />
+            <StatCard
+              icon={<DocumentCheckIcon className="h-8 w-8" />}
+              label="Total Requests"
+              value={refunds.length}
+              color="green"
+            />
           </>
         )}
       </div>

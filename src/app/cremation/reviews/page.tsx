@@ -389,9 +389,9 @@ function ReviewsPage({ userData }: ReviewsPageProps) {
                 ? 'No reviews match your filters. Try adjusting your search criteria.'
                 : 'You haven\'t received any reviews yet. Reviews will appear here when customers rate their experience.'}
             </p>
-            <div className="mt-6 p-4 bg-blue-50 rounded-lg text-left max-w-lg mx-auto">
-              <h4 className="text-sm font-medium text-blue-800 mb-2">How do customers leave reviews?</h4>
-              <ul className="text-sm text-blue-700 list-disc pl-5 space-y-1">
+            <div className="mt-6 p-4 bg-green-50 rounded-lg text-left max-w-lg mx-auto">
+              <h4 className="text-sm font-medium text-green-800 mb-2">How do customers leave reviews?</h4>
+              <ul className="text-sm text-green-700 list-disc pl-5 space-y-1">
                 <li>Customers can leave reviews after completing a booking</li>
                 <li>They&apos;ll see a review prompt in their booking details</li>
                 <li>Reviews help build trust with potential customers</li>

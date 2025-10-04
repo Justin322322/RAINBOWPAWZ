@@ -10,6 +10,7 @@ import MonthGrid from './MonthGrid';
 import YearOverview from './YearOverview';
 import { TimeSlot, DayAvailability, CalendarDay } from './types';
 import { PlusIcon, TrashIcon, ExclamationCircleIcon } from '@heroicons/react/24/outline';
+import { ConfirmationModal } from '@/components/ui/ConfirmationModal';
 
 // Types moved to ./types for reuse
 
@@ -86,6 +87,7 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
   const [showConflictMessage, setShowConflictMessage] = useState<boolean>(false);
   const [_conflictMessage, setConflictMessage] = useState<string>('');
   const [calendarKey, setCalendarKey] = useState<number>(0);
+  const [showClearConfirmModal, setShowClearConfirmModal] = useState<boolean>(false);
   const latestSaveControllerRef = useRef<AbortController | null>(null);
 
   // Abort any in-flight save on unmount
@@ -916,9 +918,11 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
     }
   };
   
-  const clearAllAvailability = async () => {
-    if (!confirm('Are you sure you want to clear all availability? This cannot be undone.')) return;
-    
+  const clearAllAvailability = () => {
+    setShowClearConfirmModal(true);
+  };
+
+  const handleClearAllConfirm = async () => {
     setLoading(true);
     
     try {
@@ -1432,6 +1436,20 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
         loadingPackages={loadingPackages}
         error={serviceSelectionError}
         onSubmit={handleAddTimeSlot}
+      />
+
+      {/* Clear All Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={showClearConfirmModal}
+        onClose={() => setShowClearConfirmModal(false)}
+        onConfirm={handleClearAllConfirm}
+        title="Clear All Availability"
+        message="Are you sure you want to clear all availability? This action cannot be undone and will remove all scheduled time slots."
+        confirmText="Clear All"
+        cancelText="Cancel"
+        variant="danger"
+        icon={<ExclamationCircleIcon className="h-6 w-6 text-red-600" />}
+        successMessage="All availability has been cleared successfully!"
       />
     </div>
   );

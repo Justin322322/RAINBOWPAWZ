@@ -518,7 +518,7 @@ const AdminFurParentsPage = React.memo(function AdminFurParentsPage() {
       case 'active':
         return (
           <Badge variant="success" size="sm">
-            Active
+            Verified
           </Badge>
         );
       case 'restricted':
@@ -530,19 +530,19 @@ const AdminFurParentsPage = React.memo(function AdminFurParentsPage() {
       case 'suspended':
         return (
           <Badge variant="warning" size="sm">
-            Suspended
+            Temporarily Suspended
           </Badge>
         );
       case 'inactive':
         return (
           <Badge variant="default" size="sm">
-            Inactive
+            Inactive Account
           </Badge>
         );
       default:
         return (
           <Badge variant="default" size="sm">
-            Unknown
+            Status Unknown
           </Badge>
         );
     }
@@ -842,7 +842,7 @@ const AdminFurParentsPage = React.memo(function AdminFurParentsPage() {
                               {getStatusBadge(user.status, user.is_verified)}
                               {user.appeals && user.appeals.some(appeal => appeal.status === 'pending') && (
                                 <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
-                                  Appeal Pending
+                                  Appeal Reviewing
                                 </span>
                               )}
                             </div>
@@ -973,7 +973,7 @@ const AdminFurParentsPage = React.memo(function AdminFurParentsPage() {
                             {getStatusBadge(user.status, user.is_verified)}
                             {user.appeals && user.appeals.some(appeal => appeal.status === 'pending') && (
                               <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
-                                Appeal
+                                Appeal Reviewing
                               </span>
                             )}
                           </div>
@@ -1322,7 +1322,10 @@ const AdminFurParentsPage = React.memo(function AdminFurParentsPage() {
                              appeal.status === 'rejected' ? 'bg-red-100 text-red-800' :
                              'bg-blue-100 text-blue-800'
                            }`}>
-                             {appeal.status.replace('_', ' ')}
+                             {appeal.status === 'pending' ? 'Reviewing' :
+                              appeal.status === 'approved' ? 'Approved' :
+                              appeal.status === 'rejected' ? 'Rejected' :
+                              appeal.status.replace('_', ' ')}
                            </span>
                          </div>
                          <p className="text-sm text-gray-700 mb-2">{appeal.message}</p>

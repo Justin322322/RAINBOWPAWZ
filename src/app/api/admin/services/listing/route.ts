@@ -178,8 +178,78 @@ async function fetchRelatedData(packageIds: number[]) {
 
   const { clause, params } = buildInClause(packageIds);
 
-  // Skip inclusions and addons for now - they're not critical for listing view
-  // These can be loaded on-demand when viewing service details
+  // Fetch inclusions and addons
+  if (await checkTableExists('service_packages')) {
+    const inclusionsData = await safeQuery(
+      `SELECT package_id, inclusions FROM service_packages WHERE package_id ${clause}`,
+      params
+    );
+    
+    inclusionsData.forEach((pkg: any) => {
+      if (pkg.inclusions) {
+        try {
+          let inclusionsArray: any[] = [];
+          if (typeof pkg.inclusions === 'string') {
+            // Handle corrupted [object Object] data
+            if (pkg.inclusions.includes('[object Object]')) {
+              console.warn(`Corrupted inclusions data for package ${pkg.package_id}, defaulting to empty array`);
+              inclusionsArray = [];
+            } else {
+              inclusionsArray = JSON.parse(pkg.inclusions);
+            }
+          } else {
+            inclusionsArray = pkg.inclusions;
+          }
+          
+          if (Array.isArray(inclusionsArray)) {
+            results.inclusions[pkg.package_id] = inclusionsArray.map((inc: any) => {
+              if (typeof inc === 'string') return inc;
+              if (inc && typeof inc === 'object') {
+                return inc.description || inc.name || String(inc);
+              }
+              return String(inc);
+            }).filter(Boolean);
+          } else {
+            results.inclusions[pkg.package_id] = [];
+          }
+        } catch (error) {
+          console.warn(`Error parsing inclusions for package ${pkg.package_id}:`, error);
+          results.inclusions[pkg.package_id] = [];
+        }
+      } else {
+        results.inclusions[pkg.package_id] = [];
+      }
+    });
+
+    const addonsData = await safeQuery(
+      `SELECT package_id, addons FROM service_packages WHERE package_id ${clause}`,
+      params
+    );
+    
+    addonsData.forEach((pkg: any) => {
+      if (pkg.addons) {
+        try {
+          const addonsArray = typeof pkg.addons === 'string' ? JSON.parse(pkg.addons) : pkg.addons;
+          if (Array.isArray(addonsArray)) {
+            results.addons[pkg.package_id] = addonsArray.map((addon: any) => {
+              if (typeof addon === 'string') return addon;
+              if (addon && typeof addon === 'object') {
+                return addon.name || addon.description || String(addon);
+              }
+              return String(addon);
+            }).filter(Boolean);
+          } else {
+            results.addons[pkg.package_id] = [];
+          }
+        } catch (error) {
+          console.warn(`Error parsing addons for package ${pkg.package_id}:`, error);
+          results.addons[pkg.package_id] = [];
+        }
+      } else {
+        results.addons[pkg.package_id] = [];
+      }
+    });
+  }
 
   // Fetch bookings
   const bookingsTable = await checkTableExists('bookings')

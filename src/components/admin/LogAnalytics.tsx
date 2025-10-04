@@ -9,6 +9,7 @@ import {
   ArrowPathIcon,
 } from '@heroicons/react/24/outline';
 import Link from 'next/link';
+import StatCard from '@/components/ui/StatCard';
 
 interface LogStats {
   totalLogs: number;
@@ -134,35 +135,24 @@ export default function LogAnalytics({ className = '' }: LogAnalyticsProps) {
 
       {/* Quick Stats */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-        <div className="bg-blue-50 rounded-lg p-4">
-          <div className="flex items-center">
-            <DocumentTextIcon className="h-8 w-8 text-blue-600 mr-3" />
-            <div>
-              <p className="text-sm text-blue-600 font-medium">Total Activities</p>
-              <p className="text-2xl font-bold text-blue-800">{stats.totalLogs.toLocaleString()}</p>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-red-50 rounded-lg p-4">
-          <div className="flex items-center">
-            <ExclamationTriangleIcon className="h-8 w-8 text-red-600 mr-3" />
-            <div>
-              <p className="text-sm text-red-600 font-medium">Restrictions/Rejections</p>
-              <p className="text-2xl font-bold text-red-800">{stats.errorLogs.toLocaleString()}</p>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-purple-50 rounded-lg p-4">
-          <div className="flex items-center">
-            <UserIcon className="h-8 w-8 text-purple-600 mr-3" />
-            <div>
-              <p className="text-sm text-purple-600 font-medium">Active Admins</p>
-              <p className="text-2xl font-bold text-purple-800">{stats.uniqueIps.toLocaleString()}</p>
-            </div>
-          </div>
-        </div>
+        <StatCard
+          icon={<DocumentTextIcon className="h-8 w-8" />}
+          label="Total Activities"
+          value={stats.totalLogs}
+          color="green"
+        />
+        <StatCard
+          icon={<ExclamationTriangleIcon className="h-8 w-8" />}
+          label="Restrictions/Rejections"
+          value={stats.errorLogs}
+          color="green"
+        />
+        <StatCard
+          icon={<UserIcon className="h-8 w-8" />}
+          label="Active Admins"
+          value={stats.uniqueIps}
+          color="green"
+        />
       </div>
 
       {/* Top Activities */}
@@ -218,26 +208,6 @@ export default function LogAnalytics({ className = '' }: LogAnalyticsProps) {
         </div>
       </div>
 
-      {/* Most Active Admins */}
-      <div className="mb-6">
-        <h4 className="text-md font-medium text-gray-800 mb-3">Admin Activity Summary</h4>
-        <div className="space-y-2">
-          {stats.adminActivity.slice(0, 3).map((admin, _index) => (
-            <div key={admin.admin_id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-              <div className="flex items-center">
-                <UserIcon className="h-5 w-5 text-gray-400 mr-2" />
-                <div>
-                  <p className="text-sm font-medium text-gray-900">{admin.admin_name}</p>
-                  <p className="text-xs text-gray-500">{admin.admin_username === 'system' ? 'Automated System' : `Admin: ${admin.admin_username}`}</p>
-                </div>
-              </div>
-              <span className="text-sm font-medium text-[var(--primary-green)]">
-                {admin.count} {admin.count === 1 ? 'activity' : 'activities'}
-              </span>
-            </div>
-          ))}
-        </div>
-      </div>
 
       {/* View All Logs Link */}
       <div className="border-t border-gray-200 pt-4">
